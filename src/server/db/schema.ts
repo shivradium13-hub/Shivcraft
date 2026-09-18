@@ -88,6 +88,8 @@ export const reviewStatusEnum = pgEnum("review_status", [
   "REJECTED",
 ]);
 
+export const uploadVisibilityEnum = pgEnum("upload_visibility", ["PRIVATE", "PUBLIC"]);
+
 export const stockReasonEnum = pgEnum("stock_reason", [
   "ORDER_PLACED",
   "ORDER_CANCELLED",
@@ -261,6 +263,10 @@ export const products = pgTable(
     /** Denormalised review aggregates, recomputed when a review is approved. */
     ratingSum: integer("rating_sum").notNull().default(0),
     ratingCount: integer("rating_count").notNull().default(0),
+
+    /** A hosted video URL (YouTube, Vimeo or your own) shown on the product
+     *  page. We do not host video ourselves. */
+    videoUrl: text("video_url"),
 
     metaTitle: varchar("meta_title", { length: 200 }),
     metaDescription: varchar("meta_description", { length: 320 }),
@@ -609,6 +615,9 @@ export const uploads = pgTable(
     pathname: text("pathname").notNull(),
     contentType: varchar("content_type", { length: 100 }).notNull(),
     bytes: integer("bytes").notNull(),
+    /** PRIVATE: a customer photo, readable only by its owner or an admin.
+     *  PUBLIC: a product or category image the storefront serves to everyone. */
+    visibility: uploadVisibilityEnum("visibility").notNull().default("PRIVATE"),
     originalName: varchar("original_name", { length: 200 }),
     /** Exactly one of these identifies the owner. */
     userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),

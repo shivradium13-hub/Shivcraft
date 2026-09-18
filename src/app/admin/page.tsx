@@ -103,7 +103,7 @@ export default async function AdminDashboard() {
       <section className="mt-8 rounded-2xl border border-dashed border-sr-line-strong bg-sr-surface p-5">
         <h2 className="font-display text-base font-semibold text-sr-ink">Not built yet</h2>
         <p className="mt-1 max-w-2xl text-sm text-sr-muted">
-          Product, category, coupon and customer management are still to come. They are
+          Coupon, banner, review and customer management are still to come. They are
           deliberately absent rather than shown as buttons that do nothing. The data model and the
           protected API layer they will use are already in place.
         </p>
