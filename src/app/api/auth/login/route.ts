@@ -4,6 +4,7 @@ import { loginSchema } from "@/lib/validation";
 import { ApiError, ok, readJson, route } from "@/server/api/http";
 import { verifyPassword } from "@/server/auth/password";
 import { createSession } from "@/server/auth/session";
+import { mergeGuestCart } from "@/server/cart/merge";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
 
@@ -47,6 +48,9 @@ export const POST = route(async (request: Request) => {
   }
 
   await createSession(account.id, request.headers.get("user-agent"));
+
+  // Carry anything added while signed out onto the account.
+  await mergeGuestCart(account.id);
 
   return ok({
     user: {

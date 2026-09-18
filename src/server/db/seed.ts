@@ -21,6 +21,7 @@ import { hashPassword } from "../auth/password";
 import {
   banners,
   categories,
+  categoryCrossLinks,
   coupons,
   customizationFields,
   productImages,
@@ -70,7 +71,7 @@ function writePlaceholders(): void {
   <rect x="150" y="150" width="500" height="500" rx="18" fill="none" stroke="${dark}" stroke-opacity="0.35" stroke-width="3"/>
   <rect x="210" y="210" width="380" height="380" rx="10" fill="${mid}" fill-opacity="0.22"/>
   <circle cx="400" cy="372" r="86" fill="${dark}" fill-opacity="0.18"/>
-  <text x="400" y="640" font-family="Georgia, serif" font-size="40" fill="${dark}" fill-opacity="0.6" text-anchor="middle">GiftCraft</text>
+  <text x="400" y="640" font-family="Georgia, serif" font-size="34" letter-spacing="2" fill="${dark}" fill-opacity="0.6" text-anchor="middle">SHIV RADIUM</text>
 </svg>`;
     writeFileSync(join(dir, `${key}.svg`), svg, "utf8");
   }
@@ -78,12 +79,18 @@ function writePlaceholders(): void {
 
 /* ------------------------------------------------------------ categories */
 
-type CatSeed = { name: string; icon?: string; home?: boolean; children: string[] };
+type CatSeed = { name: string; icon: string; art: keyof typeof SWATCHES; home?: boolean; children: string[] };
 
+/**
+ * Each subcategory is created exactly once, under its canonical parent.
+ * Where it also belongs somewhere else it is cross-linked (see CROSS_LINKS)
+ * rather than duplicated, so one slug owns the products and the count.
+ */
 const CATEGORY_TREE: CatSeed[] = [
   {
     name: "Name Plates",
     icon: "🪧",
+    art: "nameplate",
     home: true,
     children: [
       "Wooden Name Plates",
@@ -91,52 +98,137 @@ const CATEGORY_TREE: CatSeed[] = [
       "LED Name Plates",
       "Door Name Plates",
       "Custom Name Plates",
+      "3D Name Plates",
+      "Premium Name Plates",
     ],
   },
   {
     name: "Photo Frames",
     icon: "🖼",
+    art: "frame",
     home: true,
     children: [
-      "Single Photo Frame",
+      "Single Photo Frames",
       "Collage Frames",
-      "LED Photo Frames",
-      "Wooden Frames",
       "Couple Frames",
       "Family Frames",
+      "LED Photo Frames",
+      "Wooden Photo Frames",
+      "Acrylic Photo Frames",
+      "Anniversary Frames",
     ],
   },
   {
     name: "Photo Mugs",
     icon: "☕",
+    art: "mug",
     home: true,
     children: [
-      "Personalized Mugs",
+      "Personalized Photo Mugs",
       "Couple Mugs",
       "Birthday Mugs",
       "Magic Mugs",
       "Printed Mugs",
+      "Anniversary Mugs",
     ],
   },
   {
-    name: "Crafts",
+    name: "Handmade Crafts",
     icon: "🎨",
+    art: "craft",
     home: true,
-    children: ["Handmade Crafts", "Wall Decor", "Handmade Showpieces", "Decorative Items"],
+    // Your list repeats "Handmade Crafts" as a child of itself; kept as the
+    // parent only, since a child with the same slug cannot exist.
+    children: [
+      "Wall Decor",
+      "Decorative Showpieces",
+      "Handmade Flowers",
+      "Wooden Crafts",
+      "Resin Crafts",
+    ],
   },
   {
-    name: "Gifts",
-    icon: "🎀",
+    name: "Birthday Gifts",
+    icon: "🎂",
+    art: "hamper",
     home: true,
     children: [
-      "Birthday Gifts",
-      "Anniversary Gifts",
-      "Wedding Gifts",
-      "Couple Gifts",
-      "Kids Gifts",
-      "Festival Gifts",
+      "Birthday Hampers",
+      "Personalized Birthday Gifts",
+      "Birthday Frames",
+      "Birthday Name Plates",
+      "Kids Birthday Gifts",
     ],
   },
+  {
+    name: "Anniversary Gifts",
+    icon: "💍",
+    art: "gift",
+    home: true,
+    children: ["Personalized Anniversary Gifts"],
+  },
+  {
+    name: "Couple Gifts",
+    icon: "❤️",
+    art: "gift",
+    home: true,
+    children: ["Couple Name Plates", "Personalized Couple Gifts", "Romantic Gifts"],
+  },
+  {
+    name: "Wedding Gifts",
+    icon: "💒",
+    art: "hamper",
+    home: true,
+    children: [
+      "Wedding Frames",
+      "Wedding Name Plates",
+      "Wedding Hampers",
+      "Personalized Wedding Gifts",
+    ],
+  },
+  {
+    name: "Home Decoration",
+    icon: "🏠",
+    art: "craft",
+    home: true,
+    children: ["Decorative Panels", "LED Decor", "Wooden Decor", "Photo Decor"],
+  },
+  {
+    name: "Customized Gifts",
+    icon: "✨",
+    art: "gift",
+    home: true,
+    children: [
+      "Photo Gifts",
+      "Name Gifts",
+      "Personalized Frames",
+      "Personalized Mugs",
+      "Custom Home Decor",
+      "Custom Couple Gifts",
+    ],
+  },
+];
+
+/** [subcategory slug, extra parent slug] — the same row shown in a second place. */
+const CROSS_LINKS: [string, string][] = [
+  ["birthday-mugs", "birthday-gifts"],
+  ["birthday-frames", "photo-frames"],
+  ["birthday-name-plates", "name-plates"],
+  ["anniversary-mugs", "anniversary-gifts"],
+  ["anniversary-frames", "anniversary-gifts"],
+  ["couple-frames", "couple-gifts"],
+  ["couple-mugs", "couple-gifts"],
+  ["couple-name-plates", "name-plates"],
+  ["romantic-gifts", "anniversary-gifts"],
+  ["couple-gifts", "anniversary-gifts"],
+  ["couple-gifts", "wedding-gifts"],
+  ["wedding-frames", "photo-frames"],
+  ["wedding-name-plates", "name-plates"],
+  ["wall-decor", "home-decoration"],
+  ["name-plates", "home-decoration"],
+  ["photo-decor", "customized-gifts"],
+  ["personalized-frames", "photo-frames"],
+  ["personalized-mugs", "photo-mugs"],
 ];
 
 /* -------------------------------------------------------------- products */
@@ -173,38 +265,38 @@ const PRODUCTS: ProductSeed[] = [
   { name: "Personalized Couple Photo Frame", sub: "Couple Frames", art: "frame", price: 999, sale: 699, stock: 48, material: "Engineered wood", color: "Natural oak", size: "8 x 12 in", occasion: "Anniversary", personalize: true, best: true, trending: true, short: "Your photo engraved onto a warm oak panel with both names beneath.", tags: ["photo frame", "couple", "anniversary", "engraved"], variants: [{ name: "Size", value: "8 x 12 in", delta: 0, stock: 28 }, { name: "Size", value: "12 x 18 in", delta: R(450), stock: 20 }] },
   { name: "LED Photo Frame with Warm Glow", sub: "LED Photo Frames", art: "frame", price: 1499, sale: 999, stock: 32, material: "Acrylic + LED", color: "Clear", size: "10 x 8 in", occasion: "Birthday", personalize: true, trending: true, short: "Etched acrylic that lights the photo edge-on. USB powered.", tags: ["photo frame", "led", "glow", "gift"] },
   { name: "Six Photo Collage Frame", sub: "Collage Frames", art: "frame", price: 1899, sale: 1349, stock: 30, material: "MDF + laminate", color: "White", size: "16 x 20 in", occasion: "Anniversary", personalize: true, best: true, short: "Six openings, acid-free mount board, ready to hang. Send six photos.", tags: ["photo frame", "collage", "memories", "wall"] },
-  { name: "Solid Teak Single Photo Frame", sub: "Wooden Frames", art: "frame", price: 2299, sale: 1890, stock: 20, material: "Teak", color: "Honey", size: "12 x 18 in", occasion: "Wedding", short: "Seasoned teak, mitred and oil-finished. Grain varies piece to piece.", tags: ["photo frame", "teak", "premium", "wooden"] },
+  { name: "Solid Teak Single Photo Frame", sub: "Wooden Photo Frames", art: "frame", price: 2299, sale: 1890, stock: 20, material: "Teak", color: "Honey", size: "12 x 18 in", occasion: "Wedding", short: "Seasoned teak, mitred and oil-finished. Grain varies piece to piece.", tags: ["photo frame", "teak", "premium", "wooden"] },
   { name: "Family Tree Photo Frame", sub: "Family Frames", art: "frame", price: 2799, sale: 2099, stock: 16, material: "MDF, 4 layers", color: "Walnut", size: "18 x 24 in", occasion: "Housewarming", personalize: true, short: "A routed tree with room for nine photographs across three generations.", tags: ["photo frame", "family", "tree", "large"] },
-  { name: "Classic Single Photo Frame", sub: "Single Photo Frame", art: "frame", price: 699, sale: 449, stock: 80, material: "MDF + laminate", color: "Black", size: "8 x 10 in", occasion: "Everyday", short: "The plain, well-made frame — 2.5 mm acrylic glazing, easel back and hook.", tags: ["photo frame", "classic", "budget"] },
+  { name: "Classic Single Photo Frame", sub: "Single Photo Frames", art: "frame", price: 699, sale: 449, stock: 80, material: "MDF + laminate", color: "Black", size: "8 x 10 in", occasion: "Everyday", short: "The plain, well-made frame — 2.5 mm acrylic glazing, easel back and hook.", tags: ["photo frame", "classic", "budget"] },
   { name: "Retro Film Strip Photo Frame", sub: "Collage Frames", art: "frame", price: 1199, sale: 849, stock: 24, material: "Acrylic", color: "Charcoal", size: "24 x 6 in", occasion: "Birthday", personalize: true, short: "Five photos in a film-strip run. A good desk piece.", tags: ["photo frame", "retro", "film", "desk"] },
 
   // ---- Mugs
-  { name: "Customized Photo Mug", sub: "Personalized Mugs", art: "mug", price: 499, sale: 299, stock: 120, material: "Ceramic", color: "White", size: "325 ml", occasion: "Birthday", personalize: true, best: true, trending: true, short: "Your photo printed edge to edge. Dishwasher safe, microwave safe.", tags: ["mug", "photo", "personalized", "coffee"] },
+  { name: "Customized Photo Mug", sub: "Personalized Photo Mugs", art: "mug", price: 499, sale: 299, stock: 120, material: "Ceramic", color: "White", size: "325 ml", occasion: "Birthday", personalize: true, best: true, trending: true, short: "Your photo printed edge to edge. Dishwasher safe, microwave safe.", tags: ["mug", "photo", "personalized", "coffee"] },
   { name: "Magic Colour Changing Mug", sub: "Magic Mugs", art: "mug", price: 699, sale: 399, stock: 90, material: "Ceramic, heat reactive", color: "Black to white", size: "325 ml", occasion: "Birthday", personalize: true, best: true, trending: true, short: "Black until hot tea goes in, then your photo appears. Always a good reaction.", tags: ["mug", "magic", "surprise", "photo"] },
   { name: "Couple Mug Set of Two", sub: "Couple Mugs", art: "mug", price: 999, sale: 649, stock: 64, material: "Ceramic", color: "White", size: "325 ml each", occasion: "Anniversary", personalize: true, best: true, short: "A matched pair, one line of text on each. Boxed together.", tags: ["mug", "couple", "set", "anniversary"] },
   { name: "Birthday Confetti Photo Mug", sub: "Birthday Mugs", art: "mug", price: 549, sale: 349, stock: 75, material: "Ceramic", color: "Multicolour", size: "325 ml", occasion: "Birthday", personalize: true, short: "Confetti border with the birthday name and age printed in.", tags: ["mug", "birthday", "confetti"] },
   { name: "Quote Printed Ceramic Mug", sub: "Printed Mugs", art: "mug", price: 399, sale: 249, stock: 140, material: "Ceramic", color: "White", size: "325 ml", occasion: "Everyday", short: "Pick a line from our set, or send your own. No photo needed.", tags: ["mug", "quote", "printed", "office"] },
-  { name: "Insulated Steel Photo Tumbler", sub: "Personalized Mugs", art: "mug", price: 1299, sale: 899, stock: 40, material: "Stainless steel", color: "Matte black", size: "450 ml", occasion: "Everyday", personalize: true, short: "Keeps chai hot for six hours. Photo printed with a durable UV process.", tags: ["mug", "tumbler", "steel", "travel"] },
+  { name: "Insulated Steel Photo Tumbler", sub: "Personalized Photo Mugs", art: "mug", price: 1299, sale: 899, stock: 40, material: "Stainless steel", color: "Matte black", size: "450 ml", occasion: "Everyday", personalize: true, short: "Keeps chai hot for six hours. Photo printed with a durable UV process.", tags: ["mug", "tumbler", "steel", "travel"] },
 
   // ---- Crafts
   { name: "Handmade Macrame Wall Hanging", sub: "Wall Decor", art: "craft", price: 1499, sale: 1099, stock: 28, material: "Cotton cord", color: "Ivory", size: "24 x 36 in", occasion: "Housewarming", best: true, short: "Hand-knotted by artisans in Jaipur. Every piece hangs a little differently.", tags: ["craft", "macrame", "wall", "handmade"] },
-  { name: "Terracotta Warli Showpiece", sub: "Handmade Showpieces", art: "craft", price: 899, sale: 649, stock: 34, material: "Terracotta", color: "Earth", size: "9 in tall", occasion: "Housewarming", short: "Wheel-thrown and hand-painted in traditional Warli figures.", tags: ["craft", "terracotta", "warli", "traditional"] },
-  { name: "Resin Art Coaster Set", sub: "Decorative Items", art: "craft", price: 1199, sale: 799, stock: 45, material: "Epoxy resin", color: "Ocean blue", size: "4 in, set of 4", occasion: "Housewarming", trending: true, short: "Poured by hand, so no two sets have the same pattern. Cork backed.", tags: ["craft", "resin", "coaster", "set"] },
-  { name: "Hand-Painted Madhubani Wall Plate", sub: "Handmade Crafts", art: "craft", price: 1699, sale: 1249, stock: 18, material: "MDF", color: "Multicolour", size: "12 in round", occasion: "Festival", short: "Madhubani work in natural pigments, sealed with a matte varnish.", tags: ["craft", "madhubani", "painting", "wall"] },
-  { name: "Dried Flower Resin Photo Block", sub: "Decorative Items", art: "craft", price: 1399, sale: 999, stock: 26, material: "Resin", color: "Clear", size: "5 x 7 in", occasion: "Anniversary", personalize: true, short: "Your photo suspended in resin with real pressed flowers around it.", tags: ["craft", "resin", "flowers", "photo"] },
-  { name: "Brass Diya Set with Wooden Tray", sub: "Handmade Crafts", art: "craft", price: 1899, sale: 1399, stock: 30, material: "Brass + mango wood", color: "Brass", size: "Set of 5", occasion: "Festival", best: true, short: "Five cast diyas on a turned mango-wood tray. Cleans up with tamarind.", tags: ["craft", "diya", "brass", "diwali", "festival"] },
+  { name: "Terracotta Warli Showpiece", sub: "Decorative Showpieces", art: "craft", price: 899, sale: 649, stock: 34, material: "Terracotta", color: "Earth", size: "9 in tall", occasion: "Housewarming", short: "Wheel-thrown and hand-painted in traditional Warli figures.", tags: ["craft", "terracotta", "warli", "traditional"] },
+  { name: "Resin Art Coaster Set", sub: "Resin Crafts", art: "craft", price: 1199, sale: 799, stock: 45, material: "Epoxy resin", color: "Ocean blue", size: "4 in, set of 4", occasion: "Housewarming", trending: true, short: "Poured by hand, so no two sets have the same pattern. Cork backed.", tags: ["craft", "resin", "coaster", "set"] },
+  { name: "Hand-Painted Madhubani Wall Plate", sub: "Wooden Crafts", art: "craft", price: 1699, sale: 1249, stock: 18, material: "MDF", color: "Multicolour", size: "12 in round", occasion: "Festival", short: "Madhubani work in natural pigments, sealed with a matte varnish.", tags: ["craft", "madhubani", "painting", "wall"] },
+  { name: "Dried Flower Resin Photo Block", sub: "Resin Crafts", art: "craft", price: 1399, sale: 999, stock: 26, material: "Resin", color: "Clear", size: "5 x 7 in", occasion: "Anniversary", personalize: true, short: "Your photo suspended in resin with real pressed flowers around it.", tags: ["craft", "resin", "flowers", "photo"] },
+  { name: "Brass Diya Set with Wooden Tray", sub: "Wooden Crafts", art: "craft", price: 1899, sale: 1399, stock: 30, material: "Brass + mango wood", color: "Brass", size: "Set of 5", occasion: "Festival", best: true, short: "Five cast diyas on a turned mango-wood tray. Cleans up with tamarind.", tags: ["craft", "diya", "brass", "diwali", "festival"] },
 
   // ---- Gifts
-  { name: "Birthday Gift Hamper", sub: "Birthday Gifts", art: "hamper", price: 1299, sale: 799, stock: 50, material: "Assorted", color: "Multicolour", size: "Medium box", occasion: "Birthday", personalize: true, best: true, trending: true, short: "Photo mug, engraved keychain, chocolates and a card, boxed with ribbon.", tags: ["gift", "hamper", "birthday", "box"] },
-  { name: "Anniversary Memory Box", sub: "Anniversary Gifts", art: "hamper", price: 2499, sale: 1899, stock: 24, material: "Pine wood", color: "Natural", size: "10 x 8 x 4 in", occasion: "Anniversary", personalize: true, best: true, short: "An engraved keepsake box with ten printed photo cards inside.", tags: ["gift", "anniversary", "box", "memories"] },
-  { name: "Wedding Couple Caricature Frame", sub: "Wedding Gifts", art: "gift", price: 2999, sale: 2199, stock: 20, material: "MDF + print", color: "Multicolour", size: "12 x 16 in", occasion: "Wedding", personalize: true, trending: true, short: "An illustrator draws the couple from your photo. Allow five days.", tags: ["gift", "wedding", "caricature", "couple"] },
-  { name: "Engraved Couple Keychain Pair", sub: "Couple Gifts", art: "gift", price: 599, sale: 349, stock: 110, material: "Stainless steel", color: "Silver", size: "2 in", occasion: "Anniversary", personalize: true, best: true, short: "Two keychains, names on the front, a date on the back.", tags: ["gift", "couple", "keychain", "engraved"] },
-  { name: "Kids Cartoon Photo Cushion", sub: "Kids Gifts", art: "gift", price: 899, sale: 599, stock: 55, material: "Poly-satin", color: "Sky blue", size: "16 x 16 in", occasion: "Birthday", personalize: true, short: "Photo printed on a soft cushion cover, filler included.", tags: ["gift", "kids", "cushion", "cartoon"] },
-  { name: "Diwali Festive Gift Box", sub: "Festival Gifts", art: "hamper", price: 1799, sale: 1299, stock: 40, material: "Assorted", color: "Gold", size: "Large box", occasion: "Festival", best: true, short: "Brass diya pair, dry fruits, a scented candle and a personalised card.", tags: ["gift", "diwali", "festival", "hamper", "corporate"] },
-  { name: "Personalised Photo Wall Clock", sub: "Birthday Gifts", art: "gift", price: 1299, sale: 899, stock: 38, material: "Ply + acrylic", color: "Walnut", size: "10 in round", occasion: "Birthday", personalize: true, short: "Silent sweep movement, your photo behind the hands. Battery included.", tags: ["gift", "clock", "photo", "wall"] },
-  { name: "Spotify Style Music Plaque", sub: "Couple Gifts", art: "gift", price: 1199, sale: 849, stock: 42, material: "Acrylic", color: "Black", size: "6 x 9 in", occasion: "Anniversary", personalize: true, trending: true, short: "Your song and your photo on a scannable acrylic plaque.", tags: ["gift", "music", "couple", "acrylic"] },
-  { name: "Engraved Wooden Photo Puzzle", sub: "Kids Gifts", art: "gift", price: 799, sale: 549, stock: 48, material: "Birch ply", color: "Natural", size: "8 x 10 in, 48 pieces", occasion: "Birthday", personalize: true, short: "Your photo laser-cut into a 48-piece puzzle, boxed in a wooden tray.", tags: ["gift", "puzzle", "kids", "photo"] },
-  { name: "Corporate Acrylic Award Trophy", sub: "Festival Gifts", art: "gift", price: 1499, sale: 999, stock: 60, material: "12 mm acrylic", color: "Clear", size: "8 in tall", occasion: "Corporate", personalize: true, short: "Sand-etched with your logo and citation. Bulk rates from fifty pieces.", tags: ["gift", "corporate", "trophy", "award", "bulk"] },
+  { name: "Birthday Gift Hamper", sub: "Personalized Birthday Gifts", art: "hamper", price: 1299, sale: 799, stock: 50, material: "Assorted", color: "Multicolour", size: "Medium box", occasion: "Birthday", personalize: true, best: true, trending: true, short: "Photo mug, engraved keychain, chocolates and a card, boxed with ribbon.", tags: ["gift", "hamper", "birthday", "box"] },
+  { name: "Anniversary Memory Box", sub: "Personalized Anniversary Gifts", art: "hamper", price: 2499, sale: 1899, stock: 24, material: "Pine wood", color: "Natural", size: "10 x 8 x 4 in", occasion: "Anniversary", personalize: true, best: true, short: "An engraved keepsake box with ten printed photo cards inside.", tags: ["gift", "anniversary", "box", "memories"] },
+  { name: "Wedding Couple Caricature Frame", sub: "Personalized Wedding Gifts", art: "gift", price: 2999, sale: 2199, stock: 20, material: "MDF + print", color: "Multicolour", size: "12 x 16 in", occasion: "Wedding", personalize: true, trending: true, short: "An illustrator draws the couple from your photo. Allow five days.", tags: ["gift", "wedding", "caricature", "couple"] },
+  { name: "Engraved Couple Keychain Pair", sub: "Personalized Couple Gifts", art: "gift", price: 599, sale: 349, stock: 110, material: "Stainless steel", color: "Silver", size: "2 in", occasion: "Anniversary", personalize: true, best: true, short: "Two keychains, names on the front, a date on the back.", tags: ["gift", "couple", "keychain", "engraved"] },
+  { name: "Kids Cartoon Photo Cushion", sub: "Kids Birthday Gifts", art: "gift", price: 899, sale: 599, stock: 55, material: "Poly-satin", color: "Sky blue", size: "16 x 16 in", occasion: "Birthday", personalize: true, short: "Photo printed on a soft cushion cover, filler included.", tags: ["gift", "kids", "cushion", "cartoon"] },
+  { name: "Diwali Festive Gift Box", sub: "Custom Home Decor", art: "hamper", price: 1799, sale: 1299, stock: 40, material: "Assorted", color: "Gold", size: "Large box", occasion: "Festival", best: true, short: "Brass diya pair, dry fruits, a scented candle and a personalised card.", tags: ["gift", "diwali", "festival", "hamper", "corporate"] },
+  { name: "Personalised Photo Wall Clock", sub: "Personalized Birthday Gifts", art: "gift", price: 1299, sale: 899, stock: 38, material: "Ply + acrylic", color: "Walnut", size: "10 in round", occasion: "Birthday", personalize: true, short: "Silent sweep movement, your photo behind the hands. Battery included.", tags: ["gift", "clock", "photo", "wall"] },
+  { name: "Spotify Style Music Plaque", sub: "Personalized Couple Gifts", art: "gift", price: 1199, sale: 849, stock: 42, material: "Acrylic", color: "Black", size: "6 x 9 in", occasion: "Anniversary", personalize: true, trending: true, short: "Your song and your photo on a scannable acrylic plaque.", tags: ["gift", "music", "couple", "acrylic"] },
+  { name: "Engraved Wooden Photo Puzzle", sub: "Kids Birthday Gifts", art: "gift", price: 799, sale: 549, stock: 48, material: "Birch ply", color: "Natural", size: "8 x 10 in, 48 pieces", occasion: "Birthday", personalize: true, short: "Your photo laser-cut into a 48-piece puzzle, boxed in a wooden tray.", tags: ["gift", "puzzle", "kids", "photo"] },
+  { name: "Corporate Acrylic Award Trophy", sub: "Custom Home Decor", art: "gift", price: 1499, sale: 999, stock: 60, material: "12 mm acrylic", color: "Clear", size: "8 in tall", occasion: "Corporate", personalize: true, short: "Sand-etched with your logo and citation. Bulk rates from fifty pieces.", tags: ["gift", "corporate", "trophy", "award", "bulk"] },
 ];
 
 /* ------------------------------------------------------------------ main */
@@ -240,38 +332,70 @@ async function main() {
   }
   await db.execute(sql`TRUNCATE TABLE
     product_images, product_variants, customization_fields, products,
-    categories, coupons, banners, settings
+    category_cross_links, categories, coupons, banners, settings
     RESTART IDENTITY CASCADE`);
 
   /* -- categories ------------------------------------------------------- */
   console.log("→ categories");
   const subIdByName = new Map<string, string>();
 
+  /** Pick artwork that matches what the subcategory actually is. */
+  function artFor(name: string, fallback: keyof typeof SWATCHES): keyof typeof SWATCHES {
+    const n = name.toLowerCase();
+    if (n.includes("plate")) return "nameplate";
+    if (n.includes("frame")) return "frame";
+    if (n.includes("mug")) return "mug";
+    if (n.includes("hamper") || n.includes("wedding")) return "hamper";
+    if (n.includes("craft") || n.includes("decor") || n.includes("flower")) return "craft";
+    return fallback;
+  }
+
+  const idBySlug = new Map<string, string>();
+
   for (const [i, top] of CATEGORY_TREE.entries()) {
+    const topSlug = slugify(top.name);
     const [parent] = await db
       .insert(categories)
       .values({
         name: top.name,
-        slug: slugify(top.name),
+        slug: topSlug,
         icon: top.icon,
         position: i,
         showOnHome: top.home ?? false,
-        imageUrl: `/placeholders/${Object.keys(SWATCHES)[i % 6]}.svg`,
+        imageUrl: `/placeholders/${top.art}.svg`,
       })
       .returning({ id: categories.id });
 
+    idBySlug.set(topSlug, parent.id);
+
     for (const [j, childName] of top.children.entries()) {
+      const childSlug = slugify(childName);
       const [child] = await db
         .insert(categories)
         .values({
           parentId: parent.id,
           name: childName,
-          slug: slugify(childName),
+          slug: childSlug,
           position: j,
+          imageUrl: `/placeholders/${artFor(childName, top.art)}.svg`,
         })
         .returning({ id: categories.id });
       subIdByName.set(childName, child.id);
+      idBySlug.set(childSlug, child.id);
     }
+  }
+
+  console.log("→ cross-links");
+  for (const [childSlug, parentSlug] of CROSS_LINKS) {
+    const categoryId = idBySlug.get(childSlug);
+    const parentId = idBySlug.get(parentSlug);
+    if (!categoryId || !parentId) {
+      throw new Error(`Cross-link refers to a missing slug: ${childSlug} -> ${parentSlug}`);
+    }
+    await db
+      .insert(categoryCrossLinks)
+      .values({ categoryId, parentId })
+      .onConflictDoNothing();
   }
 
   /* -- products --------------------------------------------------------- */
@@ -304,7 +428,7 @@ async function main() {
         isBestSeller: p.best ?? false,
         isTrending: p.trending ?? false,
         brand: "GiftCraft",
-        metaTitle: `${p.name} | GiftCraft`,
+        metaTitle: null,
         metaDescription: p.short,
       })
       .returning({ id: products.id });

@@ -13,6 +13,9 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: { url: process.env.DATABASE_URL },
   casing: "snake_case",
+  // verbose prints the SQL before it runs; strict would additionally prompt for
+  // confirmation, which needs a TTY. Before production, move off `push` to
+  // generate + migrate so schema changes are reviewable files in git.
   verbose: true,
-  strict: true,
+  strict: false,
 });

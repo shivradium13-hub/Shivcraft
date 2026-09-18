@@ -43,6 +43,33 @@
   --color-info: #1f5f7a;
   --color-info-soft: #e5f1f5;
 
+  /* ---------------------------------------------- SHIV RADIUM ----------
+     Brand for the Categories experience: near-white ground, deep charcoal
+     text, Shiv Radium orange as the single accent, warm gold used sparingly.
+     Kept as its own token set so it does not disturb the other pages.      */
+  --color-sr-50: #fff4ee;
+  --color-sr-100: #ffe6d7;
+  --color-sr-200: #ffc9ab;
+  --color-sr-300: #ffa274;
+  --color-sr-400: #f77a42;
+  --color-sr-500: #e35d24;
+  --color-sr-600: #c54812;
+  --color-sr-700: #9d380e;
+
+  --color-sr-gold: #c9a227;
+  --color-sr-gold-soft: #fbf3dc;
+
+  --color-sr-ink: #221f1d;
+  --color-sr-body: #4a4542;
+  --color-sr-muted: #7d7772;
+  --color-sr-line: #ece8e4;
+  --color-sr-line-strong: #ddd6d0;
+  --color-sr-surface: #ffffff;
+  --color-sr-canvas: #fbfaf9;
+
+  --shadow-sr-card: 0 1px 2px rgba(34, 31, 29, 0.04), 0 4px 14px -8px rgba(34, 31, 29, 0.14);
+  --shadow-sr-lift: 0 2px 6px rgba(34, 31, 29, 0.06), 0 12px 26px -12px rgba(34, 31, 29, 0.22);
+
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), Georgia, serif;
 
@@ -98,6 +125,49 @@
   }
   .gc-rail > * {
     scroll-snap-align: start;
+  }
+
+  /* Category transitions: fade + a short lift, 180ms, and nothing at all when
+     the visitor has asked for reduced motion. */
+  .sr-enter {
+    animation: sr-enter 180ms ease-out both;
+  }
+  @keyframes sr-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .sr-press {
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease,
+      border-color 160ms ease;
+  }
+  .sr-press:active {
+    transform: scale(0.975);
+  }
+  @media (hover: hover) {
+    .sr-press:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-sr-lift);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sr-enter {
+      animation: none;
+    }
+    .sr-press,
+    .sr-press:hover,
+    .sr-press:active {
+      transition: none;
+      transform: none;
+    }
   }
 
   .gc-skeleton {

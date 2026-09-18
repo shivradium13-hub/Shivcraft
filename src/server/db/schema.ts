@@ -194,6 +194,34 @@ export const categories = pgTable(
   ],
 );
 
+/**
+ * Lets one category appear under more than one parent in the browse UI.
+ *
+ * "Birthday Mugs" genuinely belongs under both Photo Mugs and Birthday Gifts.
+ * Duplicating the row would split its products across two slugs, so instead the
+ * category keeps one canonical parent and is cross-linked into the others.
+ * Products, URLs and counts stay single-sourced.
+ */
+export const categoryCrossLinks = pgTable(
+  "category_cross_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The category being shown somewhere extra. */
+    categoryId: uuid("category_id").notNull().references((): AnyPgColumn => categories.id, {
+      onDelete: "cascade",
+    }),
+    /** The additional parent it should appear under. */
+    parentId: uuid("parent_id").notNull().references((): AnyPgColumn => categories.id, {
+      onDelete: "cascade",
+    }),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [
+    unique("category_cross_links_unique").on(t.categoryId, t.parentId),
+    index("category_cross_links_parent_idx").on(t.parentId, t.position),
+  ],
+);
+
 /* ---------------------------------------------------------------- products */
 
 export const products = pgTable(
@@ -322,6 +350,10 @@ export const carts = pgTable(
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     /** Anonymous carts are keyed by a cookie until the visitor logs in. */
     guestToken: varchar("guest_token", { length: 64 }),
+    /** Held as the code, not a resolved discount: the coupon is re-validated
+     *  against the live cart on every read, so a coupon that expires or stops
+     *  qualifying cannot be carried into checkout at a stale value. */
+    couponCode: varchar("coupon_code", { length: 40 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -557,6 +589,40 @@ export const notifications = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("notifications_user_idx").on(t.userId, t.createdAt)],
+);
+
+/* ----------------------------------------------------------------- uploads */
+
+/**
+ * Every customer-uploaded photo, with its owner recorded.
+ *
+ * The blob store is PRIVATE, so these files are not reachable by URL. They are
+ * served through /api/uploads/[id], which checks the requester is the uploader
+ * (signed in, or the same guest cookie) or an admin. Without this table there
+ * would be nothing to check that against.
+ */
+export const uploads = pgTable(
+  "uploads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Pathname inside the blob store, which is what get()/del() address. */
+    pathname: text("pathname").notNull(),
+    contentType: varchar("content_type", { length: 100 }).notNull(),
+    bytes: integer("bytes").notNull(),
+    originalName: varchar("original_name", { length: 200 }),
+    /** Exactly one of these identifies the owner. */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    guestToken: varchar("guest_token", { length: 64 }),
+    /** Set once the upload is attached to a cart or order line; unattached
+     *  uploads older than a day can be swept up. */
+    attachedAt: timestamp("attached_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("uploads_user_idx").on(t.userId),
+    index("uploads_guest_idx").on(t.guestToken),
+    index("uploads_sweep_idx").on(t.attachedAt, t.createdAt),
+  ],
 );
 
 /* ------------------------------------------------------- content & config */

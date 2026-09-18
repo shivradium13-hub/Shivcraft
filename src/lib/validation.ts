@@ -73,7 +73,12 @@ export const productQuerySchema = z.object({
 
 export const cartItemSchema = z.object({
   productId: z.string().uuid("Unknown product."),
-  quantity: z.number().int().min(1).max(20).default(1),
+  quantity: z
+    .number()
+    .int("Enter a whole number.")
+    .min(1, "Choose at least one.")
+    .max(20, "You can order up to 20 of one item here. For more, contact us about a bulk order.")
+    .default(1),
   variantIds: z.array(z.string().uuid()).max(5).optional().default([]),
   customization: z
     .record(

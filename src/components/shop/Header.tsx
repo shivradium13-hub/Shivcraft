@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { CartBadge } from "./CartBadge";
 import { SearchBar } from "./SearchBar";
 import { useCategoryDrawer } from "./ShopShell";
 
@@ -138,6 +139,7 @@ export function Header() {
             </IconLink>
             <IconLink href="/cart" label="Cart">
               <CartIcon />
+              <CartBadge />
             </IconLink>
             <IconLink href="/account" label="Account">
               <UserIcon />
