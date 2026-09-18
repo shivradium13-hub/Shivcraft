@@ -1,26 +1,128 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/**
+ * GiftCraft design tokens.
+ *
+ * Brand: mulberry (deep, premium, festive) with a marigold accent — chosen to
+ * sit apart from the blues and pinks the big Indian marketplaces own.
+ * Neutrals carry a slight warm bias toward the brand rather than pure grey.
+ */
+@theme {
+  --color-brand-50: #fbf2f7;
+  --color-brand-100: #f6e6ef;
+  --color-brand-200: #ecc9dd;
+  --color-brand-300: #dda0c1;
+  --color-brand-400: #c66f9d;
+  --color-brand-500: #a8497b;
+  --color-brand-600: #8a3963;
+  --color-brand-700: #6d2e52;
+  --color-brand-800: #4a1c37;
+  --color-brand-900: #2f1123;
+
+  --color-marigold-50: #fef8ec;
+  --color-marigold-100: #fdf0d4;
+  --color-marigold-200: #fadfa6;
+  --color-marigold-300: #f4c56d;
+  --color-marigold-400: #e8a33d;
+  --color-marigold-500: #d4861f;
+  --color-marigold-600: #ad6616;
+  --color-marigold-700: #874e16;
+
+  --color-ink: #241b21;
+  --color-ink-soft: #544a50;
+  --color-muted: #7d7076;
+  --color-line: #ece3e7;
+  --color-line-strong: #d8cad1;
+  --color-canvas: #fbf8f9;
+  --color-paper: #ffffff;
+
+  --color-success: #1f7a4d;
+  --color-success-soft: #e6f4ec;
+  --color-danger: #b3261e;
+  --color-danger-soft: #fceae9;
+  --color-info: #1f5f7a;
+  --color-info-soft: #e5f1f5;
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+
+  --radius-card: 0.875rem;
+
+  --shadow-card: 0 1px 2px rgba(36, 27, 33, 0.05), 0 6px 18px -10px rgba(36, 27, 33, 0.16);
+  --shadow-lift: 0 2px 4px rgba(36, 27, 33, 0.06), 0 14px 32px -14px rgba(36, 27, 33, 0.26);
+  --shadow-bar: 0 -1px 0 var(--color-line), 0 -8px 24px -18px rgba(36, 27, 33, 0.3);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  /* The mobile bottom bar is fixed; keep it clear of the home indicator and
+     stop the last row of products hiding underneath it. */
+  @media (max-width: 1023px) {
+    body {
+      padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: var(--color-brand-100);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .gc-hide-scrollbar {
+    scrollbar-width: none;
+  }
+  .gc-hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Horizontal product rails: snap each card to the left edge so a swipe
+     never leaves a card half cut off. */
+  .gc-rail {
+    scroll-snap-type: x mandatory;
+  }
+  .gc-rail > * {
+    scroll-snap-align: start;
+  }
+
+  .gc-skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-line) 25%,
+      var(--color-brand-50) 37%,
+      var(--color-line) 63%
+    );
+    background-size: 400% 100%;
+    animation: gc-shimmer 1.4s ease infinite;
+  }
+
+  @keyframes gc-shimmer {
+    0% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0 50%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gc-skeleton {
+      animation: none;
+    }
+  }
 }
