@@ -12,6 +12,7 @@ import {
   uploads,
   type CustomizationAnswer,
 } from "@/server/db/schema";
+import { getProductConfig, parseDesign, validateDesign } from "@/server/customizer/service";
 import { ensureShopper, readShopper, type Shopper } from "@/server/shop/identity";
 
 export const runtime = "nodejs";
@@ -174,15 +175,48 @@ export const POST = route(async (request: Request) => {
     }
   }
 
+  /* ------------------------------------------------- customizer design */
+  /* Re-checked against the product's own configuration rather than trusted:
+     a design names zones and uploads, and both have to be real and belong to
+     this shopper before the line is written. */
+  let design: ReturnType<typeof parseDesign> | null = null;
+
+  if (input.design) {
+    const config = await getProductConfig(product.id);
+    if (!config.enabled) {
+      throw new ApiError("BAD_REQUEST", "This product cannot be personalised.");
+    }
+
+    design = parseDesign(input.design);
+
+    const { issues, uploadIds } = await validateDesign({
+      config,
+      design,
+      userId: shopper.user?.id ?? null,
+      guestToken: shopper.guestToken ?? null,
+    });
+
+    if (issues.length > 0) {
+      const fields: Record<string, string> = {};
+      for (const issue of issues) if (issue.zoneId) fields[issue.zoneId] = issue.message;
+      throw new ApiError("BAD_REQUEST", issues[0].message, Object.keys(fields).length ? fields : undefined);
+    }
+
+    attachedUploadIds.push(...uploadIds);
+  }
+
   /* ---------------------------------------------------------- persist */
   const cartId = await findOrCreateCart(shopper);
 
+  /* Always a new row. Two different designs of the same product are two
+     different things to make, and must never collapse into one line (§29). */
   await db.insert(cartItems).values({
     cartId,
     productId: product.id,
     quantity: input.quantity,
     variantIds: input.variantIds,
     customization: Object.keys(answers).length > 0 ? answers : null,
+    design,
   });
 
   if (attachedUploadIds.length > 0) {

@@ -340,6 +340,18 @@ function CartRow({
             <p className="mt-0.5 text-xs text-muted">{line.variantLabel}</p>
           ) : null}
 
+          {/* A customizer line. The full design lives on the order; here the
+              customer just needs to see that this one is personalised and
+              which of two otherwise identical lines it is. */}
+          {line.designSummary ? (
+            <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="rounded-full bg-brand-50 px-2 py-0.5 font-semibold text-brand-700">
+                Personalised
+              </span>
+              <span className="text-muted">{line.designSummary}</span>
+            </p>
+          ) : null}
+
           {line.customization ? (
             <ul className="mt-1.5 space-y-0.5 border-l-2 border-line pl-2 text-xs text-muted">
               {Object.entries(line.customization).map(([key, answer]) => (

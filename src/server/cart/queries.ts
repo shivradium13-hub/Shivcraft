@@ -12,6 +12,8 @@ import {
 } from "@/server/db/schema";
 import type { Shopper } from "@/server/shop/identity";
 
+import { designSchema } from "@/lib/customizer/design";
+
 import { checkCoupon, computeTotals, getShopSettings, type CartTotals } from "./pricing";
 
 export type CartLine = {
@@ -31,8 +33,29 @@ export type CartLine = {
   isActive: boolean;
   variantLabel: string | null;
   customization: Record<string, CustomizationAnswer> | null;
+  /** Customizer design, carried through so checkout can freeze it onto the
+   *  order exactly as the customer approved it. */
+  design: unknown;
+  /** A one-line description of that design for the cart, e.g. "1 photo ·
+   *  Priya & Arjun". Null when the line is not personalised. */
+  designSummary: string | null;
   savedForLater: boolean;
 };
+
+/** Turns a stored design into something a customer can read at a glance. */
+function summariseDesign(raw: unknown): string | null {
+  const design = designSchema.safeParse(raw);
+  if (!design.success) return null;
+
+  const parts: string[] = [];
+  let photos = 0;
+  for (const value of Object.values(design.data.zones)) {
+    if (value.kind === "PHOTO") photos += 1;
+    else if (value.text.value.trim()) parts.push(`“${value.text.value.trim()}”`);
+  }
+  if (photos > 0) parts.unshift(`${photos} photo${photos === 1 ? "" : "s"}`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
 
 export type CartView = {
   id: string | null;
@@ -141,6 +164,8 @@ export async function getCartView(shopper: Shopper): Promise<CartView> {
       isActive: row.product.isActive,
       variantLabel: chosen.length > 0 ? chosen.map((v) => `${v.name}: ${v.value}`).join(" · ") : null,
       customization: row.item.customization,
+      design: row.item.design ?? null,
+      designSummary: summariseDesign(row.item.design),
       savedForLater: row.item.savedForLater,
     };
   };

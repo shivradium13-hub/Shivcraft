@@ -1,9 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { formatPaise } from "@/lib/money";
+import type { CustomerDesign } from "@/lib/customizer/design";
+import { readConfig } from "@/lib/customizer/schema";
+import { effectivePriceP, formatPaise } from "@/lib/money";
 import type { ProductDetail } from "@/server/catalog/product";
 
 import { notifyCartChanged } from "./CartBadge";
@@ -22,6 +25,18 @@ const FONT_STACKS: Record<string, string> = {
 /* Ink and finish colours the customer chooses for their own piece, not UI
    chrome — this is the one place a range of colours belongs. */
 const SWATCHES = ["#0f121f", "#ee722e", "#b3261e", "#151b39", "#1f7a4d", "#ad6616", "#ffffff"];
+
+const ProductCustomizer = dynamic(
+  () => import("./customizer/ProductCustomizer").then((m) => m.ProductCustomizer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-card border border-brand-200 bg-brand-50/50 p-4">
+        <p className="text-sm text-ink-soft">Preparing the personaliser…</p>
+      </div>
+    ),
+  },
+);
 
 export function ProductPurchase({ product }: { product: ProductDetail }) {
   const router = useRouter();
@@ -81,6 +96,11 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
     });
   }
 
+  /* A product with no configuration returns the disabled default, so every
+     existing product renders exactly as it did before. */
+  const customizerConfig = useMemo(() => readConfig(product.customizer), [product.customizer]);
+  const [design, setDesign] = useState<CustomerDesign | null>(null);
+
   async function addToCart(thenCheckout: boolean) {
     setBusy(true);
     setNotice(null);
@@ -101,6 +121,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           quantity,
           variantIds: selectedVariantIds,
           customization: product.isPersonalizable ? customization : undefined,
+          design: customizerConfig.enabled ? design : undefined,
         }),
       });
       const json = await res.json();
@@ -165,6 +186,17 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           </div>
         </div>
       ))}
+
+      {/* ---------------------------------------------------- customizer */}
+      {customizerConfig.enabled ? (
+        <ProductCustomizer
+          productId={product.id}
+          productName={product.name}
+          config={customizerConfig}
+          basePriceP={effectivePriceP(product)}
+          onDesignChange={setDesign}
+        />
+      ) : null}
 
       {/* -------------------------------------------------- customization */}
       {product.isPersonalizable && product.customizationFields.length > 0 ? (

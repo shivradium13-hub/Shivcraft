@@ -170,6 +170,9 @@ export async function placeOrder(input: {
         lineTotalP: line.lineTotalP,
         variantLabel: line.variantLabel,
         customization: line.customization,
+        /* Frozen here. Whatever the admin changes about the product later,
+           this order keeps the design the customer actually approved (§32). */
+        design: line.design ?? null,
       })),
     );
 

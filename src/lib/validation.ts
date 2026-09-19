@@ -80,6 +80,10 @@ export const cartItemSchema = z.object({
     .max(20, "You can order up to 20 of one item here. For more, contact us about a bulk order.")
     .default(1),
   variantIds: z.array(z.string().uuid()).max(5).optional().default([]),
+  /** A customizer design. Shape lives in src/lib/customizer/design.ts and is
+   *  parsed there; kept loose here so the cart schema does not have to know
+   *  about zones. Absent for products that are not customisable. */
+  design: z.unknown().optional(),
   customization: z
     .record(
       z.string(),

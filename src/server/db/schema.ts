@@ -256,6 +256,10 @@ export const products = pgTable(
     lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
 
     isPersonalizable: boolean("is_personalizable").notNull().default(false),
+    /** Versioned customizer configuration. NULL means this product is not
+     *  customisable and behaves exactly as it always has. Shape and parsing
+     *  live in src/lib/customizer/schema.ts. */
+    customizer: jsonb("customizer"),
     isActive: boolean("is_active").notNull().default(true),
     isBestSeller: boolean("is_best_seller").notNull().default(false),
     isTrending: boolean("is_trending").notNull().default(false),
@@ -380,6 +384,10 @@ export const cartItems = pgTable(
     variantIds: uuid("variant_ids").array().notNull().default(sql`ARRAY[]::uuid[]`),
     /** { fieldId: { label, type, value } } — value is text, or a blob URL for IMAGE. */
     customization: jsonb("customization").$type<Record<string, CustomizationAnswer>>(),
+    /** Customizer design: zone placements and the config version they were
+     *  built against. Separate from `customization` above so the older
+     *  per-field answers keep working for products that use them. */
+    design: jsonb("design"),
     savedForLater: boolean("saved_for_later").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -458,6 +466,9 @@ export const orderItems = pgTable(
 
     variantLabel: varchar("variant_label", { length: 200 }),
     customization: jsonb("customization").$type<Record<string, CustomizationAnswer>>(),
+    /** The design exactly as the customer approved it, frozen at checkout.
+     *  Nothing the admin changes on the product afterwards may alter this. */
+    design: jsonb("design"),
   },
   (t) => [index("order_items_order_idx").on(t.orderId)],
 );
