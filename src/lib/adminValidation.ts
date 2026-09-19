@@ -192,3 +192,33 @@ export const bannerSchema = z
   });
 
 export type BannerInput = z.infer<typeof bannerSchema>;
+
+/* ------------------------------------------------------------- shop settings */
+
+export const settingsSchema = z.object({
+  shipping: z.object({
+    /** Rupees in the form, paise in the column. */
+    flatRate: rupees,
+    freeAbove: rupees,
+    originPincode: z
+      .string()
+      .trim()
+      .regex(/^[1-9]\d{5}$/, "Enter a valid 6-digit PIN code."),
+    codEnabled: z.boolean(),
+  }),
+  tax: z.object({
+    gstPercent: z
+      .number({ message: "Enter a GST rate." })
+      .min(0, "Cannot be negative.")
+      .max(100, "Cannot be above 100."),
+    pricesIncludeTax: z.boolean(),
+  }),
+  support: z.object({
+    email: z.string().trim().max(160).email("Enter a valid email address.").or(z.literal("")),
+    phone: optionalText(30),
+    whatsapp: optionalText(30),
+    hours: optionalText(120),
+  }),
+});
+
+export type SettingsInput = z.infer<typeof settingsSchema>;

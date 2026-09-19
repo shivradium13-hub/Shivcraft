@@ -1,8 +1,5 @@
-import { eq } from "drizzle-orm";
-
 import { ApiError, ok, route } from "@/server/api/http";
-import { db } from "@/server/db";
-import { settings } from "@/server/db/schema";
+import { getAllSettings } from "@/server/settings/shop";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,15 +62,11 @@ export const GET = route(async (request: Request) => {
     throw new ApiError("BAD_REQUEST", "Enter a valid 6-digit PIN code.");
   }
 
-  const rows = await db.select().from(settings).where(eq(settings.key, "shipping")).limit(1);
-  const shipping = (rows[0]?.value ?? {}) as {
-    originPincode?: string;
-    flatRateP?: number;
-    freeAboveP?: number;
-    codEnabled?: boolean;
-  };
+  // Same reader the cart and the admin form use, so the origin and the COD
+  // switch cannot mean one thing here and another at checkout.
+  const { shipping } = await getAllSettings();
 
-  const originRegion = (shipping.originPincode ?? "390010")[0];
+  const originRegion = shipping.originPincode[0];
   const targetRegion = pincode[0];
 
   if (targetRegion === "9") {
@@ -97,7 +90,7 @@ export const GET = route(async (request: Request) => {
     minDays,
     maxDays,
     estimate: `${minDays}–${maxDays} working days`,
-    codAvailable: shipping.codEnabled !== false && distance <= 3,
+    codAvailable: shipping.codEnabled && distance <= 3,
     shippingP: shipping.flatRateP ?? 5900,
     freeAboveP: shipping.freeAboveP ?? 99900,
     note: "Estimated from postal zones, not a courier tracking check. We confirm the exact date on your artwork proof.",

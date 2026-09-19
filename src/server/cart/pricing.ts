@@ -1,38 +1,13 @@
 import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { couponRedemptions, coupons, settings } from "@/server/db/schema";
+import { couponRedemptions, coupons } from "@/server/db/schema";
+import type { ShopSettings } from "@/server/settings/shop";
 
-export type ShopSettings = {
-  shippingFlatP: number;
-  freeShippingAboveP: number;
-  gstPercent: number;
-  pricesIncludeTax: boolean;
-};
-
-const FALLBACK: ShopSettings = {
-  shippingFlatP: 5900,
-  freeShippingAboveP: 99900,
-  gstPercent: 18,
-  pricesIncludeTax: true,
-};
-
-export async function getShopSettings(): Promise<ShopSettings> {
-  const rows = await db
-    .select()
-    .from(settings)
-    .where(sql`${settings.key} IN ('shipping', 'tax')`);
-
-  const shipping = (rows.find((r) => r.key === "shipping")?.value ?? {}) as Record<string, number>;
-  const tax = (rows.find((r) => r.key === "tax")?.value ?? {}) as Record<string, unknown>;
-
-  return {
-    shippingFlatP: Number(shipping.flatRateP ?? FALLBACK.shippingFlatP),
-    freeShippingAboveP: Number(shipping.freeAboveP ?? FALLBACK.freeShippingAboveP),
-    gstPercent: Number(tax.gstPercent ?? FALLBACK.gstPercent),
-    pricesIncludeTax: tax.pricesIncludeTax !== false,
-  };
-}
+/* Settings now live in one place, so the admin form and the till cannot drift
+   apart. Re-exported here because the cart and order paths already import from
+   this module. */
+export { getShopSettings, type ShopSettings } from "@/server/settings/shop";
 
 export type CouponFailure =
   | "NOT_FOUND"
@@ -145,7 +120,7 @@ export function computeTotals(
   const afterDiscount = Math.max(0, subtotalP - discountP);
 
   const shippingP =
-    afterDiscount === 0 || afterDiscount >= shop.freeShippingAboveP ? 0 : shop.shippingFlatP;
+    afterDiscount === 0 || afterDiscount >= shop.freeAboveP ? 0 : shop.flatRateP;
 
   // Catalogue prices are GST-inclusive by default, so tax is shown as already
   // contained rather than added again on top.
@@ -160,6 +135,6 @@ export function computeTotals(
     taxP,
     totalP: afterDiscount + shippingP + taxP,
     freeShippingShortfallP:
-      shippingP > 0 ? Math.max(0, shop.freeShippingAboveP - afterDiscount) : 0,
+      shippingP > 0 ? Math.max(0, shop.freeAboveP - afterDiscount) : 0,
   };
 }
