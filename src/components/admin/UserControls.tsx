@@ -149,8 +149,8 @@ function Button({
   tone: "ok" | "warn" | "danger" | "plain";
 }) {
   const tones = {
-    ok: "border-success text-success hover:bg-success-soft",
-    warn: "border-warn text-warn hover:bg-sr-gold-soft",
+    ok: "border-sr-600 text-sr-700 hover:bg-sr-50",
+    warn: "border-sr-ink text-sr-ink hover:bg-sr-canvas",
     danger: "border-danger text-danger hover:bg-danger-soft",
     plain: "border-sr-line-strong text-sr-body hover:border-sr-400",
   } as const;
