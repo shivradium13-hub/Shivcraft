@@ -28,23 +28,27 @@ export default async function ReviewsPage() {
           <h2 className="text-sm font-semibold text-brand-800">
             {awaiting.length} item{awaiting.length === 1 ? "" : "s"} waiting for your review
           </h2>
-          <ul className="mt-2 space-y-1.5">
+          <ul className="mt-2 space-y-2">
             {awaiting.map((item) => (
-              <li key={item.productId} className="text-sm">
+              <li key={item.productId} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                 <Link
                   href={`/product/${item.slug}`}
                   className="font-medium text-brand-700 hover:underline"
                 >
                   {item.name}
                 </Link>
-                <span className="ml-2 text-xs text-muted">from {item.orderNumber}</span>
+                <span className="text-xs text-muted">from {item.orderNumber}</span>
+                {/* The form lives on the product page, next to what is being
+                    reviewed; this jumps straight to it. */}
+                <Link
+                  href={`/product/${item.slug}#write-review`}
+                  className="ml-auto rounded-full bg-brand-700 px-3 py-1 text-xs font-semibold text-white transition hover:bg-brand-600"
+                >
+                  Write a review
+                </Link>
               </li>
             ))}
           </ul>
-          {/* Said plainly rather than showing a button that does nothing. */}
-          <p className="mt-3 text-xs text-ink-soft">
-            Writing a review is not built yet — the form goes on the product page next.
-          </p>
         </section>
       ) : null}
 

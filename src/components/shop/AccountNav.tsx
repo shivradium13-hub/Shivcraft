@@ -35,7 +35,9 @@ export function AccountNav({ unread = 0 }: { unread?: number }) {
   }
 
   return (
-    <nav aria-label="Account sections" className="lg:sticky lg:top-[88px]">
+    /* min-w-0: the list below scrolls sideways, and without this the grid item
+       takes its full 1200px scroll width and drags the whole page with it. */
+    <nav aria-label="Account sections" className="min-w-0 lg:sticky lg:top-[88px]">
       {/* Scrolls sideways on a phone rather than stacking into a tall column. */}
       <ul className="gc-hide-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0">
         {SECTIONS.map((section) => {

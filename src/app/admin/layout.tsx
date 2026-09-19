@@ -45,6 +45,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             <Link href="/admin/categories" className="text-sr-100 hover:text-white">
               Categories
             </Link>
+            <Link href="/admin/reviews" className="text-sr-100 hover:text-white">
+              Reviews
+            </Link>
             <Link href="/" className="text-sr-100 hover:text-white">
               View store
             </Link>

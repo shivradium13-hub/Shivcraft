@@ -7,8 +7,11 @@ import { PincodeCheck } from "@/components/shop/PincodeCheck";
 import { ProductGallery } from "@/components/shop/ProductGallery";
 import { ProductPurchase } from "@/components/shop/ProductPurchase";
 import { ProductRail } from "@/components/shop/ProductCard";
+import { ReviewForm, type ReviewEligibility } from "@/components/shop/ReviewForm";
 import { SectionHeading, Stars } from "@/components/ui/primitives";
+import { optionalUser } from "@/server/auth/guards";
 import { getProductBySlug, getRelatedProducts } from "@/server/catalog/product";
+import { checkEligibility, getOwnReview } from "@/server/reviews/service";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +40,24 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
   if (!product) notFound();
 
   const related = await getRelatedProducts(product.categoryId, product.id);
+
+  /* Whether this visitor may review, decided on the server so the page never
+     renders a form that the API would refuse. Their own review is fetched
+     separately from the public list, because a held or taken-down review is
+     still theirs to see and edit. */
+  const viewer = await optionalUser();
+  const ownReview = viewer ? await getOwnReview(viewer.id, product.id) : null;
+
+  let eligibility: ReviewEligibility;
+  if (!viewer) {
+    eligibility = { state: "SIGNED_OUT" };
+  } else if (ownReview) {
+    eligibility = { state: "ALREADY_REVIEWED" };
+  } else {
+    const check = await checkEligibility(viewer.id, product.id);
+    eligibility = check.canReview ? { state: "CAN_REVIEW" } : { state: check.reason };
+  }
+
   const price = effectivePriceP(product);
   const off = discountPercent(product);
 
@@ -195,9 +216,31 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
         </div>
       </div>
 
-      {product.reviews.length > 0 ? (
-        <section className="mt-12">
-          <SectionHeading eyebrow="Ratings & reviews" title={`What buyers say about this`} />
+      {/* Anchor target for "Write a review" links from the account area. The
+          scroll margin keeps it clear of the sticky header. */}
+      <section id="write-review" className="mt-12 scroll-mt-28">
+        <SectionHeading eyebrow="Ratings & reviews" title="What buyers say about this" />
+
+        <div className="mb-6 max-w-2xl">
+          <ReviewForm
+            productId={product.id}
+            productSlug={product.slug}
+            eligibility={eligibility}
+            existing={
+              ownReview
+                ? {
+                    id: ownReview.id,
+                    rating: ownReview.rating,
+                    title: ownReview.title ?? "",
+                    body: ownReview.body ?? "",
+                    status: ownReview.status,
+                  }
+                : null
+            }
+          />
+        </div>
+
+        {product.reviews.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {product.reviews.map((review) => (
               <figure key={review.id} className="rounded-card border border-line bg-paper p-4">
@@ -205,7 +248,9 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
                 {review.title ? (
                   <figcaption className="mt-2 text-sm font-semibold text-ink">{review.title}</figcaption>
                 ) : null}
-                <blockquote className="mt-1.5 text-sm text-ink-soft">{review.body}</blockquote>
+                {review.body ? (
+                  <blockquote className="mt-1.5 text-sm text-ink-soft">{review.body}</blockquote>
+                ) : null}
                 <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
                   <span className="font-medium text-ink">{review.author}</span>
                   {review.verified ? (
@@ -218,8 +263,12 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
               </figure>
             ))}
           </div>
-        </section>
-      ) : null}
+        ) : (
+          <p className="text-sm text-muted">
+            No reviews yet. The first one comes from whoever receives this first.
+          </p>
+        )}
+      </section>
 
       {related.length > 0 ? (
         <section className="mt-12">
