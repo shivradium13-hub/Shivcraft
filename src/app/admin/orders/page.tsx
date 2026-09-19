@@ -15,16 +15,20 @@ export const metadata: Metadata = { title: "Orders", robots: { index: false, fol
 
 const PAGE_SIZE = 20;
 
+/* Four weights, so a stage is readable at a glance without green or blue:
+   a new order is outlined, the middle of the journey is neutral grey, the
+   two making-stages are a light orange tint, and the two end states are
+   solid — orange for delivered, red for cancelled. */
 const STATUS_TONE: Record<string, string> = {
-  PLACED: "bg-sr-100 text-sr-700",
+  PLACED: "border border-sr-600 text-sr-700",
   CONFIRMED: "bg-info-soft text-info",
   PROCESSING: "bg-info-soft text-info",
-  CUSTOMIZED: "bg-sr-gold-soft text-sr-gold",
-  PACKED: "bg-sr-gold-soft text-sr-gold",
+  CUSTOMIZED: "bg-sr-50 text-sr-700",
+  PACKED: "bg-sr-50 text-sr-700",
   SHIPPED: "bg-info-soft text-info",
   OUT_FOR_DELIVERY: "bg-info-soft text-info",
-  DELIVERED: "bg-success-soft text-success",
-  CANCELLED: "bg-danger-soft text-danger",
+  DELIVERED: "bg-success text-white",
+  CANCELLED: "bg-danger text-white",
 };
 
 const PAYMENT_TONE: Record<string, string> = {

@@ -68,15 +68,24 @@
   --color-field: #dadada;
   --color-field-placeholder: #9a9a9a;
 
-  /* Status colours stay as they are: a failed payment must not be tinted
-     toward the brand, and these are the only non-orange hues in the system. */
-  --color-success: #1f7a4d;
-  --color-success-soft: #e6f4ec;
+  /* Status. Green and blue are out of the palette, so a finished state reads
+     as deep orange on a deeper tint, a state still in motion reads neutral
+     grey, and the one that needs attention sits between them. Red stays: a
+     cancelled order or a failed payment has to be separable at a glance, and
+     an orange failure would read as an offer.
+
+     The four are told apart by weight and ground, not by hue:
+       done / live       #b54320 on #fce5d5   deep orange on a deeper tint
+       needs attention   #8e3418 on #fff3ea   darker orange on a lighter tint
+       in progress       #55585d on #f1f1f1   neutral
+       failed / stopped  #b3261e on #fceae9   red                            */
+  --color-success: #b54320;
+  --color-success-soft: #fce5d5;
   --color-danger: #b3261e;
   --color-danger-soft: #fceae9;
-  --color-warn: #a35a12;
-  --color-info: #1f5f7a;
-  --color-info-soft: #e5f1f5;
+  --color-warn: #8e3418;
+  --color-info: #55585d;
+  --color-info-soft: #f1f1f1;
 
   /* --------------------------------------- SHIV RADIUM (sr-*) ----------
      The same palette under the names the Categories browser and the admin

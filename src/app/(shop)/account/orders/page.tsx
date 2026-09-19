@@ -10,16 +10,18 @@ import { STATUS_LABEL } from "@/server/admin/orders";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "My orders", robots: { index: false, follow: false } };
 
+/* Same four weights as the admin list, so a customer and the shop owner are
+   reading the same order in the same language. */
 const TONE: Record<string, string> = {
-  PLACED: "bg-brand-50 text-brand-700",
+  PLACED: "border border-brand-600 text-brand-700",
   CONFIRMED: "bg-info-soft text-info",
   PROCESSING: "bg-info-soft text-info",
-  CUSTOMIZED: "bg-marigold-100 text-marigold-700",
-  PACKED: "bg-marigold-100 text-marigold-700",
+  CUSTOMIZED: "bg-brand-50 text-brand-700",
+  PACKED: "bg-brand-50 text-brand-700",
   SHIPPED: "bg-info-soft text-info",
   OUT_FOR_DELIVERY: "bg-info-soft text-info",
-  DELIVERED: "bg-success-soft text-success",
-  CANCELLED: "bg-danger-soft text-danger",
+  DELIVERED: "bg-success text-white",
+  CANCELLED: "bg-danger text-white",
 };
 
 export default async function MyOrdersPage() {
