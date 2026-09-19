@@ -51,7 +51,7 @@ cp .env.example .env.local
 Create the tables, then load the demo catalogue:
 
 ```bash
-pnpm db:push
+pnpm db:migrate
 pnpm db:seed
 ```
 
@@ -72,6 +72,38 @@ only when you genuinely mean to erase everything:
 
 ```bash
 pnpm db:seed -- --wipe
+```
+
+### Changing the schema
+
+Schema changes go through migration files, not `drizzle-kit push`. Edit
+`src/server/db/schema.ts`, then:
+
+```bash
+pnpm db:generate
+```
+
+Read the SQL it writes into `drizzle/` — that file is the change, and it is
+reviewable in a pull request like any other code. Then apply it:
+
+```bash
+pnpm db:migrate
+```
+
+`pnpm db:push` is deliberately disabled. It diffs against the live database and
+applies the result immediately, with nothing to review in between, and there is
+only one database here. It is also wrong on this schema: drizzle-kit 0.31 fails
+to see the existing `product_variants_unique_choice` constraint and offers to
+truncate `product_variants` to add a constraint that is already there. Answering
+yes would delete every product variant in the shop. If you ever do run
+`drizzle-kit push` directly, decline that prompt.
+
+If you are pointing this at a database that already has the schema but no
+`drizzle.__drizzle_migrations` table — one built with `push` before these files
+existed — record the baseline as applied instead of running it:
+
+```bash
+pnpm db:baseline
 ```
 
 ---
@@ -108,8 +140,10 @@ read back.
 | `pnpm build` / `pnpm start` | Production build and serve |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | ESLint |
-| `pnpm db:push` | Push the Drizzle schema to the database |
-| `pnpm db:generate` / `pnpm db:migrate` | Generate and apply SQL migrations |
+| `pnpm db:generate` | Write a migration file from your schema changes |
+| `pnpm db:migrate` | Apply pending migrations |
+| `pnpm db:baseline` | Record existing migrations as applied, for a database built before the migration files existed |
+| `pnpm db:push` | Disabled — prints why, and points at generate + migrate |
 | `pnpm db:studio` | Drizzle Studio |
 | `pnpm db:seed` | Load the demo catalogue and accounts |
 | `pnpm verify:security` | Asserts the credential-storage invariants; exits non-zero on a regression, so it can sit in CI |
@@ -229,7 +263,7 @@ Stated here rather than hinted at in the UI:
 ## Deployment
 
 Built for Vercel. Set the environment variables above in the project, point
-`DATABASE_URL` at the production database, run `pnpm db:push` against it once, and
+`DATABASE_URL` at the production database, run `pnpm db:migrate` against it, and
 deploy. Run the seed against production only if you actually want the demo catalogue
 there — the demo reviews are the only reviews with no linked order, which is how to
 find and remove them later.

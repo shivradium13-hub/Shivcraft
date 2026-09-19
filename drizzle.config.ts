@@ -13,9 +13,12 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: { url: process.env.DATABASE_URL },
   casing: "snake_case",
+  // Schema changes go through `db:generate` + `db:migrate`, so every change is
+  // a reviewable file in git rather than a diff applied straight to the live
+  // database. `db:push` is disabled — see scripts/db-push-guard.ts for why.
+  //
   // verbose prints the SQL before it runs; strict would additionally prompt for
-  // confirmation, which needs a TTY. Before production, move off `push` to
-  // generate + migrate so schema changes are reviewable files in git.
+  // confirmation, which needs a TTY.
   verbose: true,
   strict: false,
 });
