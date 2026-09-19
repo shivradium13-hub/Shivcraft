@@ -32,35 +32,41 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             </span>
           </Link>
 
-          <nav aria-label="Admin" className="ml-4 hidden gap-4 text-sm sm:flex">
-            <Link href="/admin" className="text-sr-100 hover:text-white">
+          {/* Scrolls sideways on a phone rather than disappearing. It used to
+              be hidden below 640px, which left the admin with no way to reach
+              another section from a handset at all. */}
+          <nav
+            aria-label="Admin"
+            className="gc-hide-scrollbar order-3 -mx-4 flex w-[calc(100%+2rem)] shrink-0 gap-4 overflow-x-auto px-4 text-sm sm:order-none sm:mx-0 sm:ml-4 sm:w-auto sm:overflow-visible sm:px-0"
+          >
+            <Link href="/admin" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Dashboard
             </Link>
-            <Link href="/admin/orders" className="text-sr-100 hover:text-white">
+            <Link href="/admin/orders" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Orders
             </Link>
-            <Link href="/admin/products" className="text-sr-100 hover:text-white">
+            <Link href="/admin/products" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Products
             </Link>
-            <Link href="/admin/categories" className="text-sr-100 hover:text-white">
+            <Link href="/admin/categories" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Categories
             </Link>
-            <Link href="/admin/reviews" className="text-sr-100 hover:text-white">
+            <Link href="/admin/reviews" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Reviews
             </Link>
-            <Link href="/admin/coupons" className="text-sr-100 hover:text-white">
+            <Link href="/admin/coupons" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Coupons
             </Link>
-            <Link href="/admin/banners" className="text-sr-100 hover:text-white">
+            <Link href="/admin/banners" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Banners
             </Link>
-            <Link href="/admin/users" className="text-sr-100 hover:text-white">
+            <Link href="/admin/users" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Customers
             </Link>
-            <Link href="/admin/settings" className="text-sr-100 hover:text-white">
+            <Link href="/admin/settings" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Settings
             </Link>
-            <Link href="/" className="text-sr-100 hover:text-white">
+            <Link href="/" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               View store
             </Link>
           </nav>
