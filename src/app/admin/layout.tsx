@@ -21,7 +21,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
   return (
     <div className="min-h-dvh bg-sr-canvas">
-      <header className="border-b border-sr-line bg-sr-ink">
+      <header className="bg-night">
         <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-3 px-4 py-3">
           <Link href="/admin" className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sr-600 text-xs font-bold tracking-tight text-white">
