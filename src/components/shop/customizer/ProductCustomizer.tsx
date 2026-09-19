@@ -51,6 +51,7 @@ export function ProductCustomizer({
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [restored, setRestored] = useState(() => restore(storageKey, config.version) !== null);
+  const [fullscreen, setFullscreen] = useState(false);
 
   /* State, not refs: the Undo and Redo buttons read these to decide whether
      they are available, and a ref would leave them frozen at their first
@@ -209,6 +210,22 @@ export function ProductCustomizer({
 
   const quality = activeZone && activePhoto ? localQuality(activeZone, activePhoto) : null;
 
+  /* Progress over the zones this product actually requires, so a text-only
+     product does not show a photo step it has no use for (§22). */
+  const steps = config.zones
+    .filter((z) => z.required && config.views.some((v) => v.zoneIds.includes(z.id)))
+    .map((z) => {
+      const value = design.zones[z.id];
+      const done =
+        value?.kind === "PHOTO"
+          ? Boolean(value.photo.uploadId)
+          : value?.kind === "TEXT"
+            ? value.text.value.trim().length > 0
+            : false;
+      return { id: z.id, label: z.label, done };
+    });
+  const remaining = steps.filter((s) => !s.done).length;
+
   /* ----------------------------------------------------------------- view */
 
   return (
@@ -277,6 +294,37 @@ export function ProductCustomizer({
             </button>
           ))}
         </div>
+      ) : null}
+
+      {steps.length > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {steps.map((step) => (
+            <button
+              key={step.id}
+              type="button"
+              onClick={() => setActiveZoneId(step.id)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+                step.done ? "bg-brand-50 text-brand-700" : "bg-paper text-muted ring-1 ring-line-strong"
+              }`}
+            >
+              {step.done ? "✓ " : ""}
+              {step.label}
+            </button>
+          ))}
+          <span className="text-[11px] text-muted">
+            {remaining === 0 ? "Ready to add to cart" : `${remaining} left`}
+          </span>
+        </div>
+      ) : null}
+
+      {config.tools.fullscreenPreview && Object.keys(design.zones).length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setFullscreen(true)}
+          className="mt-2 w-full rounded-lg border border-line-strong bg-paper px-4 py-2 text-xs font-semibold text-ink-soft transition hover:border-brand-400"
+        >
+          Preview your design
+        </button>
       ) : null}
 
       {config.colorNotice ? (
@@ -423,6 +471,49 @@ export function ProductCustomizer({
         <p role="alert" className="mt-3 rounded-lg bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
           {notice}
         </p>
+      ) : null}
+
+      {fullscreen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Your design"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-ink/90 p-4"
+          onClick={() => setFullscreen(false)}
+        >
+          <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            {/* No guides and no drag handles: this is the product, not the
+                editor (§23). */}
+            <CustomizerCanvas config={config} design={design} viewId={design.viewId} />
+          </div>
+
+          {config.views.length > 1 ? (
+            <div className="flex flex-wrap justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+              {config.views.map((view) => (
+                <button
+                  key={view.id}
+                  type="button"
+                  onClick={() => setDesign((prev) => ({ ...prev, viewId: view.id }))}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                    design.viewId === view.id
+                      ? "border-white bg-white text-ink"
+                      : "border-white/40 text-white"
+                  }`}
+                >
+                  {view.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => setFullscreen(false)}
+            className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-ink"
+          >
+            Close preview
+          </button>
+        </div>
       ) : null}
 
       {config.customizationFeeP > 0 ? (

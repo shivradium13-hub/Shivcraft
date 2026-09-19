@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { OrderStatusControl } from "@/components/admin/OrderStatusControl";
 import { formatPaise } from "@/lib/money";
 import { STATUS_LABEL, allowedNext, getAdminOrder } from "@/server/admin/orders";
+import { OrderDesignPanel } from "@/components/admin/OrderDesignPanel";
 import { requireAdmin } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
@@ -89,6 +90,12 @@ export default async function AdminOrderPage(props: PageProps<"/admin/orders/[or
                       {formatPaise(item.lineTotalP)}
                     </p>
                   </div>
+
+                  {/* The customizer design, rendered from the snapshot frozen
+                      at checkout rather than from the product as it is now. */}
+                  {item.design ? (
+                    <OrderDesignPanel raw={item.design} lineLabel={item.productName} />
+                  ) : null}
 
                   {/* What the workshop actually needs to make it. */}
                   {item.customization ? (

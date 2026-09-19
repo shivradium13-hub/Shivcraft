@@ -158,6 +158,19 @@ export async function placeOrder(input: {
 
     /* Line items snapshot the product, so renaming or deleting it later does
        not rewrite history. */
+    /* One read for every customised line, before the insert, so the freeze
+       below is a pure mapping. */
+    const configById = new Map<string, unknown>();
+    for (const line of view.items) {
+      if (!line.design || configById.has(line.productId)) continue;
+      const rows = await tx
+        .select({ customizer: products.customizer })
+        .from(products)
+        .where(eq(products.id, line.productId))
+        .limit(1);
+      configById.set(line.productId, rows[0]?.customizer ?? null);
+    }
+
     await tx.insert(orderItems).values(
       view.items.map((line) => ({
         orderId: order.id,
@@ -170,9 +183,10 @@ export async function placeOrder(input: {
         lineTotalP: line.lineTotalP,
         variantLabel: line.variantLabel,
         customization: line.customization,
-        /* Frozen here. Whatever the admin changes about the product later,
-           this order keeps the design the customer actually approved (§32). */
-        design: line.design ?? null,
+        /* Frozen here, design AND the configuration it was built against.
+           Whatever the admin changes about the product afterwards, this order
+           can still be rendered exactly as the customer approved it (§32). */
+        design: line.design ? { design: line.design, config: configById.get(line.productId) ?? null } : null,
       })),
     );
 

@@ -93,3 +93,38 @@ export function isDesignEmpty(design: CustomerDesign | null): boolean {
     value.kind === "TEXT" ? value.text.value.trim() === "" : false,
   );
 }
+
+/**
+ * What an order freezes.
+ *
+ * A design on its own is not enough to reproduce what the customer approved:
+ * it names zones, and the zones themselves — where they sit, how big they
+ * print — live in the product's configuration, which the admin may change
+ * afterwards. So an order keeps both, and the workshop renders the order
+ * against the configuration that was live when it was placed (§32, §39).
+ */
+export const designSnapshotSchema = z.object({
+  design: designSchema,
+  /** The configuration as published at checkout. Typed loosely here to avoid
+   *  a cycle with the config schema; parsed with readConfig where it is used. */
+  config: z.unknown(),
+});
+export type DesignSnapshot = z.infer<typeof designSnapshotSchema>;
+
+/**
+ * Reads whatever is stored on a cart or order line.
+ *
+ * Accepts both the wrapper an order freezes and a bare design, which is what a
+ * cart line holds and what the earliest order rows contain.
+ */
+export function readStoredDesign(raw: unknown): { design: CustomerDesign; config: unknown } | null {
+  if (!raw) return null;
+
+  const wrapped = designSnapshotSchema.safeParse(raw);
+  if (wrapped.success) return { design: wrapped.data.design, config: wrapped.data.config };
+
+  const bare = designSchema.safeParse(raw);
+  if (bare.success) return { design: bare.data, config: null };
+
+  return null;
+}
