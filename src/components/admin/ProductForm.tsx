@@ -55,7 +55,7 @@ export const EMPTY_PRODUCT: ProductFormValues = {
 };
 
 const input =
-  "w-full rounded-lg border border-field bg-sr-surface px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
+  "w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
 
 export function ProductForm({
   productId,

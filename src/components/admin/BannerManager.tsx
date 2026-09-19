@@ -29,7 +29,7 @@ export type PlacementInfo = {
 };
 
 const input =
-  "w-full rounded-lg border border-field bg-sr-surface px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
+  "w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
 
 type FormValues = {
   title: string;
@@ -369,7 +369,7 @@ export function BannerManager({
             <p className="mt-0.5 mb-3 text-sm text-sr-muted">{placement.note}</p>
 
             {group.length === 0 ? (
-              <p className="rounded-card border border-dashed border-field bg-sr-surface px-4 py-6 text-center text-sm text-sr-muted">
+              <p className="rounded-card border border-dashed border-field bg-field-bg px-4 py-6 text-center text-sm text-sr-muted">
                 Nothing here yet.
               </p>
             ) : (

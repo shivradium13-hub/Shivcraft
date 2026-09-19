@@ -91,7 +91,7 @@ export function OrderStatusControl({
           id="next-status"
           value={next}
           onChange={(e) => setNext(e.target.value as Status)}
-          className="w-full rounded-lg border border-field bg-sr-surface px-3 py-2 text-sm outline-none focus:border-sr-400"
+          className="w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm outline-none focus:border-sr-400"
         >
           <option value="">Choose a status…</option>
           {options.map((option) => (
@@ -111,7 +111,7 @@ export function OrderStatusControl({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder={next === "SHIPPED" ? "Courier and tracking number" : "Shown on the customer's timeline"}
-          className="w-full rounded-lg border border-field bg-sr-surface px-3 py-2 text-sm outline-none focus:border-sr-400"
+          className="w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm outline-none focus:border-sr-400"
         />
       </div>
 

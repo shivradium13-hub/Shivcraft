@@ -68,7 +68,7 @@ export default async function AdminUserPage(props: PageProps<"/admin/users/[id]"
       <section className="mt-8">
         <h2 className="font-display text-lg font-semibold text-sr-ink">Recent orders</h2>
         {user.orders.length === 0 ? (
-          <p className="mt-2 rounded-card border border-dashed border-field bg-sr-surface px-4 py-6 text-center text-sm text-sr-muted">
+          <p className="mt-2 rounded-card border border-dashed border-field bg-field-bg px-4 py-6 text-center text-sm text-sr-muted">
             This account has never placed an order.
           </p>
         ) : (

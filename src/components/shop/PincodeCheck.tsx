@@ -53,7 +53,7 @@ export function PincodeCheck() {
             setResult(null);
           }}
           onKeyDown={(e) => e.key === "Enter" && pincode.length === 6 && void check()}
-          className="min-w-0 flex-1 rounded-lg border border-field bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
+          className="min-w-0 flex-1 rounded-lg border border-field bg-field-bg px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
         <button
           type="button"

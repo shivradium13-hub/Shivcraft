@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const input =
-  "w-full rounded-lg border border-field bg-paper px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500";
+  "w-full rounded-lg border border-field bg-field-bg px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500";
 
 export function ProfileForm({
   initial,

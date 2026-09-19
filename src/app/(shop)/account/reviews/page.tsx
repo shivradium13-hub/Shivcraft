@@ -53,7 +53,7 @@ export default async function ReviewsPage() {
       ) : null}
 
       {written.length === 0 ? (
-        <div className="rounded-card border border-dashed border-field bg-paper px-6 py-12 text-center">
+        <div className="rounded-card border border-dashed border-field bg-field-bg px-6 py-12 text-center">
           <span aria-hidden="true" className="text-3xl">★</span>
           <h2 className="mt-3 font-display text-lg font-semibold text-ink">
             You have not written a review yet

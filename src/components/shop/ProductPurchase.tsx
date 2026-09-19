@@ -21,7 +21,7 @@ const FONT_STACKS: Record<string, string> = {
 
 /* Ink and finish colours the customer chooses for their own piece, not UI
    chrome — this is the one place a range of colours belongs. */
-const SWATCHES = ["#0d1015", "#e57836", "#b3261e", "#1f5f7a", "#1f7a4d", "#ad6616", "#ffffff"];
+const SWATCHES = ["#0f121f", "#ee722e", "#b3261e", "#151b39", "#1f7a4d", "#ad6616", "#ffffff"];
 
 export function ProductPurchase({ product }: { product: ProductDetail }) {
   const router = useRouter();
@@ -149,7 +149,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                     active
                       ? "border-brand-500 bg-brand-50 text-brand-800"
-                      : "border-field bg-paper text-ink hover:border-brand-400"
+                      : "border-field bg-field-bg text-ink hover:border-brand-400"
                   } ${soldOut ? "cursor-not-allowed line-through opacity-45" : ""}`}
                 >
                   {option.value}
@@ -242,7 +242,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                       id={`cf-${field.id}`}
                       value={answers[field.id] ?? ""}
                       onChange={(e) => setAnswer(field.id, e.target.value)}
-                      className="w-full rounded-lg border border-field bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
+                      className="w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm outline-none focus:border-brand-500"
                     >
                       <option value="">Choose…</option>
                       {field.options.map((option) => (
@@ -274,7 +274,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                     value={answers[field.id] ?? ""}
                     onChange={(e) => setAnswer(field.id, e.target.value)}
                     placeholder={field.label}
-                    className="w-full rounded-lg border border-field bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
+                    className="w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm outline-none focus:border-brand-500"
                   />
                   <div className="mt-1 flex justify-between gap-3">
                     {field.helpText ? (

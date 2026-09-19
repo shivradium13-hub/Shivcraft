@@ -41,7 +41,7 @@ export function CategoryQuickScroller({
     `shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sr-500 ${
       active
         ? "border-sr-600 bg-sr-600 text-white"
-        : "border-field bg-sr-surface text-sr-body hover:border-sr-300"
+        : "border-field bg-field-bg text-sr-body hover:border-sr-300"
     }`;
 
   return (

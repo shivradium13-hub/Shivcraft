@@ -93,7 +93,7 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/orders">)
           name="q"
           defaultValue={query}
           placeholder="Order number, customer name, phone or email"
-          className="min-w-0 flex-1 rounded-lg border border-field bg-sr-surface px-3 py-2 text-sm outline-none focus:border-sr-400"
+          className="min-w-0 flex-1 rounded-lg border border-field bg-field-bg px-3 py-2 text-sm outline-none focus:border-sr-400"
         />
         <button
           type="submit"
@@ -122,7 +122,7 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/orders">)
               className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                 active
                   ? "border-sr-600 bg-sr-600 text-white"
-                  : "border-field bg-sr-surface text-sr-body hover:border-sr-300"
+                  : "border-field bg-field-bg text-sr-body hover:border-sr-300"
               }`}
             >
               {chip === "ALL" ? "All" : STATUS_LABEL[chip]}
@@ -133,7 +133,7 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/orders">)
       </div>
 
       {rows.length === 0 ? (
-        <p className="mt-6 rounded-2xl border border-dashed border-field bg-sr-surface px-6 py-12 text-center text-sm text-sr-muted">
+        <p className="mt-6 rounded-2xl border border-dashed border-field bg-field-bg px-6 py-12 text-center text-sm text-sr-muted">
           No orders match this filter.
         </p>
       ) : (

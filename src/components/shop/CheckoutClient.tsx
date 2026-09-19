@@ -161,7 +161,7 @@ export function CheckoutClient({
           email: customer.email,
           contact: customer.phone ?? "",
         },
-        theme: { color: "#e57836" },
+        theme: { color: "#ee722e" },
         modal: {
           ondismiss: () => {
             setBusy(false);
@@ -204,7 +204,7 @@ export function CheckoutClient({
   }
 
   const input =
-    "w-full rounded-lg border border-field bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-brand-500";
+    "w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm text-ink outline-none focus:border-brand-500";
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px] lg:items-start">

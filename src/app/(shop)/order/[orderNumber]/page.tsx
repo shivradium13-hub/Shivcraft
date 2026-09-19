@@ -91,7 +91,7 @@ export default async function OrderPage(props: PageProps<"/order/[orderNumber]">
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 text-[10px] ${
                         done
                           ? "border-success bg-success text-white"
-                          : "border-field bg-paper text-transparent"
+                          : "border-field bg-field-bg text-transparent"
                       }`}
                     >
                       ✓

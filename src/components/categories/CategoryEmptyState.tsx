@@ -3,7 +3,7 @@ import Link from "next/link";
 /** A category the admin created but has not filled yet (spec 22). */
 export function CategoryEmptyState({ categoryName }: { categoryName: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-field bg-sr-surface px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-field bg-field-bg px-6 py-12 text-center">
       <span aria-hidden="true" className="text-2xl">🎁</span>
       <h3 className="mt-2 font-display text-lg font-semibold text-sr-ink">
         No subcategories in {categoryName} yet

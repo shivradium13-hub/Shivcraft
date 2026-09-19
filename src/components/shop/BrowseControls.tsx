@@ -47,7 +47,7 @@ export function SortSelect() {
       <select
         value={current}
         onChange={(e) => setParam({ sort: e.target.value })}
-        className="rounded-lg border border-field bg-paper px-3 py-1.5 text-sm font-medium text-ink outline-none focus:border-brand-500"
+        className="rounded-lg border border-field bg-field-bg px-3 py-1.5 text-sm font-medium text-ink outline-none focus:border-brand-500"
       >
         {SORTS.map((sort) => (
           <option key={sort.value} value={sort.value}>
@@ -93,7 +93,7 @@ export function QuickFilters() {
           className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
             chip.on
               ? "border-brand-600 bg-brand-600 text-white"
-              : "border-field bg-paper text-ink-soft hover:border-brand-300"
+              : "border-field bg-field-bg text-ink-soft hover:border-brand-300"
           }`}
         >
           {chip.label}
@@ -113,7 +113,7 @@ export function QuickFilters() {
             className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
               on
                 ? "border-brand-600 bg-brand-600 text-white"
-                : "border-field bg-paper text-ink-soft hover:border-brand-300"
+                : "border-field bg-field-bg text-ink-soft hover:border-brand-300"
             }`}
           >
             {band.label}
@@ -128,7 +128,7 @@ export function QuickFilters() {
         className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
           params.get("rating") === "4"
             ? "border-brand-600 bg-brand-600 text-white"
-            : "border-field bg-paper text-ink-soft hover:border-brand-300"
+            : "border-field bg-field-bg text-ink-soft hover:border-brand-300"
         }`}
       >
         4★ &amp; above

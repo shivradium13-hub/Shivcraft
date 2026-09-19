@@ -100,7 +100,7 @@ export function CartClient({ initial }: { initial: CartView }) {
 
   if (cart.items.length === 0 && cart.saved.length === 0) {
     return (
-      <div className="rounded-card border border-dashed border-field bg-paper px-6 py-16 text-center">
+      <div className="rounded-card border border-dashed border-field bg-field-bg px-6 py-16 text-center">
         <span aria-hidden="true" className="text-3xl">🛒</span>
         <h2 className="mt-3 font-display text-xl font-semibold text-ink">Your cart is empty</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
@@ -202,7 +202,7 @@ export function CartClient({ initial }: { initial: CartView }) {
                   }}
                   onKeyDown={(e) => e.key === "Enter" && couponInput && void applyCoupon()}
                   placeholder="WELCOME150"
-                  className="min-w-0 flex-1 rounded-lg border border-field bg-paper px-3 py-2 text-sm uppercase outline-none focus:border-brand-500"
+                  className="min-w-0 flex-1 rounded-lg border border-field bg-field-bg px-3 py-2 text-sm uppercase outline-none focus:border-brand-500"
                 />
                 <button
                   type="button"

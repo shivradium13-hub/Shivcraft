@@ -131,7 +131,7 @@ export function PhotoUploadField({
             if (file) void send(file);
           }}
           className={`rounded-lg border border-dashed p-4 text-center transition ${
-            dragging ? "border-brand-500 bg-brand-50" : "border-field bg-paper"
+            dragging ? "border-brand-500 bg-brand-50" : "border-field bg-field-bg"
           }`}
         >
           <button

@@ -207,7 +207,7 @@ export function ReviewForm({
           maxLength={160}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Exactly as pictured"
-          className="w-full rounded-lg border border-field bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
+          className="w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
       </label>
 
@@ -218,7 +218,7 @@ export function ReviewForm({
           maxLength={3000}
           onChange={(e) => setBody(e.target.value)}
           placeholder="How did it turn out? Was the engraving clean? Did it arrive on time?"
-          className="min-h-24 w-full rounded-lg border border-field bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
+          className="min-h-24 w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
       </label>
 
@@ -252,7 +252,7 @@ export function ReviewForm({
 
 function Note({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-card border border-dashed border-field bg-paper px-4 py-3 text-sm text-muted">
+    <p className="rounded-card border border-dashed border-field bg-field-bg px-4 py-3 text-sm text-muted">
       {children}
     </p>
   );

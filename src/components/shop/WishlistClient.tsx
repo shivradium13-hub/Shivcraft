@@ -66,7 +66,7 @@ export function WishlistClient({ initial }: { initial: WishlistEntry[] }) {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-card border border-dashed border-field bg-paper px-6 py-14 text-center">
+      <div className="rounded-card border border-dashed border-field bg-field-bg px-6 py-14 text-center">
         <span aria-hidden="true" className="text-3xl">♡</span>
         <h2 className="mt-3 font-display text-xl font-semibold text-ink">Your wishlist is empty</h2>
         <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
