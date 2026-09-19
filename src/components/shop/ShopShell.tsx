@@ -8,7 +8,10 @@ import type { CategoryNode } from "@/server/catalog/categories";
 
 /* The category drawer is opened from two places — the header hamburger and the
    mobile bottom bar — so its state lives in one small context above both. */
-const DrawerContext = createContext<{ open: () => void }>({ open: () => {} });
+const DrawerContext = createContext<{ open: () => void; categories: CategoryNode[] }>({
+  open: () => {},
+  categories: [],
+});
 export const useCategoryDrawer = () => useContext(DrawerContext);
 
 export function ShopShell({
@@ -39,7 +42,7 @@ export function ShopShell({
   }, [isOpen, close]);
 
   return (
-    <DrawerContext.Provider value={{ open }}>
+    <DrawerContext.Provider value={{ open, categories }}>
       {children}
       <CategoryDrawer categories={categories} isOpen={isOpen} onClose={close} />
     </DrawerContext.Provider>

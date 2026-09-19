@@ -3,8 +3,8 @@
 import Link from "next/link";
 
 import { CartBadge } from "./CartBadge";
+import { CategoryMenu } from "./CategoryMenu";
 import { SearchBar } from "./SearchBar";
-import { useCategoryDrawer } from "./ShopShell";
 
 function Logo() {
   return (
@@ -90,27 +90,12 @@ const UserIcon = () => (
 );
 
 export function Header() {
-  const { open } = useCategoryDrawer();
-
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
       <div className="mx-auto w-full max-w-[1400px] px-4">
         <div className="flex h-16 items-center gap-3">
-          <button
-            type="button"
-            onClick={open}
-            aria-label="Browse categories"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-ink transition hover:bg-brand-50 lg:hidden"
-          >
-            <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden="true">
-              <path
-                d="M3 5.5h14M3 10h14M3 14.5h14"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+          {/* Categories live behind the three-dot menu, at every width. */}
+          <CategoryMenu />
 
           <Logo />
 
