@@ -76,6 +76,18 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
 
   return (
     <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-card border border-sr-line bg-sr-soft px-4 py-3">
+        <p className="text-sm text-sr-body">
+          Let customers personalise this product — photos, text and where they land on it.
+        </p>
+        <Link
+          href={`/admin/products/${id}/customizer`}
+          className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sr-700"
+        >
+          Open customizer
+        </Link>
+      </div>
+
       <Link href="/admin/products" className="text-sm font-semibold text-sr-600 hover:underline">
         ← All products
       </Link>
