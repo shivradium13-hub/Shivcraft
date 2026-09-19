@@ -10,6 +10,7 @@ import { ProductRail } from "@/components/shop/ProductCard";
 import { ReviewForm, type ReviewEligibility } from "@/components/shop/ReviewForm";
 import { SectionHeading, Stars } from "@/components/ui/primitives";
 import { optionalUser } from "@/server/auth/guards";
+import { describeOffer, getLiveOffers } from "@/server/catalog/offers";
 import { getProductBySlug, getRelatedProducts } from "@/server/catalog/product";
 import { checkEligibility, getOwnReview } from "@/server/reviews/service";
 
@@ -40,6 +41,8 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
   if (!product) notFound();
 
   const related = await getRelatedProducts(product.categoryId, product.id);
+  // Real coupons from the table, so nothing is advertised that would be refused.
+  const offers = await getLiveOffers(product.categoryId);
 
   /* Whether this visitor may review, decided on the server so the page never
      renders a form that the API would refuse. Their own review is fetched
@@ -164,17 +167,18 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
           </div>
           <p className="mt-1 text-xs text-muted">Inclusive of all taxes</p>
 
-          <div className="mt-5 rounded-card border border-marigold-200 bg-marigold-50 p-3">
-            <p className="text-xs font-semibold tracking-wide text-brand-800">Available offers</p>
-            <ul className="mt-1.5 space-y-1 text-xs text-ink-soft">
-              <li>
-                <strong className="text-ink">WELCOME150</strong> — ₹150 off your first order above ₹799
-              </li>
-              <li>
-                <strong className="text-ink">GIFT20</strong> — 20% off up to ₹400 on orders above ₹999
-              </li>
-            </ul>
-          </div>
+          {offers.length > 0 ? (
+            <div className="mt-5 rounded-card border border-marigold-200 bg-marigold-50 p-3">
+              <p className="text-xs font-semibold tracking-wide text-brand-800">Available offers</p>
+              <ul className="mt-1.5 space-y-1 text-xs text-ink-soft">
+                {offers.map((offer) => (
+                  <li key={offer.code}>
+                    <strong className="text-ink">{offer.code}</strong> — {describeOffer(offer)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <div className="mt-6">
             <ProductPurchase product={product} />

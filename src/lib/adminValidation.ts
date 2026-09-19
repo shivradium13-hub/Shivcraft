@@ -87,3 +87,108 @@ export const productSchema = z
   });
 
 export type ProductInput = z.infer<typeof productSchema>;
+
+/* ------------------------------------------------------- coupons & banners */
+
+/**
+ * A date from a `datetime-local` input, which has no timezone and no seconds
+ * ("2026-09-19T10:30"). Kept as a string here and turned into a Date on the
+ * server, so an unparseable value is a field error rather than an Invalid Date
+ * written to the column.
+ */
+const dateInput = z
+  .string()
+  .trim()
+  .max(40)
+  .refine((value) => value === "" || !Number.isNaN(Date.parse(value)), "Enter a valid date.")
+  .nullable()
+  .optional();
+
+export const couponSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .min(3, "A code needs at least 3 characters.")
+      .max(40)
+      .regex(/^[A-Za-z0-9_-]+$/, "Use letters, numbers, hyphens and underscores only.")
+      .transform((value) => value.toUpperCase()),
+    description: optionalText(200),
+    discountType: z.enum(["PERCENT", "FIXED"], { message: "Choose a discount type." }),
+    /** Percent when PERCENT, rupees when FIXED — checked below. */
+    discountValue: z.number({ message: "Enter the discount." }).positive("Must be more than zero."),
+    minOrder: rupees.default(0),
+    maxDiscount: rupees.positive("Must be more than zero.").nullable().optional(),
+    usageLimit: z.number().int().positive("Must be at least 1.").max(1_000_000).nullable().optional(),
+    perUserLimit: z.number().int().positive("Must be at least 1.").max(1000).nullable().optional(),
+    categoryId: z.string().uuid().nullable().optional(),
+    startsAt: dateInput,
+    endsAt: dateInput,
+    isActive: z.boolean().default(true),
+  })
+  .superRefine((value, ctx) => {
+    if (value.discountType === "PERCENT" && value.discountValue > 100) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["discountValue"],
+        message: "A percentage cannot be above 100.",
+      });
+    }
+    // A window that closes before it opens would never let anyone in.
+    if (value.startsAt && value.endsAt && Date.parse(value.endsAt) <= Date.parse(value.startsAt)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["endsAt"],
+        message: "The end date must be after the start date.",
+      });
+    }
+    // checkCoupon caps the discount at the cart subtotal anyway, but a fixed
+    // discount larger than its own minimum spend is almost always a typo.
+    if (
+      value.discountType === "FIXED" &&
+      value.minOrder > 0 &&
+      value.discountValue > value.minOrder
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["discountValue"],
+        message: "This gives away more than the minimum order value. Check the numbers.",
+      });
+    }
+  });
+
+export type CouponInput = z.infer<typeof couponSchema>;
+
+export const bannerSchema = z
+  .object({
+    title: z.string().trim().min(2, "Give the banner a title.").max(160),
+    subtitle: optionalText(240),
+    imageUrl: optionalText(500),
+    href: optionalText(300),
+    ctaLabel: optionalText(60),
+    placement: z.enum(["HERO", "OFFER"], { message: "Choose where the banner goes." }),
+    position: z.number().int().min(0).max(999).default(0),
+    startsAt: dateInput,
+    endsAt: dateInput,
+    isActive: z.boolean().default(true),
+  })
+  .superRefine((value, ctx) => {
+    if (value.startsAt && value.endsAt && Date.parse(value.endsAt) <= Date.parse(value.startsAt)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["endsAt"],
+        message: "The end date must be after the start date.",
+      });
+    }
+    // Relative paths only: an absolute URL here would send shoppers off-site
+    // from a link that looks like part of the shop.
+    if (value.href && !value.href.startsWith("/")) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["href"],
+        message: "Start the link with / — for example /category/name-plates.",
+      });
+    }
+  });
+
+export type BannerInput = z.infer<typeof bannerSchema>;

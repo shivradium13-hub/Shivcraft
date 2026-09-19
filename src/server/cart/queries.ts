@@ -17,6 +17,9 @@ import { checkCoupon, computeTotals, getShopSettings, type CartTotals } from "./
 export type CartLine = {
   id: string;
   productId: string;
+  /** Carried on the line so order placement can re-check a category-limited
+   *  coupon against the same categories the cart checked it against. */
+  categoryId: string;
   name: string;
   slug: string;
   imageUrl: string | null;
@@ -126,6 +129,7 @@ export async function getCartView(shopper: Shopper): Promise<CartView> {
     return {
       id: row.item.id,
       productId: row.product.id,
+      categoryId: row.product.categoryId,
       name: row.product.name,
       slug: row.product.slug,
       imageUrl: row.imageUrl,
@@ -153,11 +157,7 @@ export async function getCartView(shopper: Shopper): Promise<CartView> {
   let couponError: string | null = null;
 
   if (cart?.couponCode && subtotalP > 0) {
-    const categoryIds = [
-      ...new Set(
-        rows.filter((r) => payable.some((p) => p.id === r.item.id)).map((r) => r.product.categoryId),
-      ),
-    ];
+    const categoryIds = [...new Set(payable.map((line) => line.categoryId))];
     const result = await checkCoupon(cart.couponCode, {
       userId: shopper.user?.id ?? null,
       subtotalP,

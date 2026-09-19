@@ -98,10 +98,14 @@ export async function placeOrder(input: {
     let couponCode: string | null = null;
 
     if (view.coupon) {
+      /* The cart's own categories, not an empty list. Passing [] here made
+         every category-limited coupon fail CATEGORY_MISMATCH at this point,
+         so the shopper saw a discount in the cart and was charged the full
+         amount without being told why. */
       const recheck = await checkCoupon(view.coupon.code, {
         userId: input.user.id,
         subtotalP,
-        categoryIds: [],
+        categoryIds: [...new Set(view.items.map((line) => line.categoryId))],
       });
       if (recheck.ok) {
         discountP = recheck.discountP;
