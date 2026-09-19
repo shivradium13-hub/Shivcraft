@@ -32,7 +32,7 @@ export function ProductGallery({ images, name }: { images: GalleryImage[]; name:
               aria-label={`View image ${i + 1} of ${images.length}`}
               aria-current={i === index}
               className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition ${
-                i === index ? "border-brand-700" : "border-line hover:border-brand-300"
+                i === index ? "border-brand-500" : "border-line hover:border-brand-300"
               }`}
             >
               <Image

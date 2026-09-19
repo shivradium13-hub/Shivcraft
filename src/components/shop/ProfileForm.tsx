@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const input =
-  "w-full rounded-lg border border-line-strong bg-paper px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500";
+  "w-full rounded-lg border border-field bg-paper px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-500";
 
 export function ProfileForm({
   initial,
@@ -115,7 +115,7 @@ export function ProfileForm({
           <button
             type="submit"
             disabled={busy !== null}
-            className="rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60"
+            className="rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60"
           >
             {busy === "profile" ? "Saving…" : "Save details"}
           </button>
@@ -153,7 +153,7 @@ export function ProfileForm({
           <button
             type="submit"
             disabled={busy !== null || !passwords.currentPassword || !passwords.newPassword}
-            className="rounded-full border-2 border-brand-700 px-5 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-45"
+            className="rounded-full border-2 border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-45"
           >
             {busy === "password" ? "Changing…" : "Change password"}
           </button>

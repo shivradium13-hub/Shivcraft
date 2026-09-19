@@ -47,7 +47,7 @@ export function ProductCard({
       <div className="flex flex-1 flex-col p-3">
         <Link
           href={`/product/${product.slug}`}
-          className="line-clamp-2 text-sm leading-snug font-medium text-ink hover:text-brand-700"
+          className="line-clamp-2 text-sm leading-snug font-medium text-ink hover:text-brand-600"
         >
           {product.name}
         </Link>
@@ -64,11 +64,11 @@ export function ProductCard({
         )}
 
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="text-base font-bold text-ink">{formatPaise(price)}</span>
+          <span className="text-base font-bold text-brand-500">{formatPaise(price)}</span>
           {off > 0 ? (
             <>
               <span className="text-xs text-muted line-through">{formatPaise(product.priceP)}</span>
-              <span className="text-xs font-semibold text-success">{off}% OFF</span>
+              <span className="text-xs font-semibold text-brand-600">{off}% OFF</span>
             </>
           ) : null}
         </div>

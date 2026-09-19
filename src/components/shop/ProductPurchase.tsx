@@ -19,7 +19,9 @@ const FONT_STACKS: Record<string, string> = {
   Devanagari: "'Nirmala UI', 'Noto Sans Devanagari', sans-serif",
 };
 
-const SWATCHES = ["#241b21", "#6d2e52", "#b3261e", "#1f5f7a", "#1f7a4d", "#ad6616", "#ffffff"];
+/* Ink and finish colours the customer chooses for their own piece, not UI
+   chrome — this is the one place a range of colours belongs. */
+const SWATCHES = ["#0d1015", "#e57836", "#b3261e", "#1f5f7a", "#1f7a4d", "#ad6616", "#ffffff"];
 
 export function ProductPurchase({ product }: { product: ProductDetail }) {
   const router = useRouter();
@@ -146,8 +148,8 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                   onClick={() => setChosen((prev) => ({ ...prev, [group.name]: option.id }))}
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                     active
-                      ? "border-brand-700 bg-brand-50 text-brand-800"
-                      : "border-line-strong bg-paper text-ink hover:border-brand-400"
+                      ? "border-brand-500 bg-brand-50 text-brand-800"
+                      : "border-field bg-paper text-ink hover:border-brand-400"
                   } ${soldOut ? "cursor-not-allowed line-through opacity-45" : ""}`}
                 >
                   {option.value}
@@ -213,7 +215,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                           style={{ background: swatch }}
                           className={`h-8 w-8 rounded-full border-2 transition ${
                             answers[field.id] === swatch
-                              ? "border-brand-700 ring-2 ring-brand-200"
+                              ? "border-brand-500 ring-2 ring-brand-200"
                               : "border-line-strong"
                           }`}
                         />
@@ -240,7 +242,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                       id={`cf-${field.id}`}
                       value={answers[field.id] ?? ""}
                       onChange={(e) => setAnswer(field.id, e.target.value)}
-                      className="w-full rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
+                      className="w-full rounded-lg border border-field bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
                     >
                       <option value="">Choose…</option>
                       {field.options.map((option) => (
@@ -272,7 +274,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
                     value={answers[field.id] ?? ""}
                     onChange={(e) => setAnswer(field.id, e.target.value)}
                     placeholder={field.label}
-                    className="w-full rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
+                    className="w-full rounded-lg border border-field bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
                   />
                   <div className="mt-1 flex justify-between gap-3">
                     {field.helpText ? (
@@ -360,7 +362,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           type="button"
           disabled={busy || outOfStock}
           onClick={() => addToCart(false)}
-          className="flex-1 rounded-full border-2 border-brand-700 px-6 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-50"
+          className="flex-1 rounded-full border-2 border-brand-500 px-6 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-50"
         >
           {busy ? "Adding…" : outOfStock ? "Out of stock" : "Add to Cart"}
         </button>
@@ -368,7 +370,7 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           type="button"
           disabled={busy || outOfStock}
           onClick={() => addToCart(true)}
-          className="flex-1 rounded-full bg-marigold-400 px-6 py-3 text-sm font-semibold text-brand-900 transition hover:bg-marigold-300 disabled:opacity-50"
+          className="flex-1 gc-cta rounded-full px-6 py-3 text-sm font-semibold transition disabled:opacity-50"
         >
           Buy Now
         </button>

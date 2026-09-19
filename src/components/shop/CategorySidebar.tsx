@@ -72,7 +72,7 @@ export function CategorySidebar({ categories }: { categories: CategoryNode[] }) 
                       onClick={() => toggle(cat.id)}
                       aria-expanded={isExpanded}
                       aria-label={`${isExpanded ? "Collapse" : "Expand"} ${cat.name}`}
-                      className="flex w-8 items-center justify-center rounded-lg text-muted transition hover:bg-brand-50 hover:text-brand-700"
+                      className="flex w-8 items-center justify-center rounded-lg text-muted transition hover:bg-brand-50 hover:text-brand-600"
                     >
                       <svg
                         viewBox="0 0 20 20"
@@ -100,7 +100,7 @@ export function CategorySidebar({ categories }: { categories: CategoryNode[] }) 
                           className={`block rounded-lg px-2.5 py-1.5 text-[13px] transition ${
                             sub.slug === activeSlug
                               ? "bg-brand-50 font-medium text-brand-800"
-                              : "text-ink-soft hover:bg-brand-50 hover:text-brand-700"
+                              : "text-ink-soft hover:bg-brand-50 hover:text-brand-600"
                           }`}
                         >
                           {sub.name}

@@ -161,7 +161,7 @@ export function CheckoutClient({
           email: customer.email,
           contact: customer.phone ?? "",
         },
-        theme: { color: "#e35d24" },
+        theme: { color: "#e57836" },
         modal: {
           ondismiss: () => {
             setBusy(false);
@@ -204,7 +204,7 @@ export function CheckoutClient({
   }
 
   const input =
-    "w-full rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-brand-500";
+    "w-full rounded-lg border border-field bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-brand-500";
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px] lg:items-start">
@@ -219,7 +219,7 @@ export function CheckoutClient({
                 disabled={i > step}
                 className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold transition ${
                   i === step
-                    ? "bg-brand-700 text-white"
+                    ? "bg-brand-500 text-white"
                     : i < step
                       ? "bg-brand-50 text-brand-700 hover:bg-brand-100"
                       : "bg-surface-2 text-muted"
@@ -303,7 +303,7 @@ export function CheckoutClient({
                   <button
                     type="submit"
                     disabled={busy}
-                    className="rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                    className="rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     {busy ? "Saving…" : "Save address"}
                   </button>
@@ -325,7 +325,7 @@ export function CheckoutClient({
                 type="button"
                 disabled={!addressId}
                 onClick={() => setStep(1)}
-                className="mt-5 rounded-full bg-brand-700 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-45"
+                className="mt-5 rounded-full bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-45"
               >
                 Deliver here
               </button>
@@ -373,7 +373,7 @@ export function CheckoutClient({
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="mt-5 rounded-full bg-brand-700 px-6 py-2.5 text-sm font-semibold text-white"
+              className="mt-5 rounded-full bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white"
             >
               Continue to payment
             </button>
@@ -438,7 +438,7 @@ export function CheckoutClient({
               type="button"
               disabled={busy || !addressId}
               onClick={payNow}
-              className="mt-5 w-full rounded-full bg-marigold-400 px-6 py-3 text-sm font-semibold text-brand-900 transition hover:bg-marigold-300 disabled:opacity-50"
+              className="mt-5 w-full gc-cta rounded-full px-6 py-3 text-sm font-semibold transition disabled:opacity-50"
             >
               {busy
                 ? "Placing your order…"

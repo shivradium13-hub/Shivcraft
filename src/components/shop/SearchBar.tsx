@@ -137,7 +137,7 @@ export function SearchBar({ autoFocus = false }: { autoFocus?: boolean }) {
 
   return (
     <div ref={boxRef} className="relative w-full">
-      <div className="flex items-center gap-2 rounded-full border border-line-strong bg-paper pr-1.5 pl-3.5 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100">
+      <div className="flex items-center gap-2 rounded-full border border-field bg-paper pr-1.5 pl-3.5 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100">
         <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-muted" aria-hidden="true">
           <path
             d="M9 3.5a5.5 5.5 0 104 9.3l3.3 3.3 1.2-1.2-3.3-3.3A5.5 5.5 0 009 3.5zm0 1.6a3.9 3.9 0 110 7.8 3.9 3.9 0 010-7.8z"
@@ -166,7 +166,7 @@ export function SearchBar({ autoFocus = false }: { autoFocus?: boolean }) {
         <button
           type="button"
           onClick={submit}
-          className="h-8 shrink-0 rounded-full bg-brand-700 px-4 text-xs font-semibold text-white transition hover:bg-brand-600"
+          className="h-8 shrink-0 rounded-full bg-brand-500 px-4 text-xs font-semibold text-white transition hover:bg-brand-600"
         >
           Search
         </button>

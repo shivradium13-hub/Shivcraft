@@ -19,32 +19,42 @@ export default async function HomePage() {
   const { hero, offers, categories, trending, bestSellers, personalised, testimonials } =
     await getHomepage();
 
+  /* The headline picks out its last word in orange. Splitting here rather than
+     asking the admin to write markup keeps the banner form a plain text field. */
+  const words = (hero?.title ?? "").trim().split(/\s+/);
+  const heroAccent = words.length > 1 ? ` ${words[words.length - 1]}` : "";
+  const heroLead = words.length > 1 ? words.slice(0, -1).join(" ") : (hero?.title ?? "");
+
   return (
     <div className="space-y-10 pb-4">
       {/* ---------------------------------------------------------- hero */}
+      {/* Light ground, near-black heading, orange only on the highlighted word
+          and the call to action. A full orange panel here would spend most of
+          the page's colour budget before anything has been sold. */}
       {hero ? (
-        <section className="overflow-hidden rounded-card border border-brand-200 bg-gradient-to-br from-brand-700 via-brand-600 to-brand-800">
+        <section className="overflow-hidden rounded-card border border-line-strong bg-soft">
           <div className="grid items-center gap-6 p-6 sm:p-9 lg:grid-cols-[1.25fr_1fr]">
             <div>
-              <p className="text-xs font-semibold tracking-[0.16em] text-marigold-300 uppercase">
+              <p className="text-xs font-semibold tracking-[0.16em] text-brand-600 uppercase">
                 Handmade to order
               </p>
-              <h1 className="mt-2 font-display text-3xl leading-[1.08] font-semibold text-white sm:text-4xl lg:text-[2.9rem]">
-                {hero.title} <span aria-hidden="true">❤</span>
+              <h1 className="mt-2 font-display text-3xl leading-[1.08] font-semibold text-ink sm:text-4xl lg:text-[2.9rem]">
+                {heroLead}
+                {heroAccent ? <span className="text-brand-500">{heroAccent}</span> : null}
               </h1>
               {hero.subtitle ? (
-                <p className="mt-3 max-w-md text-sm text-brand-100 sm:text-base">{hero.subtitle}</p>
+                <p className="mt-3 max-w-md text-sm text-ink-soft sm:text-base">{hero.subtitle}</p>
               ) : null}
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href={hero.href ?? "/search"}
-                  className="rounded-full bg-marigold-400 px-6 py-3 text-sm font-semibold text-brand-900 transition hover:bg-marigold-300"
+                  className="gc-cta rounded-full px-6 py-3 text-sm font-semibold transition"
                 >
                   {hero.ctaLabel ?? "Shop Now"}
                 </Link>
                 <Link
                   href="/search?personalized=true"
-                  className="rounded-full border border-brand-300/60 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
+                  className="rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white transition hover:bg-night-soft"
                 >
                   Customize Your Gift
                 </Link>
@@ -171,7 +181,7 @@ export default async function HomePage() {
               </ol>
               <Link
                 href="/search?personalized=true"
-                className="mt-5 inline-block rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600"
+                className="mt-5 inline-block rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600"
               >
                 Start customising
               </Link>

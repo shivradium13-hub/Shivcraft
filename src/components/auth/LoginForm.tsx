@@ -47,7 +47,7 @@ export function LoginForm({ next }: { next?: string }) {
   }
 
   const field =
-    "w-full rounded-lg border border-sr-line-strong bg-sr-surface px-3 py-2.5 text-sm text-sr-ink outline-none focus:border-sr-400 focus:ring-2 focus:ring-sr-100";
+    "w-full rounded-lg border border-field bg-sr-surface px-3 py-2.5 text-sm text-sr-ink outline-none focus:border-sr-400 focus:ring-2 focus:ring-sr-100";
 
   return (
     <form onSubmit={submit} className="grid gap-4">

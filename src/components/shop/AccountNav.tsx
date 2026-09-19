@@ -53,13 +53,13 @@ export function AccountNav({ unread = 0 }: { unread?: number }) {
                 className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm whitespace-nowrap transition ${
                   active
                     ? "bg-brand-50 font-semibold text-brand-800"
-                    : "text-ink-soft hover:bg-brand-50 hover:text-brand-700"
+                    : "text-ink-soft hover:bg-brand-50 hover:text-brand-600"
                 }`}
               >
                 <span aria-hidden="true">{section.icon}</span>
                 {section.label}
                 {section.href === "/account/notifications" && unread > 0 ? (
-                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-700 px-1.5 text-[11px] font-bold text-white">
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[11px] font-bold text-white">
                     {unread > 99 ? "99+" : unread}
                   </span>
                 ) : null}

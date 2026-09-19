@@ -89,7 +89,7 @@ function CategoryDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close categories"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-brand-50 hover:text-brand-700"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-brand-50 hover:text-brand-600"
           >
             <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden="true">
               <path
@@ -153,7 +153,7 @@ function CategoryDrawer({
                       <li key={sub.id}>
                         <Link
                           href={`/category/${sub.slug}`}
-                          className="block rounded-lg px-3 py-2 text-sm text-ink-soft hover:bg-brand-50 hover:text-brand-700"
+                          className="block rounded-lg px-3 py-2 text-sm text-ink-soft hover:bg-brand-50 hover:text-brand-600"
                         >
                           {sub.name}
                         </Link>

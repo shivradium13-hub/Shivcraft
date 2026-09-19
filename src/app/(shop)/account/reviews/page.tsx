@@ -42,7 +42,7 @@ export default async function ReviewsPage() {
                     reviewed; this jumps straight to it. */}
                 <Link
                   href={`/product/${item.slug}#write-review`}
-                  className="ml-auto rounded-full bg-brand-700 px-3 py-1 text-xs font-semibold text-white transition hover:bg-brand-600"
+                  className="ml-auto rounded-full bg-brand-500 px-3 py-1 text-xs font-semibold text-white transition hover:bg-brand-600"
                 >
                   Write a review
                 </Link>
@@ -53,7 +53,7 @@ export default async function ReviewsPage() {
       ) : null}
 
       {written.length === 0 ? (
-        <div className="rounded-card border border-dashed border-line-strong bg-paper px-6 py-12 text-center">
+        <div className="rounded-card border border-dashed border-field bg-paper px-6 py-12 text-center">
           <span aria-hidden="true" className="text-3xl">★</span>
           <h2 className="mt-3 font-display text-lg font-semibold text-ink">
             You have not written a review yet
@@ -69,7 +69,7 @@ export default async function ReviewsPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Link
                   href={`/product/${review.productSlug}`}
-                  className="text-sm font-semibold text-ink hover:text-brand-700"
+                  className="text-sm font-semibold text-ink hover:text-brand-600"
                 >
                   {review.productName}
                 </Link>

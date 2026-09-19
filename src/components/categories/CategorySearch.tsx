@@ -69,7 +69,7 @@ export function CategorySearch({
       <label htmlFor="category-search" className="sr-only">
         Search categories
       </label>
-      <div className="flex items-center gap-2 rounded-full border border-sr-line-strong bg-sr-surface px-3.5 focus-within:border-sr-400 focus-within:ring-2 focus-within:ring-sr-100">
+      <div className="flex items-center gap-2 rounded-full border border-field bg-sr-surface px-3.5 focus-within:border-sr-400 focus-within:ring-2 focus-within:ring-sr-100">
         <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-sr-muted" aria-hidden="true">
           <path
             d="M9 3.5a5.5 5.5 0 104 9.3l3.3 3.3 1.2-1.2-3.3-3.3A5.5 5.5 0 009 3.5zm0 1.6a3.9 3.9 0 110 7.8 3.9 3.9 0 010-7.8z"

@@ -104,7 +104,7 @@ export function PhotoUploadField({
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="rounded-md border border-line-strong px-2.5 py-1.5 text-xs font-medium text-ink-soft hover:border-brand-400 hover:text-brand-700"
+              className="rounded-md border border-line-strong px-2.5 py-1.5 text-xs font-medium text-ink-soft hover:border-brand-400 hover:text-brand-600"
             >
               Replace
             </button>
@@ -131,14 +131,14 @@ export function PhotoUploadField({
             if (file) void send(file);
           }}
           className={`rounded-lg border border-dashed p-4 text-center transition ${
-            dragging ? "border-brand-500 bg-brand-50" : "border-line-strong bg-paper"
+            dragging ? "border-brand-500 bg-brand-50" : "border-field bg-paper"
           }`}
         >
           <button
             type="button"
             disabled={busy}
             onClick={() => inputRef.current?.click()}
-            className="rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60"
+            className="rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60"
           >
             {busy ? "Uploading…" : "Upload Image"}
           </button>

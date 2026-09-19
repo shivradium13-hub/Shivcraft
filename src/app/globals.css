@@ -3,96 +3,115 @@
 /**
  * Shiv Radium design tokens.
  *
- * One brand, two views of the same palette. `brand-*` and the neutrals below
- * dress the storefront; the `sr-*` set further down dresses the Categories
- * browser and the admin. They resolve to the same orange, the same warm gold
- * and the same warm-grey neutrals, so the two halves of the site read as one
- * shop. Changing a value here moves every component that uses the token —
- * which is the point, and why the class names carry no colour of their own.
+ * Taken from the logo: orange as the single accent, near-black for text and
+ * dark sections, white dominant everywhere else. No second hue — no blue,
+ * green or purple appears in this file except in the four status colours,
+ * which report what happened and must not be mistaken for brand.
  *
- * Orange is the single accent, gold is used sparingly for what the customer is
- * meant to press, and the greys carry a warm bias rather than being pure.
+ * Intended balance: roughly 65-70% white and light ground, 20-25% near-black
+ * text and dark sections, 8-12% orange. Orange is for what the customer is
+ * meant to act on — buttons, prices, active states, badges, links, icons —
+ * not for filling panels.
+ *
+ * `brand-*` and the neutrals dress the storefront; the `sr-*` set below dresses
+ * the Categories browser and the admin under the names those screens already
+ * use. Both resolve to identical values, so the whole site is one palette and a
+ * change here moves every component at once.
  */
 @theme {
-  /* Shiv Radium orange. 50-700 match the sr-* ramp exactly; 800 and 900
-     continue it for the hero gradient and for text on a gold button. */
-  --color-brand-50: #fff4ee;
-  --color-brand-100: #ffe6d7;
-  --color-brand-200: #ffc9ab;
-  --color-brand-300: #ffa274;
-  --color-brand-400: #f77a42;
-  --color-brand-500: #e35d24;
-  --color-brand-600: #c54812;
-  --color-brand-700: #9d380e;
-  --color-brand-800: #7a2c0b;
-  --color-brand-900: #4a1a06;
+  /* Shiv Radium orange. 500 is the brand primary, 600 its hover, 400 the
+     brighter tone the gradient starts from. */
+  --color-brand-50: #fff3ea;
+  --color-brand-100: #fce5d5;
+  --color-brand-200: #f8cdaf;
+  --color-brand-300: #f3ae79;
+  --color-brand-400: #f28c28;
+  --color-brand-500: #e57836;
+  --color-brand-600: #d65229;
+  --color-brand-700: #b54320;
+  --color-brand-800: #8e3418;
+  --color-brand-900: #5e2210;
 
-  /* Warm gold, built around --color-sr-gold. 400 is the call-to-action fill
-     and 300 its lighter hover, so the ramp must lighten upwards there. */
-  --color-marigold-50: #fbf3dc;
-  --color-marigold-100: #f7e9bf;
-  --color-marigold-200: #eed893;
-  --color-marigold-300: #e2c45f;
-  --color-marigold-400: #c9a227;
-  --color-marigold-500: #a9871d;
-  --color-marigold-600: #8a6d17;
-  --color-marigold-700: #6b5413;
+  /* Kept as an alias of the orange ramp rather than a second hue, so the
+     components that still ask for `marigold` stay on brand. */
+  --color-marigold-50: #fff3ea;
+  --color-marigold-100: #fce5d5;
+  --color-marigold-200: #f8cdaf;
+  --color-marigold-300: #f3ae79;
+  --color-marigold-400: #f28c28;
+  --color-marigold-500: #e57836;
+  --color-marigold-600: #d65229;
+  --color-marigold-700: #b54320;
 
-  /* The same neutrals the sr-* set uses, so a page built from either token
-     group sits on the same paper. */
-  --color-ink: #221f1d;
-  --color-ink-soft: #4a4542;
-  --color-muted: #7d7772;
-  --color-line: #ece8e4;
-  --color-line-strong: #ddd6d0;
-  --color-canvas: #fbfaf9;
+  /* Text and lines. */
+  --color-ink: #0d1015;
+  --color-ink-soft: #55585d;
+  --color-muted: #888b90;
+  --color-line: #f1f1f1;
+  --color-line-strong: #e8e8e8;
+
+  /* Ground. `paper` is a card, `canvas` the page behind it, `soft` the warm
+     tint used for hover, table headers and offer panels. */
   --color-paper: #ffffff;
+  --color-canvas: #fafafa;
+  --color-soft: #fff8f3;
 
-  /* Status colours stay as they are: these report what happened, and tinting
-     them toward the brand would make a failure look like an offer. */
+  /* Dark sections: footer, and anything that needs premium contrast. */
+  --color-night: #0d1015;
+  --color-night-soft: #23262b;
+  --color-night-line: #2b2e32;
+  --color-night-muted: #b4b4b4;
+
+  /* Inputs. */
+  --color-field: #dadada;
+  --color-field-placeholder: #9a9a9a;
+
+  /* Status colours stay as they are: a failed payment must not be tinted
+     toward the brand, and these are the only non-orange hues in the system. */
   --color-success: #1f7a4d;
   --color-success-soft: #e6f4ec;
   --color-danger: #b3261e;
   --color-danger-soft: #fceae9;
+  --color-warn: #a35a12;
   --color-info: #1f5f7a;
   --color-info-soft: #e5f1f5;
 
-  /* ------------------------------------------ SHIV RADIUM (sr-*) -------
+  /* --------------------------------------- SHIV RADIUM (sr-*) ----------
      The same palette under the names the Categories browser and the admin
-     already use. Kept as its own set because those screens name their
-     neutrals differently (sr-surface, sr-body), not because the brand
-     differs — the values above and below are deliberately identical.      */
-  --color-sr-50: #fff4ee;
-  --color-sr-100: #ffe6d7;
-  --color-sr-200: #ffc9ab;
-  --color-sr-300: #ffa274;
-  --color-sr-400: #f77a42;
-  --color-sr-500: #e35d24;
-  --color-sr-600: #c54812;
-  --color-sr-700: #9d380e;
+     already use. Identical values on purpose.                            */
+  --color-sr-50: #fff3ea;
+  --color-sr-100: #fce5d5;
+  --color-sr-200: #f8cdaf;
+  --color-sr-300: #f3ae79;
+  --color-sr-400: #f28c28;
+  --color-sr-500: #e57836;
+  --color-sr-600: #d65229;
+  --color-sr-700: #b54320;
 
-  --color-sr-gold: #c9a227;
-  --color-sr-gold-soft: #fbf3dc;
+  --color-sr-gold: #d65229;
+  --color-sr-gold-soft: #fff3ea;
 
-  --color-sr-ink: #221f1d;
-  --color-sr-body: #4a4542;
-  --color-sr-muted: #7d7772;
-  --color-sr-line: #ece8e4;
-  --color-sr-line-strong: #ddd6d0;
+  --color-sr-ink: #0d1015;
+  --color-sr-body: #55585d;
+  --color-sr-muted: #888b90;
+  --color-sr-line: #f1f1f1;
+  --color-sr-line-strong: #e8e8e8;
   --color-sr-surface: #ffffff;
-  --color-sr-canvas: #fbfaf9;
+  --color-sr-canvas: #fafafa;
+  --color-sr-soft: #fff8f3;
 
-  --shadow-sr-card: 0 1px 2px rgba(34, 31, 29, 0.04), 0 4px 14px -8px rgba(34, 31, 29, 0.14);
-  --shadow-sr-lift: 0 2px 6px rgba(34, 31, 29, 0.06), 0 12px 26px -12px rgba(34, 31, 29, 0.22);
+  --shadow-sr-card: 0 2px 8px rgba(13, 16, 21, 0.06);
+  --shadow-sr-lift: 0 8px 24px rgba(13, 16, 21, 0.1);
 
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), Georgia, serif;
 
   --radius-card: 0.875rem;
 
-  --shadow-card: 0 1px 2px rgba(34, 31, 29, 0.05), 0 6px 18px -10px rgba(34, 31, 29, 0.16);
-  --shadow-lift: 0 2px 4px rgba(34, 31, 29, 0.06), 0 14px 32px -14px rgba(34, 31, 29, 0.26);
-  --shadow-bar: 0 -1px 0 var(--color-line), 0 -8px 24px -18px rgba(34, 31, 29, 0.3);
+  --shadow-card: 0 2px 8px rgba(13, 16, 21, 0.06);
+  --shadow-lift: 0 8px 24px rgba(13, 16, 21, 0.1);
+  --shadow-bar: 0 -1px 0 var(--color-line), 0 -8px 24px -18px rgba(13, 16, 21, 0.3);
+  --shadow-orange: 0 8px 25px rgba(229, 120, 54, 0.22);
 }
 
 @layer base {
@@ -115,7 +134,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-brand-600);
+    outline: 2px solid var(--color-brand-500);
     outline-offset: 2px;
     border-radius: 2px;
   }
@@ -126,6 +145,20 @@
 }
 
 @layer components {
+  /* The one place orange is allowed to fill a shape: the primary call to
+     action. Everything else uses flat --color-brand-500. */
+  .gc-cta {
+    background: linear-gradient(135deg, #f28c28 0%, #e57836 45%, #d65229 100%);
+    color: #ffffff;
+    box-shadow: var(--shadow-orange);
+  }
+  .gc-cta:hover {
+    background: linear-gradient(135deg, #e57836 0%, #d65229 55%, #b54320 100%);
+  }
+  .gc-cta:disabled {
+    box-shadow: none;
+  }
+
   .gc-hide-scrollbar {
     scrollbar-width: none;
   }

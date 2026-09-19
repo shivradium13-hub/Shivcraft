@@ -63,12 +63,12 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
           name="q"
           defaultValue={query}
           placeholder="Product name or SKU"
-          className="min-w-0 flex-1 rounded-lg border border-sr-line-strong bg-sr-surface px-3 py-2 text-sm outline-none focus:border-sr-400"
+          className="min-w-0 flex-1 rounded-lg border border-field bg-sr-surface px-3 py-2 text-sm outline-none focus:border-sr-400"
         />
         <select
           name="categoryId"
           defaultValue={categoryId}
-          className="rounded-lg border border-sr-line-strong bg-sr-surface px-3 py-2 text-sm"
+          className="rounded-lg border border-field bg-sr-surface px-3 py-2 text-sm"
         >
           <option value="">All categories</option>
           {tree.map((top) => (
@@ -95,7 +95,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
               className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                 state === key
                   ? "border-sr-500 bg-sr-500 text-white"
-                  : "border-sr-line-strong bg-sr-surface text-sr-body hover:border-sr-300"
+                  : "border-field bg-sr-surface text-sr-body hover:border-sr-300"
               }`}
             >
               {label}
@@ -105,14 +105,14 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
       </div>
 
       {rows.length === 0 ? (
-        <p className="mt-6 rounded-2xl border border-dashed border-sr-line-strong bg-sr-surface px-6 py-12 text-center text-sm text-sr-muted">
+        <p className="mt-6 rounded-2xl border border-dashed border-field bg-sr-surface px-6 py-12 text-center text-sm text-sr-muted">
           No products match this filter.
         </p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-2xl border border-sr-line bg-sr-surface">
           <table className="w-full min-w-[820px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-sr-line bg-sr-canvas text-left">
+              <tr className="border-b border-sr-line bg-sr-soft text-left">
                 {["", "Product", "Category", "Price", "Stock", "Status", ""].map((h, i) => (
                   <th key={i} className="px-3 py-2.5 text-[11px] font-semibold tracking-wide text-sr-muted uppercase">
                     {h}

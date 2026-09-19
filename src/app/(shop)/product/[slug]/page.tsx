@@ -108,17 +108,17 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
       />
 
       <nav aria-label="Breadcrumb" className="mb-4 flex flex-wrap items-center gap-1.5 text-xs text-muted">
-        <Link href="/" className="hover:text-brand-700">Home</Link>
+        <Link href="/" className="hover:text-brand-600">Home</Link>
         <span aria-hidden="true">/</span>
         {product.parent ? (
           <>
-            <Link href={`/category/${product.parent.slug}`} className="hover:text-brand-700">
+            <Link href={`/category/${product.parent.slug}`} className="hover:text-brand-600">
               {product.parent.name}
             </Link>
             <span aria-hidden="true">/</span>
           </>
         ) : null}
-        <Link href={`/category/${product.category.slug}`} className="hover:text-brand-700">
+        <Link href={`/category/${product.category.slug}`} className="hover:text-brand-600">
           {product.category.name}
         </Link>
         <span aria-hidden="true">/</span>
@@ -155,11 +155,11 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
           </div>
 
           <div className="mt-4 flex flex-wrap items-baseline gap-3">
-            <span className="font-display text-3xl font-semibold text-ink">{formatPaise(price)}</span>
+            <span className="font-display text-3xl font-semibold text-brand-500">{formatPaise(price)}</span>
             {off > 0 ? (
               <>
                 <span className="text-base text-muted line-through">{formatPaise(product.priceP)}</span>
-                <span className="rounded-md bg-success-soft px-2 py-0.5 text-sm font-semibold text-success">
+                <span className="rounded-md bg-brand-500 px-2 py-0.5 text-sm font-semibold text-white">
                   {off}% OFF
                 </span>
               </>

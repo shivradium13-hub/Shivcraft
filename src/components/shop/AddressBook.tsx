@@ -17,7 +17,7 @@ export type SavedAddress = {
 };
 
 const input =
-  "w-full rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-brand-500";
+  "w-full rounded-lg border border-field bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-brand-500";
 
 const BLANK = {
   fullName: "", phone: "", line1: "", line2: "", area: "",
@@ -177,7 +177,7 @@ export function AddressBook({ initial }: { initial: SavedAddress[] }) {
           type="button"
           disabled={busy}
           onClick={save}
-          className="rounded-full bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
         >
           {busy ? "Saving…" : editing === "NEW" ? "Save address" : "Save changes"}
         </button>
@@ -233,7 +233,7 @@ export function AddressBook({ initial }: { initial: SavedAddress[] }) {
               <button
                 type="button"
                 onClick={() => startEdit(address)}
-                className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft hover:border-brand-400 hover:text-brand-700"
+                className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft hover:border-brand-400 hover:text-brand-600"
               >
                 Edit
               </button>
@@ -242,7 +242,7 @@ export function AddressBook({ initial }: { initial: SavedAddress[] }) {
                   type="button"
                   disabled={busy}
                   onClick={() => makeDefault(address)}
-                  className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft hover:border-brand-400 hover:text-brand-700 disabled:opacity-50"
+                  className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft hover:border-brand-400 hover:text-brand-600 disabled:opacity-50"
                 >
                   Make default
                 </button>
@@ -270,7 +270,7 @@ export function AddressBook({ initial }: { initial: SavedAddress[] }) {
             setDraft(BLANK);
             setErrors({});
           }}
-          className="w-full rounded-card border border-dashed border-line-strong px-4 py-3 text-sm font-semibold text-ink-soft transition hover:border-brand-400 hover:text-brand-700"
+          className="w-full rounded-card border border-dashed border-line-strong px-4 py-3 text-sm font-semibold text-ink-soft transition hover:border-brand-400 hover:text-brand-600"
         >
           + Add a new address
         </button>

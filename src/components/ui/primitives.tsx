@@ -49,7 +49,7 @@ export function Stars({ rating, className = "" }: { rating: number; className?: 
           <svg key={i} viewBox="0 0 20 20" className="h-3.5 w-3.5" aria-hidden="true">
             <defs>
               <linearGradient id={`half-${i}`}>
-                <stop offset="50%" stopColor="var(--color-marigold-400)" />
+                <stop offset="50%" stopColor="var(--color-brand-500)" />
                 <stop offset="50%" stopColor="var(--color-line-strong)" />
               </linearGradient>
             </defs>
@@ -57,7 +57,7 @@ export function Stars({ rating, className = "" }: { rating: number; className?: 
               d="M10 1.6l2.47 5.005 5.525.803-3.998 3.896.944 5.502L10 14.21l-4.94 2.596.943-5.502L2.005 7.408l5.524-.803z"
               fill={
                 fill === "full"
-                  ? "var(--color-marigold-400)"
+                  ? "var(--color-brand-500)"
                   : fill === "half"
                     ? `url(#half-${i})`
                     : "var(--color-line-strong)"
@@ -78,8 +78,10 @@ export function Badge({
   tone?: "brand" | "marigold" | "success" | "danger";
 }) {
   const tones = {
-    brand: "bg-brand-600 text-white",
-    marigold: "bg-marigold-400 text-brand-900",
+    // Two weights of the same orange rather than two hues: solid for the
+    // badge that should be noticed first, tinted for the supporting one.
+    brand: "bg-brand-50 text-brand-700",
+    marigold: "bg-brand-500 text-white",
     success: "bg-success text-white",
     danger: "bg-danger text-white",
   } as const;
@@ -105,7 +107,7 @@ export function SectionHeading({
     <div className="mb-5 flex items-end justify-between gap-4">
       <div>
         {eyebrow ? (
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-brand-500">
+          <p className="mb-1 text-xs font-semibold tracking-[0.14em] text-brand-600 uppercase">
             {eyebrow}
           </p>
         ) : null}
@@ -128,7 +130,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-card border border-dashed border-line-strong bg-paper px-6 py-14 text-center">
+    <div className="rounded-card border border-dashed border-field bg-paper px-6 py-14 text-center">
       <h3 className="font-display text-xl font-semibold text-ink">{title}</h3>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted">{message}</p>
       {action ? <div className="mt-6">{action}</div> : null}

@@ -32,7 +32,7 @@ export type AdminCouponView = {
 export type CategoryOption = { id: string; label: string };
 
 const input =
-  "w-full rounded-lg border border-sr-line-strong bg-sr-surface px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
+  "w-full rounded-lg border border-field bg-sr-surface px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
 
 type FormValues = {
   code: string;
@@ -236,7 +236,7 @@ export function CouponManager({
       ) : null}
 
       {coupons.length === 0 ? (
-        <p className="mt-6 rounded-card border border-dashed border-sr-line-strong bg-sr-surface px-4 py-10 text-center text-sm text-sr-muted">
+        <p className="mt-6 rounded-card border border-dashed border-field bg-sr-surface px-4 py-10 text-center text-sm text-sr-muted">
           No coupons yet.
         </p>
       ) : (

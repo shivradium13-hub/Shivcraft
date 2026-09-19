@@ -53,13 +53,13 @@ export function PincodeCheck() {
             setResult(null);
           }}
           onKeyDown={(e) => e.key === "Enter" && pincode.length === 6 && void check()}
-          className="min-w-0 flex-1 rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
+          className="min-w-0 flex-1 rounded-lg border border-field bg-paper px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
         <button
           type="button"
           disabled={pincode.length !== 6 || busy}
           onClick={check}
-          className="shrink-0 rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-45"
+          className="shrink-0 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-45"
         >
           {busy ? "Checking…" : "Check"}
         </button>

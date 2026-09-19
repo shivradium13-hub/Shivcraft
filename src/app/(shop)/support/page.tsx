@@ -88,7 +88,7 @@ export default async function SupportPage() {
         <h2 className="font-display text-lg font-semibold text-ink">Talk to us</h2>
         {channels.length === 0 ? (
           /* Said plainly rather than inventing a helpline. */
-          <p className="mt-2 rounded-card border border-dashed border-line-strong bg-paper px-4 py-4 text-sm text-muted">
+          <p className="mt-2 rounded-card border border-dashed border-field bg-paper px-4 py-4 text-sm text-muted">
             We have not published a contact channel yet. If you have an order with us, the fastest
             route is the order page in your account, which shows exactly where it has reached.
           </p>

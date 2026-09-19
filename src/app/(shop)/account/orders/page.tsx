@@ -36,7 +36,7 @@ export default async function MyOrdersPage() {
       </p>
 
       {orders.length === 0 ? (
-        <div className="rounded-card border border-dashed border-line-strong bg-paper px-6 py-14 text-center">
+        <div className="rounded-card border border-dashed border-field bg-paper px-6 py-14 text-center">
           <span aria-hidden="true" className="text-3xl">📦</span>
           <h2 className="mt-3 font-display text-xl font-semibold text-ink">No orders yet</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
@@ -45,7 +45,7 @@ export default async function MyOrdersPage() {
           </p>
           <Link
             href="/categories"
-            className="mt-6 inline-block rounded-full bg-brand-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
+            className="mt-6 inline-block rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
           >
             Start shopping
           </Link>

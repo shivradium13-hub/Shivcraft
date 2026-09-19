@@ -20,7 +20,7 @@ export type AdminCategory = {
 export type AdminCategoryNode = AdminCategory & { children: AdminCategory[] };
 
 const input =
-  "w-full rounded-lg border border-sr-line-strong bg-sr-surface px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
+  "w-full rounded-lg border border-field bg-sr-surface px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
 
 export function CategoryManager({ tree }: { tree: AdminCategoryNode[] }) {
   const router = useRouter();
@@ -404,7 +404,7 @@ function AddForm({
       />
       {!parentId ? (
         <input
-          className="w-20 rounded-lg border border-sr-line-strong bg-sr-surface px-3 py-2 text-sm"
+          className="w-20 rounded-lg border border-field bg-sr-surface px-3 py-2 text-sm"
           placeholder="🎁"
           maxLength={8}
           value={icon}

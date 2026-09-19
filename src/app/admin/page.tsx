@@ -67,7 +67,7 @@ export default async function AdminDashboard() {
           <div className="mt-2 overflow-x-auto rounded-2xl border border-sr-line bg-sr-surface">
             <table className="w-full min-w-[480px] border-collapse">
               <thead>
-                <tr className="border-b border-sr-line bg-sr-canvas text-left">
+                <tr className="border-b border-sr-line bg-sr-soft text-left">
                   <th className="px-4 py-2.5 text-[11px] font-semibold tracking-wide text-sr-muted uppercase">
                     Product
                   </th>
@@ -100,7 +100,7 @@ export default async function AdminDashboard() {
       </section>
 
       {/* Honest about what is not built yet, rather than showing dead links. */}
-      <section className="mt-8 rounded-2xl border border-dashed border-sr-line-strong bg-sr-surface p-5">
+      <section className="mt-8 rounded-2xl border border-dashed border-field bg-sr-surface p-5">
         <h2 className="font-display text-base font-semibold text-sr-ink">Not built yet</h2>
         <p className="mt-1 max-w-2xl text-sm text-sr-muted">
           Coupon, banner, review and customer management are still to come. They are
