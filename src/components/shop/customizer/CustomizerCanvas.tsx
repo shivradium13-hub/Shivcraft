@@ -185,10 +185,12 @@ function ZoneLayer({
             transformOrigin: "center",
             filter: `brightness(${value.photo.brightness}%) contrast(${value.photo.contrast}%) saturate(${value.photo.saturation}%)`,
           }}
-          className="absolute top-1/2 left-1/2 max-w-none"
-          /* Cover the zone's shorter side at scale 1. */
-          width="100%"
-          height="100%"
+          /* object-fit: cover is what makes scale 1 mean "exactly covers the
+             zone with the photo's own proportions kept". Without it the image
+             is stretched to the zone box, and a 3:2 photo in a 4:3 area comes
+             out squashed — which no amount of zooming can undo. The production
+             renderer reproduces this same rule. */
+          className="absolute top-1/2 left-1/2 h-full w-full max-w-none object-cover"
         />
       ) : null}
 

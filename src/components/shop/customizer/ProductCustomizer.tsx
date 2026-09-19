@@ -193,7 +193,7 @@ export function ProductCustomizer({
               /* Orientation-aware start: a photo whose shape differs from the
                  zone is scaled to cover it, so the customer never opens on a
                  picture with empty bars beside it (§10). */
-              scale: startingScale(size, zone),
+              scale: startingScale(),
               rotation: 0,
               flipH: false,
               flipV: false,
@@ -764,12 +764,16 @@ async function readImageSize(file: File): Promise<{ width: number; height: numbe
   });
 }
 
-/** Scale that makes the photo cover the zone rather than sit inside it. */
-function startingScale(size: { width: number; height: number } | null, zone: CustomizerZone) {
-  if (!size || size.width === 0 || size.height === 0) return 1;
-  const photoRatio = size.width / size.height;
-  const zoneRatio = zone.width / zone.height;
-  return photoRatio > zoneRatio ? photoRatio / zoneRatio : zoneRatio / photoRatio;
+/**
+ * The zoom a freshly uploaded photo starts at.
+ *
+ * Always 1: the canvas covers the zone with object-fit, so scale 1 already
+ * fills it with the photo's own proportions intact, whatever shape it is.
+ * An earlier version scaled by the ratio between photo and zone, which only
+ * made a stretched image bigger.
+ */
+function startingScale() {
+  return 1;
 }
 
 /** The same arithmetic the server uses, mirrored here only so the customer

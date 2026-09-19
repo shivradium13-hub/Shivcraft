@@ -20,9 +20,13 @@ import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas"
 export function OrderDesignPanel({
   raw,
   lineLabel,
+  orderNumber,
+  itemId,
 }: {
   raw: unknown;
   lineLabel: string;
+  orderNumber: string;
+  itemId: string;
 }) {
   const [showData, setShowData] = useState(false);
 
@@ -112,13 +116,24 @@ export function OrderDesignPanel({
                         {photo.flipH ? ", flipped" : ""}
                       </p>
                     </div>
-                    <a
-                      href={`/api/uploads/${photo.uploadId}`}
-                      download
-                      className="shrink-0 rounded-lg border border-sr-600 px-3 py-1.5 text-xs font-semibold text-sr-700 hover:bg-sr-50"
-                    >
-                      Download original
-                    </a>
+                    <span className="flex shrink-0 gap-1.5">
+                      <a
+                        href={`/api/uploads/${photo.uploadId}`}
+                        download
+                        className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400"
+                      >
+                        Original
+                      </a>
+                      {/* The artwork at its real physical size, with the crop
+                          already applied. This is the file to send to press. */}
+                      <a
+                        href={`/api/admin/orders/${orderNumber}/production?item=${itemId}&zone=${zoneId}`}
+                        download
+                        className="rounded-lg bg-sr-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sr-700"
+                      >
+                        Print file
+                      </a>
+                    </span>
                   </li>
                 ))}
               </ul>

@@ -94,7 +94,12 @@ export default async function AdminOrderPage(props: PageProps<"/admin/orders/[or
                   {/* The customizer design, rendered from the snapshot frozen
                       at checkout rather than from the product as it is now. */}
                   {item.design ? (
-                    <OrderDesignPanel raw={item.design} lineLabel={item.productName} />
+                    <OrderDesignPanel
+                      raw={item.design}
+                      lineLabel={item.productName}
+                      orderNumber={order.orderNumber}
+                      itemId={item.id}
+                    />
                   ) : null}
 
                   {/* What the workshop actually needs to make it. */}
