@@ -13,6 +13,8 @@ import {
 import type { Shopper } from "@/server/shop/identity";
 
 import { designSchema } from "@/lib/customizer/design";
+import { readConfig } from "@/lib/customizer/schema";
+import { customizationFeeP, describeOptions } from "@/server/customizer/service";
 
 import { checkCoupon, computeTotals, getShopSettings, type CartTotals } from "./pricing";
 
@@ -39,6 +41,10 @@ export type CartLine = {
   /** A one-line description of that design for the cart, e.g. "1 photo ·
    *  Priya & Arjun". Null when the line is not personalised. */
   designSummary: string | null;
+  /** Colour, size, material and the like, as chosen. */
+  designOptions: { label: string; value: string; sku: string; priceDeltaP: number }[];
+  /** What personalising added to the unit price, in paise. */
+  customizationFeeP: number;
   savedForLater: boolean;
 };
 
@@ -147,7 +153,15 @@ export async function getCartView(shopper: Shopper): Promise<CartView> {
       .filter((v): v is NonNullable<typeof v> => Boolean(v));
 
     const delta = chosen.reduce((sum, v) => sum + v.priceDeltaP, 0);
-    const unitPriceP = effectivePriceP(row.product) + delta;
+
+    /* Personalisation is priced from the product's stored configuration, never
+       from anything the browser sent, and recomputed on every read so an admin
+       changing an option's price is reflected before checkout (§28, §48). */
+    const design = designSchema.safeParse(row.item.design);
+    const config = readConfig(row.product.customizer);
+    const customFee = design.success ? customizationFeeP(config, design.data) : 0;
+
+    const unitPriceP = effectivePriceP(row.product) + delta + customFee;
 
     return {
       id: row.item.id,
@@ -166,6 +180,8 @@ export async function getCartView(shopper: Shopper): Promise<CartView> {
       customization: row.item.customization,
       design: row.item.design ?? null,
       designSummary: summariseDesign(row.item.design),
+      designOptions: design.success ? describeOptions(config, design.data) : [],
+      customizationFeeP: customFee,
       savedForLater: row.item.savedForLater,
     };
   };

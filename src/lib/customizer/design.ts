@@ -28,6 +28,12 @@ export const photoPlacementSchema = z.object({
    *  server-side rather than trusting a number from the browser. */
   naturalWidth: z.number().int().positive().max(20000).nullable().default(null),
   naturalHeight: z.number().int().positive().max(20000).nullable().default(null),
+  /** Percentages, 100 being untouched. Stored as numbers rather than a baked
+   *  image so the original stays pristine and the look is reproducible at
+   *  print resolution. */
+  brightness: z.number().min(50).max(150).default(100),
+  contrast: z.number().min(50).max(150).default(100),
+  saturation: z.number().min(0).max(200).default(100),
 });
 export type PhotoPlacement = z.infer<typeof photoPlacementSchema>;
 
@@ -53,13 +59,15 @@ export const designSchema = z.object({
   /** The view the customer was last looking at, restored when they return. */
   viewId: z.string().max(64),
   zones: z.record(z.string().max(64), zoneValueSchema).default({}),
+  /** { optionGroupId: optionId } — colour, size, material, LED colour. */
+  options: z.record(z.string().max(64), z.string().max(64)).default({}),
 });
 export type CustomerDesign = z.infer<typeof designSchema>;
 
 /** A design that is present but empty — used when a customer opens a
  *  customisable product before touching anything. */
 export function emptyDesign(configVersion: number, viewId: string): CustomerDesign {
-  return { configVersion, viewId, zones: {} };
+  return { configVersion, viewId, zones: {}, options: {} };
 }
 
 /**
@@ -83,7 +91,11 @@ export function designFingerprint(design: CustomerDesign | null): string {
       return `${key}:T:${t.value}:${t.fontFamily ?? ""}:${t.color ?? ""}:${t.align ?? ""}:${t.fontSizePct ?? ""}`;
     })
     .join("|");
-  return `${design.configVersion}#${zones}`;
+  const options = Object.keys(design.options)
+    .sort()
+    .map((key) => `${key}=${design.options[key]}`)
+    .join(",");
+  return `${design.configVersion}#${zones}#${options}`;
 }
 
 /** Whether the customer has put anything in at all. */

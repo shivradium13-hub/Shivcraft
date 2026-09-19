@@ -6,6 +6,7 @@ import { emptyDesign, type CustomerDesign } from "@/lib/customizer/design";
 import {
   EMPTY_CONFIG,
   type CustomizerConfig,
+  type CustomizerOptionGroup,
   type CustomizerView,
   type CustomizerZone,
 } from "@/lib/customizer/schema";
@@ -27,7 +28,7 @@ import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas"
 const input =
   "w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
 
-type Tab = "views" | "zones" | "tools";
+type Tab = "views" | "zones" | "options" | "tools";
 
 export function CustomizerBuilder({
   productId,
@@ -234,7 +235,7 @@ export function CustomizerBuilder({
       {/* ------------------------------------------------------- controls */}
       <div>
         <div className="flex flex-wrap gap-1.5">
-          {(["views", "zones", "tools"] as Tab[]).map((t) => (
+          {(["views", "zones", "options", "tools"] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -243,7 +244,13 @@ export function CustomizerBuilder({
                 tab === t ? "border-sr-600 bg-sr-600 text-white" : "border-sr-line-strong text-sr-body"
               }`}
             >
-              {t === "views" ? "Product views" : t === "zones" ? "Editable areas" : "Customer tools"}
+              {t === "views"
+                ? "Product views"
+                : t === "zones"
+                  ? "Editable areas"
+                  : t === "options"
+                    ? "Colours & sizes"
+                    : "Customer tools"}
             </button>
           ))}
         </div>
@@ -330,6 +337,8 @@ export function CustomizerBuilder({
               }
             />
           ) : null}
+
+          {tab === "options" ? <OptionsTab config={config} onChange={setConfig} /> : null}
 
           {tab === "tools" ? <ToolsTab config={config} onChange={setConfig} /> : null}
         </div>
@@ -634,6 +643,204 @@ function ZonesTab({
       ) : (
         <p className="text-sm text-sr-muted">Pick an area above, or add one.</p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Choices that are not content: colour, thickness, size, LED colour.
+ *
+ * One editor for all of them, because they are one record in the schema.
+ * Adding "border colour" later needs no new code here or on the customer side.
+ */
+function OptionsTab({
+  config,
+  onChange,
+}: {
+  config: CustomizerConfig;
+  onChange: (next: CustomizerConfig) => void;
+}) {
+  const patch = (id: string, next: Partial<CustomizerOptionGroup>) =>
+    onChange({
+      ...config,
+      optionGroups: config.optionGroups.map((g) => (g.id === id ? { ...g, ...next } : g)),
+    });
+
+  const newId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 7)}`;
+
+  return (
+    <div className="grid gap-4">
+      <p className="text-sm text-sr-muted">
+        Each option can move the price, and an LED group tints the glow layer on any lit view.
+      </p>
+
+      {config.optionGroups.map((group) => (
+        <div key={group.id} className="rounded-lg border border-sr-line p-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="Group name">
+              <input
+                className={input}
+                value={group.label}
+                onChange={(e) => patch(group.id, { label: e.target.value })}
+              />
+            </Field>
+            <Field label="Shown as">
+              <select
+                className={input}
+                value={group.kind}
+                onChange={(e) =>
+                  patch(group.id, { kind: e.target.value as CustomizerOptionGroup["kind"] })
+                }
+              >
+                <option value="CHOICE">Labelled buttons</option>
+                <option value="SWATCH">Colour swatches</option>
+                <option value="LED">LED colour, tints the glow</option>
+              </select>
+            </Field>
+            <Field label="Help text">
+              <input
+                className={input}
+                value={group.helpText}
+                onChange={(e) => patch(group.id, { helpText: e.target.value })}
+              />
+            </Field>
+          </div>
+
+          <ul className="mt-3 grid gap-2">
+            {group.options.map((option, i) => (
+              <li
+                key={option.id}
+                className="grid gap-2 rounded-lg bg-sr-canvas p-2 sm:grid-cols-[1fr_auto_auto_auto_auto]"
+              >
+                <input
+                  className={input}
+                  value={option.label}
+                  placeholder="Name"
+                  onChange={(e) =>
+                    patch(group.id, {
+                      options: group.options.map((o, j) => (j === i ? { ...o, label: e.target.value } : o)),
+                    })
+                  }
+                />
+                <input
+                  type="color"
+                  title="Swatch colour"
+                  className="h-10 w-12 rounded-lg border border-field bg-field-bg"
+                  value={option.hex ?? "#000000"}
+                  onChange={(e) =>
+                    patch(group.id, {
+                      options: group.options.map((o, j) => (j === i ? { ...o, hex: e.target.value } : o)),
+                    })
+                  }
+                />
+                <input
+                  type="number"
+                  title="Price change, in rupees"
+                  className={`${input} sm:w-28`}
+                  value={option.priceDeltaP / 100}
+                  onChange={(e) =>
+                    patch(group.id, {
+                      options: group.options.map((o, j) =>
+                        j === i ? { ...o, priceDeltaP: Math.round(Number(e.target.value) * 100) || 0 } : o,
+                      ),
+                    })
+                  }
+                />
+                <label className="flex items-center gap-1.5 px-1 text-xs whitespace-nowrap text-sr-body">
+                  <input
+                    type="checkbox"
+                    checked={option.available}
+                    onChange={(e) =>
+                      patch(group.id, {
+                        options: group.options.map((o, j) =>
+                          j === i ? { ...o, available: e.target.checked } : o,
+                        ),
+                      })
+                    }
+                  />
+                  In stock
+                </label>
+                <button
+                  type="button"
+                  disabled={group.options.length <= 1}
+                  onClick={() => patch(group.id, { options: group.options.filter((_, j) => j !== i) })}
+                  className="rounded-lg border border-danger px-2 py-1 text-xs font-semibold text-danger disabled:opacity-40"
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                patch(group.id, {
+                  options: [
+                    ...group.options,
+                    {
+                      id: newId("opt"),
+                      label: "New option",
+                      hex: "#000000",
+                      priceDeltaP: 0,
+                      available: true,
+                      sku: "",
+                    },
+                  ],
+                })
+              }
+              className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
+            >
+              Add option
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onChange({
+                  ...config,
+                  optionGroups: config.optionGroups.filter((g) => g.id !== group.id),
+                })
+              }
+              className="rounded-lg border border-danger px-3 py-1.5 text-xs font-semibold text-danger"
+            >
+              Remove group
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() =>
+          onChange({
+            ...config,
+            optionGroups: [
+              ...config.optionGroups,
+              {
+                id: newId("grp"),
+                label: "Colour",
+                kind: "SWATCH",
+                required: true,
+                helpText: "",
+                options: [
+                  {
+                    id: newId("opt"),
+                    label: "Black",
+                    hex: "#0f121f",
+                    priceDeltaP: 0,
+                    available: true,
+                    sku: "",
+                  },
+                ],
+              },
+            ],
+          })
+        }
+        className="justify-self-start rounded-lg border border-sr-line-strong px-4 py-2 text-sm font-semibold text-sr-body"
+      >
+        Add a group
+      </button>
     </div>
   );
 }

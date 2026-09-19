@@ -3,7 +3,12 @@
 import type { CSSProperties } from "react";
 
 import type { CustomerDesign } from "@/lib/customizer/design";
-import { zonesForView, type CustomizerConfig, type CustomizerZone } from "@/lib/customizer/schema";
+import {
+  ledTint,
+  zonesForView,
+  type CustomizerConfig,
+  type CustomizerZone,
+} from "@/lib/customizer/schema";
 
 /**
  * The layered product preview.
@@ -44,6 +49,9 @@ export function CustomizerCanvas({
   if (!view) return null;
 
   const zones = zonesForView(config, view.id);
+  /* An LED group tints the glow layer, so choosing "warm white" or "blue"
+     changes the light rather than only the wording. */
+  const tint = view.isLit ? ledTint(config, design.options) : null;
 
   return (
     <div
@@ -86,14 +94,34 @@ export function CustomizerCanvas({
       {/* Screen blending is what makes an LED layer read as light rather than
           as a pale sticker over the product. */}
       {view.glow ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={view.glow}
-          alt=""
-          draggable={false}
-          style={{ mixBlendMode: "screen" }}
-          className="pointer-events-none absolute inset-0 h-full w-full object-contain"
-        />
+        <span className="pointer-events-none absolute inset-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={view.glow}
+            alt=""
+            draggable={false}
+            style={{ mixBlendMode: "screen" }}
+            className="absolute inset-0 h-full w-full object-contain"
+          />
+          {tint ? (
+            <span
+              aria-hidden="true"
+              style={{
+                background: tint,
+                mixBlendMode: "color",
+                WebkitMaskImage: `url(${view.glow})`,
+                maskImage: `url(${view.glow})`,
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+              }}
+              className="absolute inset-0"
+            />
+          ) : null}
+        </span>
       ) : null}
     </div>
   );
@@ -155,6 +183,7 @@ function ZoneLayer({
               `scale(${value.photo.scale * (value.photo.flipH ? -1 : 1)}, ${value.photo.scale * (value.photo.flipV ? -1 : 1)})`,
             ].join(" "),
             transformOrigin: "center",
+            filter: `brightness(${value.photo.brightness}%) contrast(${value.photo.contrast}%) saturate(${value.photo.saturation}%)`,
           }}
           className="absolute top-1/2 left-1/2 max-w-none"
           /* Cover the zone's shorter side at scale 1. */

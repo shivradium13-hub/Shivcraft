@@ -8,7 +8,12 @@ import {
   type CustomerDesign,
   type PhotoPlacement,
 } from "@/lib/customizer/design";
-import { zonesForView, type CustomizerConfig, type CustomizerZone } from "@/lib/customizer/schema";
+import {
+  resolveOption,
+  zonesForView,
+  type CustomizerConfig,
+  type CustomizerZone,
+} from "@/lib/customizer/schema";
 
 import { CustomizerCanvas } from "./CustomizerCanvas";
 import { usePhotoGestures } from "./usePhotoGestures";
@@ -46,12 +51,15 @@ export function ProductCustomizer({
   const storageKey = `sr:design:${productId}:v${config.version}`;
   const firstView = config.views[0]?.id ?? "";
 
-  const [design, setDesign] = useState<CustomerDesign>(() => restore(storageKey, config.version) ?? emptyDesign(config.version, firstView));
+  const [design, setDesign] = useState<CustomerDesign>(() =>
+    withDefaultOptions(restore(storageKey, config.version) ?? emptyDesign(config.version, firstView), config),
+  );
   const [activeZoneId, setActiveZoneId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [restored, setRestored] = useState(() => restore(storageKey, config.version) !== null);
   const [fullscreen, setFullscreen] = useState(false);
+
 
   /* State, not refs: the Undo and Redo buttons read these to decide whether
      they are available, and a ref would leave them frozen at their first
@@ -191,6 +199,9 @@ export function ProductCustomizer({
               flipV: false,
               naturalWidth: size?.width ?? null,
               naturalHeight: size?.height ?? null,
+              brightness: 100,
+              contrast: 100,
+              saturation: 100,
             },
           },
         },
@@ -206,7 +217,14 @@ export function ProductCustomizer({
   /* ---------------------------------------------------------------- price */
 
   const personalised = Object.keys(design.zones).length > 0;
-  const totalP = basePriceP + (personalised ? config.customizationFeeP : 0);
+
+  /* Mirrors the server arithmetic so the customer sees the same number before
+     committing. The server result is still what gets charged. */
+  const optionsDeltaP = config.optionGroups.reduce((sum, group) => {
+    const option = resolveOption(group, design.options[group.id]);
+    return sum + (option?.priceDeltaP ?? 0);
+  }, 0);
+  const totalP = basePriceP + (personalised ? config.customizationFeeP : 0) + optionsDeltaP;
 
   const quality = activeZone && activePhoto ? localQuality(activeZone, activePhoto) : null;
 
@@ -333,6 +351,69 @@ export function ProductCustomizer({
         </p>
       ) : null}
 
+      {/* ---------------------------------------------------------- options */}
+      {config.optionGroups.map((group) => {
+        const selected = resolveOption(group, design.options[group.id]);
+        return (
+          <fieldset key={group.id} className="mt-4">
+            <legend className="text-xs font-semibold text-ink">
+              {group.label}
+              {selected ? <span className="ml-1.5 font-normal text-muted">{selected.label}</span> : null}
+            </legend>
+            {group.helpText ? (
+              <p className="mt-0.5 text-[11px] text-muted">{group.helpText}</p>
+            ) : null}
+
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {group.options.map((option) => {
+                const active = selected?.id === option.id;
+                const swatch = group.kind !== "CHOICE" && option.hex;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    disabled={!option.available}
+                    aria-pressed={active}
+                    /* Named on the control itself rather than conveyed by
+                       colour alone, so a swatch works without seeing it. */
+                    aria-label={`${option.label}${option.available ? "" : " — out of stock"}`}
+                    title={option.label}
+                    onClick={() =>
+                      commit({ ...design, options: { ...design.options, [group.id]: option.id } })
+                    }
+                    className={
+                      swatch
+                        ? `h-9 w-9 rounded-full border-2 transition disabled:opacity-30 ${
+                            active ? "border-brand-600 ring-2 ring-brand-200" : "border-line-strong"
+                          }`
+                        : `rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-40 ${
+                            active
+                              ? "border-brand-600 bg-brand-50 text-brand-700"
+                              : "border-line-strong text-ink-soft hover:border-brand-400"
+                          }`
+                    }
+                    style={swatch ? { background: option.hex ?? undefined } : undefined}
+                  >
+                    {swatch ? null : (
+                      <>
+                        {option.label}
+                        {option.priceDeltaP !== 0 ? (
+                          <span className="ml-1 font-normal">
+                            {option.priceDeltaP > 0 ? "+" : "−"}
+                            {formatPaise(Math.abs(option.priceDeltaP))}
+                          </span>
+                        ) : null}
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        );
+      })}
+
       {/* ------------------------------------------------------------ zones */}
       {zones.length > 1 ? (
         <div className="mt-4 flex flex-wrap gap-1.5">
@@ -427,6 +508,46 @@ export function ProductCustomizer({
                     </Small>
                   </div>
 
+                  <details className="mt-2 rounded-lg border border-line bg-paper px-3 py-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-ink-soft">
+                      Adjust the photo
+                    </summary>
+                    <div className="mt-2 grid gap-2">
+                      {(
+                        [
+                          ["brightness", "Brightness", 50, 150],
+                          ["contrast", "Contrast", 50, 150],
+                          ["saturation", "Colour", 0, 200],
+                        ] as const
+                      ).map(([key, label, min, max]) => (
+                        <label key={key} className="grid gap-0.5">
+                          <span className="text-[11px] text-muted">
+                            {label} {activePhoto[key]}%
+                          </span>
+                          <input
+                            type="range"
+                            min={min}
+                            max={max}
+                            value={activePhoto[key]}
+                            onChange={(e) =>
+                              setPhoto(activeZone.id, { [key]: Number(e.target.value) }, true)
+                            }
+                            className="accent-brand-600"
+                          />
+                        </label>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPhoto(activeZone.id, { brightness: 100, contrast: 100, saturation: 100 })
+                        }
+                        className="justify-self-start rounded-lg border border-line-strong px-3 py-1 text-[11px] font-semibold text-ink-soft"
+                      >
+                        Reset adjustments
+                      </button>
+                    </div>
+                  </details>
+
                   {quality ? (
                     <p
                       className={`mt-2 rounded-lg px-3 py-2 text-xs font-medium ${
@@ -516,12 +637,24 @@ export function ProductCustomizer({
         </div>
       ) : null}
 
-      {config.customizationFeeP > 0 ? (
+      {config.customizationFeeP > 0 || config.optionGroups.length > 0 ? (
         <dl className="mt-4 space-y-1 border-t border-line pt-3 text-sm">
           <Row label={productName}>{formatPaise(basePriceP)}</Row>
-          <Row label="Personalisation">
-            {personalised ? formatPaise(config.customizationFeeP) : "—"}
-          </Row>
+          {config.customizationFeeP > 0 ? (
+            <Row label="Personalisation">
+              {personalised ? formatPaise(config.customizationFeeP) : "—"}
+            </Row>
+          ) : null}
+          {config.optionGroups.map((group) => {
+            const option = resolveOption(group, design.options[group.id]);
+            if (!option || option.priceDeltaP === 0) return null;
+            return (
+              <Row key={group.id} label={`${group.label}: ${option.label}`}>
+                {option.priceDeltaP > 0 ? "+" : "−"}
+                {formatPaise(Math.abs(option.priceDeltaP))}
+              </Row>
+            );
+          })}
           <Row label="Total" strong>
             {formatPaise(totalP)}
           </Row>
@@ -541,6 +674,23 @@ export function ProductCustomizer({
  * effect, which this component can do because it is mounted client-only — there
  * is no server render for it to disagree with.
  */
+/**
+ * Fills in any option group the design has not chosen yet.
+ *
+ * Done when the design is created rather than in an effect: the component is
+ * mounted client-only, so the first render can already know the defaults, and
+ * the preview and price are never briefly in an unchosen state.
+ */
+function withDefaultOptions(design: CustomerDesign, config: CustomizerConfig): CustomerDesign {
+  const options = { ...design.options };
+  for (const group of config.optionGroups) {
+    if (options[group.id]) continue;
+    const first = resolveOption(group, undefined);
+    if (first) options[group.id] = first.id;
+  }
+  return { ...design, options };
+}
+
 function restore(key: string, version: number): CustomerDesign | null {
   if (typeof window === "undefined") return null;
   try {

@@ -105,11 +105,50 @@ export const toolsSchema = z.object({
 });
 export type CustomizerTools = z.infer<typeof toolsSchema>;
 
+/**
+ * A choice the customer makes that is not content: frame colour, acrylic
+ * thickness, size, LED colour.
+ *
+ * One shape covers all of them. A swatch renders as a colour circle, a size or
+ * material as a labelled pill, and an LED option additionally tints the glow
+ * layer — but they are the same record, so adding "border colour" later needs
+ * no new code on either side.
+ */
+export const optionSchema = z.object({
+  id: z.string().min(1).max(64),
+  label: z.string().trim().min(1).max(60),
+  /** Swatch colour, and the tint applied to a glow layer for LED groups. */
+  hex: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().default(null),
+  /** Added to the line price, in paise. May be zero. */
+  priceDeltaP: z.number().int().min(-1_000_000).max(1_000_000).default(0),
+  /** Shown but not selectable, e.g. a size that is out of stock. */
+  available: z.boolean().default(true),
+  /** Carried onto the order so the workshop knows what to pull. */
+  sku: z.string().trim().max(64).default(""),
+});
+export type CustomizerOption = z.infer<typeof optionSchema>;
+
+export const optionGroupKindSchema = z.enum(["SWATCH", "CHOICE", "LED"]);
+export type OptionGroupKind = z.infer<typeof optionGroupKindSchema>;
+
+export const optionGroupSchema = z.object({
+  id: z.string().min(1).max(64),
+  label: z.string().trim().min(1).max(60),
+  /** SWATCH shows colour circles, CHOICE shows labelled pills, LED does both
+   *  and tints the glow layer of any lit view. */
+  kind: optionGroupKindSchema.default("CHOICE"),
+  required: z.boolean().default(true),
+  helpText: z.string().trim().max(160).default(""),
+  options: z.array(optionSchema).min(1).max(40),
+});
+export type CustomizerOptionGroup = z.infer<typeof optionGroupSchema>;
+
 export const customizerConfigSchema = z.object({
   enabled: z.boolean().default(false),
   version: z.number().int().min(1).default(CUSTOMIZER_VERSION),
   views: z.array(viewSchema).min(1, "Add at least one product view.").max(12),
   zones: z.array(zoneSchema).max(24).default([]),
+  optionGroups: z.array(optionGroupSchema).max(12).default([]),
   tools: toolsSchema.default(() => toolsSchema.parse({})),
   /** Added to the line price when the customer personalises, in paise. */
   customizationFeeP: z.number().int().min(0).max(1_000_000).default(0),
@@ -127,6 +166,7 @@ export const EMPTY_CONFIG: CustomizerConfig = {
   version: CUSTOMIZER_VERSION,
   views: [],
   zones: [],
+  optionGroups: [],
   tools: {
     photoUpload: true,
     zoom: true,
@@ -171,4 +211,27 @@ export function zonesForView(config: CustomizerConfig, viewId: string): Customiz
 export function requiredZones(config: CustomizerConfig): CustomizerZone[] {
   const used = new Set(config.views.flatMap((v) => v.zoneIds));
   return config.zones.filter((z) => z.required && used.has(z.id));
+}
+
+/** The option a design has selected in a group, falling back to the first
+ *  available one so a preview is never in an impossible state. */
+export function resolveOption(
+  group: CustomizerOptionGroup,
+  selectedId: string | undefined,
+): CustomizerOption | null {
+  const chosen = group.options.find((o) => o.id === selectedId && o.available);
+  return chosen ?? group.options.find((o) => o.available) ?? null;
+}
+
+/** The LED colour a design implies, used to tint the glow layer. */
+export function ledTint(
+  config: CustomizerConfig,
+  selections: Record<string, string>,
+): string | null {
+  for (const group of config.optionGroups) {
+    if (group.kind !== "LED") continue;
+    const option = resolveOption(group, selections[group.id]);
+    if (option?.hex) return option.hex;
+  }
+  return null;
 }

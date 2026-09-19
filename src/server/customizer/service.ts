@@ -8,6 +8,7 @@ import {
 import {
   readConfig,
   requiredZones,
+  resolveOption,
   type CustomizerConfig,
   type CustomizerZone,
 } from "@/lib/customizer/schema";
@@ -146,6 +147,31 @@ export async function validateDesign(options: {
     }
   }
 
+  /* Option groups: a required group must be chosen, and a chosen option must
+     exist and still be available. An option that has since sold out is named
+     rather than silently swapped, because the price would change under the
+     customer. */
+  for (const group of config.optionGroups) {
+    const selectedId = design.options[group.id];
+
+    if (!selectedId) {
+      if (group.required) {
+        issues.push({ zoneId: group.id, message: `Choose a ${group.label.toLowerCase()}.` });
+      }
+      continue;
+    }
+
+    const option = group.options.find((o) => o.id === selectedId);
+    if (!option) {
+      issues.push({ zoneId: group.id, message: `That ${group.label.toLowerCase()} is no longer offered.` });
+    } else if (!option.available) {
+      issues.push({
+        zoneId: group.id,
+        message: `${option.label} is out of stock. Please pick another ${group.label.toLowerCase()}.`,
+      });
+    }
+  }
+
   /* Every referenced upload must exist and belong to whoever is ordering.
      Without this a customer could put someone else's photo id in a design. */
   if (uploadIds.length > 0) {
@@ -178,11 +204,35 @@ export async function validateDesign(options: {
   return { issues, uploadIds };
 }
 
-/** The fee this configuration adds to a personalised line, in paise. Read from
- *  the product, never from the request. */
+/**
+ * What personalising adds to a line, in paise.
+ *
+ * The flat fee plus every selected option's delta, all read from the product's
+ * stored configuration. The browser sends which options were chosen, never
+ * what they cost (§28, §48).
+ */
 export function customizationFeeP(config: CustomizerConfig, design: CustomerDesign | null): number {
   if (!config.enabled || !design) return 0;
-  return config.customizationFeeP;
+
+  let total = config.customizationFeeP;
+  for (const group of config.optionGroups) {
+    const option = resolveOption(group, design.options[group.id]);
+    if (option) total += option.priceDeltaP;
+  }
+  return total;
+}
+
+/** A readable record of what was chosen, for the cart line and the order. */
+export function describeOptions(
+  config: CustomizerConfig,
+  design: CustomerDesign,
+): { label: string; value: string; sku: string; priceDeltaP: number }[] {
+  return config.optionGroups.flatMap((group) => {
+    const option = resolveOption(group, design.options[group.id]);
+    return option
+      ? [{ label: group.label, value: option.label, sku: option.sku, priceDeltaP: option.priceDeltaP }]
+      : [];
+  });
 }
 
 /** Parses a design off the wire, or throws a written error. */
