@@ -195,7 +195,7 @@ export function BannerManager({
             setFieldErrors({});
             setNotice(null);
           }}
-          className="rounded-lg bg-sr-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sr-600"
+          className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sr-700"
         >
           New banner
         </button>
@@ -353,7 +353,7 @@ export function BannerManager({
           <button
             type="submit"
             disabled={busy === "save"}
-            className="mt-4 rounded-lg bg-sr-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-600 disabled:opacity-60"
+            className="mt-4 rounded-lg bg-sr-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-700 disabled:opacity-60"
           >
             {busy === "save" ? "Saving…" : editing === "NEW" ? "Create banner" : "Save changes"}
           </button>

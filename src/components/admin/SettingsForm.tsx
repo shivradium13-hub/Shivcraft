@@ -245,7 +245,7 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
         <button
           type="submit"
           disabled={busy}
-          className="rounded-lg bg-sr-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-600 disabled:opacity-60"
+          className="rounded-lg bg-sr-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-700 disabled:opacity-60"
         >
           {busy ? "Saving…" : "Save settings"}
         </button>

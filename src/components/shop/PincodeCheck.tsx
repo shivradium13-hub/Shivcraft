@@ -59,7 +59,7 @@ export function PincodeCheck() {
           type="button"
           disabled={pincode.length !== 6 || busy}
           onClick={check}
-          className="shrink-0 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-45"
+          className="shrink-0 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-45"
         >
           {busy ? "Checking…" : "Check"}
         </button>

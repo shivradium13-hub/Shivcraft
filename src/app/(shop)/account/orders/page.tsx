@@ -45,7 +45,7 @@ export default async function MyOrdersPage() {
           </p>
           <Link
             href="/categories"
-            className="mt-6 inline-block rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
+            className="mt-6 inline-block rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
           >
             Start shopping
           </Link>

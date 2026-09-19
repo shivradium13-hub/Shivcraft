@@ -166,7 +166,7 @@ export function SearchBar({ autoFocus = false }: { autoFocus?: boolean }) {
         <button
           type="button"
           onClick={submit}
-          className="h-8 shrink-0 rounded-full bg-brand-500 px-4 text-xs font-semibold text-white transition hover:bg-brand-600"
+          className="h-8 shrink-0 rounded-full bg-brand-600 px-4 text-xs font-semibold text-white transition hover:bg-brand-700"
         >
           Search
         </button>

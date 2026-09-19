@@ -20,7 +20,7 @@ export default async function AdminUserPage(props: PageProps<"/admin/users/[id]"
 
   return (
     <div>
-      <Link href="/admin/users" className="text-sm text-sr-muted hover:text-sr-600">
+      <Link href="/admin/users" className="text-sm text-sr-muted hover:text-sr-700">
         ← All customers
       </Link>
 

@@ -93,7 +93,7 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/orders">)
         />
         <button
           type="submit"
-          className="rounded-lg bg-sr-500 px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white"
         >
           Search
         </button>
@@ -117,7 +117,7 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/orders">)
               href={href({ status: chip === "ALL" ? undefined : chip, page: undefined })}
               className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                 active
-                  ? "border-sr-500 bg-sr-500 text-white"
+                  ? "border-sr-600 bg-sr-600 text-white"
                   : "border-field bg-sr-surface text-sr-body hover:border-sr-300"
               }`}
             >
@@ -202,7 +202,7 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/orders">)
                   <td className="px-3 py-2.5 text-right">
                     <Link
                       href={`/admin/orders/${row.orderNumber}`}
-                      className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-xs font-semibold text-sr-body hover:border-sr-400 hover:text-sr-600"
+                      className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-xs font-semibold text-sr-body hover:border-sr-400 hover:text-sr-700"
                     >
                       Open
                     </Link>
@@ -223,7 +223,7 @@ export default async function AdminOrdersPage(props: PageProps<"/admin/orders">)
               aria-current={n === page ? "page" : undefined}
               className={`rounded-lg border px-3 py-1.5 text-sm ${
                 n === page
-                  ? "border-sr-500 bg-sr-500 text-white"
+                  ? "border-sr-600 bg-sr-600 text-white"
                   : "border-sr-line-strong text-sr-body"
               }`}
             >

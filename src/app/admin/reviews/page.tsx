@@ -72,7 +72,7 @@ export default async function AdminReviewsPage(props: PageProps<"/admin/reviews"
         />
         <button
           type="submit"
-          className="rounded-lg bg-sr-500 px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white"
         >
           Search
         </button>
@@ -96,7 +96,7 @@ export default async function AdminReviewsPage(props: PageProps<"/admin/reviews"
               href={href({ status: chip === "ALL" ? undefined : chip, page: undefined })}
               className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                 active
-                  ? "border-sr-500 bg-sr-500 text-white"
+                  ? "border-sr-600 bg-sr-600 text-white"
                   : "border-sr-line-strong text-sr-body hover:border-sr-400"
               }`}
             >
@@ -139,7 +139,7 @@ export default async function AdminReviewsPage(props: PageProps<"/admin/reviews"
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <Link
                   href={`/product/${review.productSlug}`}
-                  className="text-sm font-semibold text-sr-ink hover:text-sr-600"
+                  className="text-sm font-semibold text-sr-ink hover:text-sr-700"
                 >
                   {review.productName}
                 </Link>

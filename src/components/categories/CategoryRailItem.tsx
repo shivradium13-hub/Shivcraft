@@ -32,7 +32,7 @@ export const CategoryRailItem = memo(function CategoryRailItem({
       <span
         aria-hidden="true"
         className={`absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-r-full transition-opacity duration-150 ${
-          isActive ? "bg-sr-500 opacity-100" : "opacity-0"
+          isActive ? "bg-sr-600 opacity-100" : "opacity-0"
         }`}
       />
 

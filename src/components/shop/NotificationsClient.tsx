@@ -66,7 +66,7 @@ export function NotificationsClient({ initial }: { initial: NotificationRow[] })
             type="button"
             disabled={busy}
             onClick={markAllRead}
-            className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:border-brand-400 hover:text-brand-600 disabled:opacity-60"
+            className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-60"
           >
             {busy ? "Marking…" : "Mark all as read"}
           </button>

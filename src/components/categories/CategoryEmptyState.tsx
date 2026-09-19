@@ -13,7 +13,7 @@ export function CategoryEmptyState({ categoryName }: { categoryName: string }) {
       </p>
       <Link
         href="/search"
-        className="mt-5 inline-block rounded-full bg-sr-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-600"
+        className="mt-5 inline-block rounded-full bg-sr-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-700"
       >
         Browse all products
       </Link>

@@ -44,7 +44,7 @@ export function Footer() {
                 SR
               </span>
               <span className="font-display text-xl font-semibold text-white">
-                Shiv <span className="text-brand-500">Radium</span>
+                Shiv <span className="text-brand-600">Radium</span>
               </span>
             </div>
             <p className="mt-3 max-w-xs text-sm text-night-muted">
@@ -61,7 +61,7 @@ export function Footer() {
               <ul className="mt-3 space-y-2">
                 {column.links.map((link) => (
                   <li key={link.href + link.label}>
-                    <Link href={link.href} className="text-sm text-night-muted transition hover:text-brand-500">
+                    <Link href={link.href} className="text-sm text-night-muted transition hover:text-brand-600">
                       {link.label}
                     </Link>
                   </li>

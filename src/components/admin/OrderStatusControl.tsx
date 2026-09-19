@@ -120,7 +120,7 @@ export function OrderStatusControl({
         disabled={!next || busy}
         onClick={apply}
         className={`rounded-full px-5 py-2.5 text-sm font-semibold text-white transition disabled:opacity-45 ${
-          next === "CANCELLED" ? "bg-danger hover:opacity-90" : "bg-sr-500 hover:bg-sr-600"
+          next === "CANCELLED" ? "bg-danger hover:opacity-90" : "bg-sr-600 hover:bg-sr-700"
         }`}
       >
         {busy ? "Updating…" : next === "CANCELLED" ? "Cancel this order" : "Update status"}

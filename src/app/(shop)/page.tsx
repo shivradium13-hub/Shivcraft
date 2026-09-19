@@ -40,7 +40,7 @@ export default async function HomePage() {
               </p>
               <h1 className="mt-2 font-display text-3xl leading-[1.08] font-semibold text-ink sm:text-4xl lg:text-[2.9rem]">
                 {heroLead}
-                {heroAccent ? <span className="text-brand-500">{heroAccent}</span> : null}
+                {heroAccent ? <span className="text-brand-600">{heroAccent}</span> : null}
               </h1>
               {hero.subtitle ? (
                 <p className="mt-3 max-w-md text-sm text-ink-soft sm:text-base">{hero.subtitle}</p>
@@ -167,7 +167,7 @@ export default async function HomePage() {
         <section className="rounded-card border border-line bg-paper p-5 sm:p-7">
           <div className="grid gap-6 lg:grid-cols-[1fr_1.6fr] lg:items-center">
             <div>
-              <p className="text-xs font-semibold tracking-[0.14em] text-brand-500 uppercase">
+              <p className="text-xs font-semibold tracking-[0.14em] text-brand-600 uppercase">
                 Make it theirs
               </p>
               <h2 className="mt-1.5 font-display text-2xl leading-tight font-semibold text-ink sm:text-[1.75rem]">
@@ -181,7 +181,7 @@ export default async function HomePage() {
               </ol>
               <Link
                 href="/search?personalized=true"
-                className="mt-5 inline-block rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600"
+                className="mt-5 inline-block rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
               >
                 Start customising
               </Link>

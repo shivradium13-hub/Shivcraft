@@ -42,7 +42,7 @@ export default async function ReviewsPage() {
                     reviewed; this jumps straight to it. */}
                 <Link
                   href={`/product/${item.slug}#write-review`}
-                  className="ml-auto rounded-full bg-brand-500 px-3 py-1 text-xs font-semibold text-white transition hover:bg-brand-600"
+                  className="ml-auto rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-brand-700"
                 >
                   Write a review
                 </Link>
@@ -69,7 +69,7 @@ export default async function ReviewsPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Link
                   href={`/product/${review.productSlug}`}
-                  className="text-sm font-semibold text-ink hover:text-brand-600"
+                  className="text-sm font-semibold text-ink hover:text-brand-700"
                 >
                   {review.productName}
                 </Link>

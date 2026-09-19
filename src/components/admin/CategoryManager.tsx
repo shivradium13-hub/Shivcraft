@@ -167,7 +167,7 @@ export function CategoryManager({ tree }: { tree: AdminCategoryNode[] }) {
         <button
           type="button"
           onClick={() => setAddingUnder("TOP")}
-          className="mt-3 w-full rounded-2xl border border-dashed border-sr-line-strong px-4 py-3 text-sm font-semibold text-sr-body hover:border-sr-400 hover:text-sr-600"
+          className="mt-3 w-full rounded-2xl border border-dashed border-sr-line-strong px-4 py-3 text-sm font-semibold text-sr-body hover:border-sr-400 hover:text-sr-700"
         >
           + Add top-level category
         </button>
@@ -272,7 +272,7 @@ function CategoryRow({
           <button
             type="button"
             onClick={onEdit}
-            className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-xs font-semibold text-sr-body hover:border-sr-400 hover:text-sr-600"
+            className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-xs font-semibold text-sr-body hover:border-sr-400 hover:text-sr-700"
           >
             {editing ? "Close" : "Edit"}
           </button>
@@ -336,7 +336,7 @@ function CategoryRow({
             <button
               type="button"
               onClick={() => onPatch({ name, icon, imageUrl })}
-              className="rounded-full bg-sr-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sr-600"
+              className="rounded-full bg-sr-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sr-700"
             >
               Save
             </button>
@@ -415,7 +415,7 @@ function AddForm({
         type="button"
         disabled={busy || !name.trim()}
         onClick={submit}
-        className="rounded-lg bg-sr-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
         {busy ? "Adding…" : "Add"}
       </button>

@@ -54,11 +54,11 @@ export default async function CategoryPage(props: PageProps<"/category/[slug]">)
   return (
     <div>
       <nav aria-label="Breadcrumb" className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-muted">
-        <Link href="/" className="hover:text-brand-600">Home</Link>
+        <Link href="/" className="hover:text-brand-700">Home</Link>
         <span aria-hidden="true">/</span>
         {category.parent ? (
           <>
-            <Link href={`/category/${category.parent.slug}`} className="hover:text-brand-600">
+            <Link href={`/category/${category.parent.slug}`} className="hover:text-brand-700">
               {category.parent.name}
             </Link>
             <span aria-hidden="true">/</span>
@@ -97,7 +97,7 @@ export default async function CategoryPage(props: PageProps<"/category/[slug]">)
           action={
             <Link
               href={`/category/${slug}`}
-              className="inline-block rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
+              className="inline-block rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
             >
               Clear filters
             </Link>

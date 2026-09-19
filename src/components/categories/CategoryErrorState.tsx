@@ -15,7 +15,7 @@ export function CategoryErrorState({ onRetry }: { onRetry: () => void }) {
       <button
         type="button"
         onClick={onRetry}
-        className="mt-5 rounded-full bg-sr-500 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-600"
+        className="mt-5 rounded-full bg-sr-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-700"
       >
         Retry
       </button>

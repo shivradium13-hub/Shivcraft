@@ -49,7 +49,7 @@ export function Stars({ rating, className = "" }: { rating: number; className?: 
           <svg key={i} viewBox="0 0 20 20" className="h-3.5 w-3.5" aria-hidden="true">
             <defs>
               <linearGradient id={`half-${i}`}>
-                <stop offset="50%" stopColor="var(--color-brand-500)" />
+                <stop offset="50%" stopColor="var(--color-brand-600)" />
                 <stop offset="50%" stopColor="var(--color-line-strong)" />
               </linearGradient>
             </defs>
@@ -57,7 +57,7 @@ export function Stars({ rating, className = "" }: { rating: number; className?: 
               d="M10 1.6l2.47 5.005 5.525.803-3.998 3.896.944 5.502L10 14.21l-4.94 2.596.943-5.502L2.005 7.408l5.524-.803z"
               fill={
                 fill === "full"
-                  ? "var(--color-brand-500)"
+                  ? "var(--color-brand-600)"
                   : fill === "half"
                     ? `url(#half-${i})`
                     : "var(--color-line-strong)"
@@ -81,7 +81,7 @@ export function Badge({
     // Two weights of the same orange rather than two hues: solid for the
     // badge that should be noticed first, tinted for the supporting one.
     brand: "bg-brand-50 text-brand-700",
-    marigold: "bg-brand-500 text-white",
+    marigold: "bg-brand-600 text-white",
     success: "bg-success text-white",
     danger: "bg-danger text-white",
   } as const;

@@ -219,7 +219,7 @@ export function CheckoutClient({
                 disabled={i > step}
                 className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold transition ${
                   i === step
-                    ? "bg-brand-500 text-white"
+                    ? "bg-brand-600 text-white"
                     : i < step
                       ? "bg-brand-50 text-brand-700 hover:bg-brand-100"
                       : "bg-surface-2 text-muted"
@@ -303,7 +303,7 @@ export function CheckoutClient({
                   <button
                     type="submit"
                     disabled={busy}
-                    className="rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                    className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     {busy ? "Saving…" : "Save address"}
                   </button>
@@ -325,7 +325,7 @@ export function CheckoutClient({
                 type="button"
                 disabled={!addressId}
                 onClick={() => setStep(1)}
-                className="mt-5 rounded-full bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-45"
+                className="mt-5 rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-45"
               >
                 Deliver here
               </button>
@@ -373,7 +373,7 @@ export function CheckoutClient({
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="mt-5 rounded-full bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white"
+              className="mt-5 rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white"
             >
               Continue to payment
             </button>

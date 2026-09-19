@@ -74,7 +74,7 @@ export function WishlistClient({ initial }: { initial: WishlistEntry[] }) {
         </p>
         <Link
           href="/categories"
-          className="mt-6 inline-block rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
+          className="mt-6 inline-block rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
         >
           Browse gifts
         </Link>
@@ -115,7 +115,7 @@ export function WishlistClient({ initial }: { initial: WishlistEntry[] }) {
               <div className="min-w-0 flex-1">
                 <Link
                   href={`/product/${entry.slug}`}
-                  className="line-clamp-2 text-sm font-medium text-ink hover:text-brand-600"
+                  className="line-clamp-2 text-sm font-medium text-ink hover:text-brand-700"
                 >
                   {entry.name}
                 </Link>
@@ -138,7 +138,7 @@ export function WishlistClient({ initial }: { initial: WishlistEntry[] }) {
                     type="button"
                     disabled={busy === entry.id || unavailable}
                     onClick={() => addToCart(entry)}
-                    className="rounded-lg bg-brand-500 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-600 disabled:opacity-45"
+                    className="rounded-lg bg-brand-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700 disabled:opacity-45"
                   >
                     Add to cart
                   </button>

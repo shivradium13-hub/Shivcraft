@@ -87,7 +87,7 @@ export function CategoryHeader({ search }: { search?: ReactNode }) {
           aria-label="Breadcrumb"
           className="hidden items-center gap-1.5 pb-2.5 text-xs text-sr-muted lg:flex"
         >
-          <Link href="/" className="hover:text-sr-600">
+          <Link href="/" className="hover:text-sr-700">
             Home
           </Link>
           <span aria-hidden="true">›</span>

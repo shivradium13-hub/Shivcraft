@@ -44,7 +44,7 @@ function StarPicker({
           <svg viewBox="0 0 20 20" className="h-7 w-7" aria-hidden="true">
             <path
               d="M10 1.6l2.47 5.005 5.525.803-3.998 3.896.944 5.502L10 14.21l-4.94 2.596.943-5.502L2.005 7.408l5.524-.803z"
-              fill={shown >= star ? "var(--color-brand-500)" : "var(--color-line-strong)"}
+              fill={shown >= star ? "var(--color-brand-600)" : "var(--color-line-strong)"}
             />
           </svg>
         </button>
@@ -165,7 +165,7 @@ export function ReviewForm({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft hover:border-brand-400 hover:text-brand-600"
+            className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft hover:border-brand-400 hover:text-brand-700"
           >
             Edit
           </button>
@@ -232,7 +232,7 @@ export function ReviewForm({
         <button
           type="submit"
           disabled={busy}
-          className="rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60"
+          className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
         >
           {busy ? "Saving…" : existing ? "Save changes" : "Publish review"}
         </button>

@@ -51,7 +51,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
         </div>
         <Link
           href="/admin/products/new"
-          className="rounded-full bg-sr-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sr-600"
+          className="rounded-full bg-sr-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sr-700"
         >
           + Add product
         </Link>
@@ -81,7 +81,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
             </optgroup>
           ))}
         </select>
-        <button type="submit" className="rounded-lg bg-sr-500 px-4 py-2 text-sm font-semibold text-white">
+        <button type="submit" className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white">
           Filter
         </button>
       </form>
@@ -94,7 +94,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
               href={href({ state: key === "all" ? undefined : key, page: undefined })}
               className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                 state === key
-                  ? "border-sr-500 bg-sr-500 text-white"
+                  ? "border-sr-600 bg-sr-600 text-white"
                   : "border-field bg-sr-surface text-sr-body hover:border-sr-300"
               }`}
             >
@@ -168,7 +168,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
                     <td className="px-3 py-2.5 text-right">
                       <Link
                         href={`/admin/products/${row.id}`}
-                        className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-xs font-semibold text-sr-body hover:border-sr-400 hover:text-sr-600"
+                        className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-xs font-semibold text-sr-body hover:border-sr-400 hover:text-sr-700"
                       >
                         Edit
                       </Link>
@@ -189,7 +189,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
               href={href({ page: n === 1 ? undefined : String(n) })}
               aria-current={n === page ? "page" : undefined}
               className={`rounded-lg border px-3 py-1.5 text-sm ${
-                n === page ? "border-sr-500 bg-sr-500 text-white" : "border-sr-line-strong text-sr-body"
+                n === page ? "border-sr-600 bg-sr-600 text-white" : "border-sr-line-strong text-sr-body"
               }`}
             >
               {n}

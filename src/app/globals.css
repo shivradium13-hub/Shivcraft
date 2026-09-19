@@ -19,8 +19,10 @@
  * change here moves every component at once.
  */
 @theme {
-  /* Shiv Radium orange. 500 is the brand primary, 600 its hover, 400 the
-     brighter tone the gradient starts from. */
+  /* Shiv Radium orange. 500 is the brand primary and is used where contrast
+     is not a text question — borders, focus rings, the shadow glow. Anything
+     carrying white text, or sitting as orange text on white, uses 600: white
+     on 500 measures 2.97:1, under the 3.0 floor, and 600 clears it at 4.12. */
   --color-brand-50: #fff3ea;
   --color-brand-100: #fce5d5;
   --color-brand-200: #f8cdaf;
@@ -146,14 +148,15 @@
 
 @layer components {
   /* The one place orange is allowed to fill a shape: the primary call to
-     action. Everything else uses flat --color-brand-500. */
+     action. The ramp sits in the darker half so white label text clears
+     contrast across the whole sweep, not just at the dark end. */
   .gc-cta {
-    background: linear-gradient(135deg, #f28c28 0%, #e57836 45%, #d65229 100%);
+    background: linear-gradient(135deg, #d65229 0%, #c84a24 45%, #b54320 100%);
     color: #ffffff;
     box-shadow: var(--shadow-orange);
   }
   .gc-cta:hover {
-    background: linear-gradient(135deg, #e57836 0%, #d65229 55%, #b54320 100%);
+    background: linear-gradient(135deg, #b54320 0%, #a13c1c 55%, #8e3418 100%);
   }
   .gc-cta:disabled {
     box-shadow: none;

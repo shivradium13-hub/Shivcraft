@@ -106,7 +106,7 @@ export function CategoryMenu() {
                         onClick={() => setExpanded(isExpanded ? null : category.id)}
                         aria-expanded={isExpanded}
                         aria-label={`${isExpanded ? "Collapse" : "Expand"} ${category.name}`}
-                        className="flex w-8 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-brand-50 hover:text-brand-600"
+                        className="flex w-8 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-brand-50 hover:text-brand-700"
                       >
                         <svg
                           viewBox="0 0 20 20"
@@ -132,7 +132,7 @@ export function CategoryMenu() {
                           <Link
                             href={`/category/${sub.slug}`}
                             role="menuitem"
-                            className="block rounded-lg px-2.5 py-1.5 text-[13px] text-ink-soft hover:bg-brand-50 hover:text-brand-600"
+                            className="block rounded-lg px-2.5 py-1.5 text-[13px] text-ink-soft hover:bg-brand-50 hover:text-brand-700"
                           >
                             {sub.name}
                           </Link>

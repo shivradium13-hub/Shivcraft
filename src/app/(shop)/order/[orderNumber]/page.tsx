@@ -144,7 +144,7 @@ export default async function OrderPage(props: PageProps<"/order/[orderNumber]">
             <li key={item.id} className="flex gap-3 py-3 text-sm">
               <div className="min-w-0 flex-1">
                 {item.productSlug ? (
-                  <Link href={`/product/${item.productSlug}`} className="font-medium text-ink hover:text-brand-600">
+                  <Link href={`/product/${item.productSlug}`} className="font-medium text-ink hover:text-brand-700">
                     {item.productName}
                   </Link>
                 ) : (
@@ -224,7 +224,7 @@ export default async function OrderPage(props: PageProps<"/order/[orderNumber]">
       <div className="mt-5 flex flex-wrap gap-3">
         <Link
           href="/categories"
-          className="rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
+          className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
         >
           Continue shopping
         </Link>

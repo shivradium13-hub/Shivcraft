@@ -108,7 +108,7 @@ export function CartClient({ initial }: { initial: CartView }) {
         </p>
         <Link
           href="/categories"
-          className="mt-6 inline-block rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600"
+          className="mt-6 inline-block rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700"
         >
           Start shopping
         </Link>
@@ -269,7 +269,7 @@ export function CartClient({ initial }: { initial: CartView }) {
           type="button"
           disabled={!canCheckout}
           onClick={() => setError("Checkout is the next milestone — it is not built yet.")}
-          className="mt-4 w-full rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-45"
+          className="mt-4 w-full rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-45"
         >
           Proceed to Checkout
         </button>
@@ -331,7 +331,7 @@ function CartRow({
         <div className="min-w-0 flex-1">
           <Link
             href={`/product/${line.slug}`}
-            className="line-clamp-2 text-sm font-medium text-ink hover:text-brand-600"
+            className="line-clamp-2 text-sm font-medium text-ink hover:text-brand-700"
           >
             {line.name}
           </Link>
@@ -412,7 +412,7 @@ function CartRow({
           type="button"
           disabled={busy}
           onClick={onSave}
-          className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:border-brand-400 hover:text-brand-600 disabled:opacity-50"
+          className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-50"
         >
           {saved ? "Move to cart" : "Save for later"}
         </button>

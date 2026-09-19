@@ -63,7 +63,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           action={
             <Link
               href="/search"
-              className="inline-block rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
+              className="inline-block rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
             >
               Browse all gifts
             </Link>

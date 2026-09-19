@@ -184,7 +184,7 @@ export function Pagination({ page, totalPages }: { page: number; totalPages: num
         className={`${cell} ${
           page === 1
             ? "pointer-events-none border-line text-muted opacity-50"
-            : "border-line-strong text-ink hover:border-brand-400 hover:text-brand-600"
+            : "border-line-strong text-ink hover:border-brand-400 hover:text-brand-700"
         }`}
       >
         Previous
@@ -198,8 +198,8 @@ export function Pagination({ page, totalPages }: { page: number; totalPages: num
             aria-current={n === page ? "page" : undefined}
             className={`${cell} ${
               n === page
-                ? "border-brand-500 bg-brand-500 text-white"
-                : "border-line-strong text-ink hover:border-brand-400 hover:text-brand-600"
+                ? "border-brand-500 bg-brand-600 text-white"
+                : "border-line-strong text-ink hover:border-brand-400 hover:text-brand-700"
             }`}
           >
             {n}
@@ -213,7 +213,7 @@ export function Pagination({ page, totalPages }: { page: number; totalPages: num
         className={`${cell} ${
           page === totalPages
             ? "pointer-events-none border-line text-muted opacity-50"
-            : "border-line-strong text-ink hover:border-brand-400 hover:text-brand-600"
+            : "border-line-strong text-ink hover:border-brand-400 hover:text-brand-700"
         }`}
       >
         Next

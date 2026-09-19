@@ -34,12 +34,12 @@ function IconLink({
     <Link
       href={href}
       aria-label={label}
-      className="relative flex flex-col items-center gap-0.5 rounded-lg px-2.5 py-1.5 text-ink transition hover:bg-brand-50 hover:text-brand-600"
+      className="relative flex flex-col items-center gap-0.5 rounded-lg px-2.5 py-1.5 text-ink transition hover:bg-brand-50 hover:text-brand-700"
     >
       <span className="relative">
         {children}
         {count && count > 0 ? (
-          <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-white">
+          <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">
             {count > 99 ? "99+" : count}
           </span>
         ) : null}

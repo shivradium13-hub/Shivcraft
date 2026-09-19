@@ -93,7 +93,7 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
         <Link
           href={`/product/${product.slug}`}
           target="_blank"
-          className="rounded-full border border-sr-line-strong px-4 py-2 text-sm font-semibold text-sr-body hover:border-sr-400 hover:text-sr-600"
+          className="rounded-full border border-sr-line-strong px-4 py-2 text-sm font-semibold text-sr-body hover:border-sr-400 hover:text-sr-700"
         >
           View on storefront ↗
         </Link>

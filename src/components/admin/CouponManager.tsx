@@ -197,7 +197,7 @@ export function CouponManager({
         <button
           type="button"
           onClick={startNew}
-          className="rounded-lg bg-sr-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sr-600"
+          className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sr-700"
         >
           New coupon
         </button>
@@ -447,7 +447,7 @@ function CouponForm({
                 onClick={() => set("discountType", type)}
                 className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
                   values.discountType === type
-                    ? "border-sr-500 bg-sr-500 text-white"
+                    ? "border-sr-600 bg-sr-600 text-white"
                     : "border-sr-line-strong text-sr-body hover:border-sr-400"
                 }`}
               >
@@ -574,7 +574,7 @@ function CouponForm({
       <button
         type="submit"
         disabled={busy}
-        className="mt-4 rounded-lg bg-sr-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-600 disabled:opacity-60"
+        className="mt-4 rounded-lg bg-sr-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-700 disabled:opacity-60"
       >
         {busy ? "Saving…" : isNew ? "Create coupon" : "Save changes"}
       </button>

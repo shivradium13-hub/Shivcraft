@@ -290,7 +290,7 @@ export function ProductForm({
                         }))
                       }
                       className={`rounded px-1.5 py-1 text-[10px] font-semibold ${
-                        image.isPrimary ? "bg-sr-500 text-white" : "bg-sr-canvas text-sr-body hover:bg-sr-100"
+                        image.isPrimary ? "bg-sr-600 text-white" : "bg-sr-canvas text-sr-body hover:bg-sr-100"
                       }`}
                     >
                       {image.isPrimary ? "Main image" : "Make main"}
@@ -323,7 +323,7 @@ export function ProductForm({
               type="button"
               disabled={uploading}
               onClick={() => fileRef.current?.click()}
-              className="rounded-full bg-sr-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="rounded-full bg-sr-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
               {uploading ? "Uploading…" : "Upload images"}
             </button>
@@ -381,7 +381,7 @@ export function ProductForm({
                 {values.customizationFields.map((field, i) => (
                   <div key={i} className="rounded-xl border border-sr-line bg-sr-canvas p-3">
                     <div className="mb-2 flex items-center gap-2">
-                      <span className="text-xs font-semibold text-sr-500">FIELD {i + 1}</span>
+                      <span className="text-xs font-semibold text-sr-600">FIELD {i + 1}</span>
                       <button
                         type="button"
                         onClick={() =>
@@ -469,7 +469,7 @@ export function ProductForm({
                     ],
                   }))
                 }
-                className="w-full rounded-lg border border-dashed border-sr-line-strong px-4 py-2.5 text-sm font-medium text-sr-body hover:border-sr-400 hover:text-sr-600"
+                className="w-full rounded-lg border border-dashed border-sr-line-strong px-4 py-2.5 text-sm font-medium text-sr-body hover:border-sr-400 hover:text-sr-700"
               >
                 + Add a customisation field
               </button>
@@ -496,7 +496,7 @@ export function ProductForm({
             type="button"
             disabled={busy}
             onClick={save}
-            className="w-full rounded-full bg-sr-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-sr-600 disabled:opacity-50"
+            className="w-full rounded-full bg-sr-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-sr-700 disabled:opacity-50"
           >
             {busy ? "Saving…" : productId ? "Save changes" : "Create product"}
           </button>
