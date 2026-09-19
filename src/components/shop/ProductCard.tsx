@@ -4,6 +4,7 @@ import { discountPercent, effectivePriceP, formatPaise } from "@/lib/money";
 import type { ProductCard as ProductCardData } from "@/server/catalog/queries";
 
 import { Badge, ProductImage, Stars } from "../ui/primitives";
+import { WishlistButton } from "./WishlistButton";
 
 const CARD_SIZES = "(min-width: 1280px) 220px, (min-width: 1024px) 20vw, (min-width: 640px) 30vw, 45vw";
 
@@ -41,8 +42,7 @@ export function ProductCard({
         ) : null}
       </Link>
 
-      {/* Wishlist is wired up in the account milestone; the control is hidden
-          rather than shown as a button that does nothing. */}
+      <WishlistButton productId={product.id} name={product.name} />
 
       <div className="flex flex-1 flex-col p-3">
         <Link
