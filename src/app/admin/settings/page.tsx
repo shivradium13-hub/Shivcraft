@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
+import { PaymentStatus } from "@/components/admin/PaymentStatus";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { requireAdmin } from "@/server/auth/guards";
+import { razorpayStatus } from "@/server/payments/razorpay";
 import { getAllSettings } from "@/server/settings/shop";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +12,8 @@ export const metadata: Metadata = { title: "Settings", robots: { index: false, f
 export default async function AdminSettingsPage() {
   await requireAdmin();
   const { shipping, tax, support } = await getAllSettings();
+  // Read on the server; only booleans and a test/live label reach the page.
+  const payments = razorpayStatus();
 
   return (
     <div>
@@ -18,6 +22,10 @@ export default async function AdminSettingsPage() {
         Everything here is read by the storefront. Changes apply to the next cart the shop prices —
         orders already placed keep the charges they were placed with.
       </p>
+
+      <div className="mb-6">
+        <PaymentStatus status={payments} />
+      </div>
 
       <SettingsForm
         initial={{

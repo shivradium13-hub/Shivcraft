@@ -29,6 +29,34 @@ export function isRazorpayConfigured(): boolean {
   return getRazorpayConfig() !== null;
 }
 
+export type RazorpayStatus = {
+  configured: boolean;
+  /** Derived from the key id prefix. Null when nothing is configured. */
+  mode: "test" | "live" | null;
+  /** Which of the two variables are present, so the admin can see a half-done setup. */
+  hasKeyId: boolean;
+  hasKeySecret: boolean;
+};
+
+/**
+ * Enough for the admin to see whether payments are wired up, and nothing more.
+ *
+ * Deliberately returns no key material. The key id is only classified as test
+ * or live by its prefix; the secret is never read into anything that renders.
+ */
+export function razorpayStatus(): RazorpayStatus {
+  const keyId = process.env.RAZORPAY_KEY_ID ?? "";
+  const keySecret = process.env.RAZORPAY_KEY_SECRET ?? "";
+  const configured = Boolean(keyId && keySecret);
+
+  return {
+    configured,
+    mode: !configured ? null : keyId.startsWith("rzp_live_") ? "live" : "test",
+    hasKeyId: Boolean(keyId),
+    hasKeySecret: Boolean(keySecret),
+  };
+}
+
 export type RazorpayOrder = {
   id: string;
   amount: number;

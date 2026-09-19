@@ -93,6 +93,11 @@ pnpm db:seed -- --wipe
 rather than shown and then failing.** Cash on delivery still works, so the whole
 order flow can be exercised without a gateway account.
 
+`/admin/settings` shows whether the keys are set, and whether they are test or live
+keys, without ever reading the secret. There is no form for them: a key that signs
+payments belongs in the host's environment, not in a database row an admin page can
+read back.
+
 ---
 
 ## Scripts
