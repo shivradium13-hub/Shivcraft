@@ -40,11 +40,11 @@ export function Footer() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-700 text-base font-bold text-marigold-300">
-                G
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold tracking-tight text-white">
+                SR
               </span>
               <span className="font-display text-xl font-semibold text-ink">
-                Gift<span className="text-brand-700">Craft</span>
+                Shiv <span className="text-brand-600">Radium</span>
               </span>
             </div>
             <p className="mt-3 max-w-xs text-sm text-muted">
@@ -72,7 +72,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 flex flex-col gap-2 border-t border-line pt-5 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} GiftCraft. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Shiv Radium. All rights reserved.</p>
           <p>Made to order in India · GST invoice on every order</p>
         </div>
       </div>

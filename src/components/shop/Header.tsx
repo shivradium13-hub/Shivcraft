@@ -8,12 +8,12 @@ import { SearchBar } from "./SearchBar";
 
 function Logo() {
   return (
-    <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="GiftCraft home">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-700 text-base font-bold text-marigold-300">
-        G
+    <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="Shiv Radium home">
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold tracking-tight text-white">
+        SR
       </span>
       <span className="font-display text-xl leading-none font-semibold tracking-tight text-ink">
-        Gift<span className="text-brand-700">Craft</span>
+        Shiv <span className="text-brand-600">Radium</span>
       </span>
     </Link>
   );

@@ -22,7 +22,7 @@ export async function generateMetadata(props: PageProps<"/category/[slug]">): Pr
     title: category.name,
     description:
       category.description ??
-      `Shop ${category.name.toLowerCase()} at GiftCraft — personalised, made to order in India.`,
+      `Shop ${category.name.toLowerCase()} at Shiv Radium — personalised, made to order in India.`,
     alternates: { canonical: `/category/${category.slug}` },
   };
 }

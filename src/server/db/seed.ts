@@ -412,7 +412,7 @@ async function main() {
         categoryId,
         name: p.name,
         slug: slugify(p.name),
-        sku: `GC-${++skuCounter}`,
+        sku: `SR-${++skuCounter}`,
         shortDescription: p.short,
         description: `${p.short}\n\nMade to order in our workshop. Every piece is checked by hand before it is packed. Personalised items are produced only after you approve the artwork proof, which we send within one working day of your order.\n\nCare: wipe with a dry cloth. Keep engraved wood out of direct sunlight.`,
         priceP: R(p.price),
@@ -427,7 +427,7 @@ async function main() {
         isPersonalizable: p.personalize ?? false,
         isBestSeller: p.best ?? false,
         isTrending: p.trending ?? false,
-        brand: "GiftCraft",
+        brand: "Shiv Radium",
         metaTitle: null,
         metaDescription: p.short,
       })
@@ -551,7 +551,7 @@ async function main() {
 
   /* -- settings --------------------------------------------------------- */
   await db.insert(settings).values([
-    { key: "shop", value: { name: "GiftCraft", tagline: "Personalised gifts made just for you", supportEmail: "support@giftcraft.example", supportPhone: "+91 00000 00000" } },
+    { key: "shop", value: { name: "Shiv Radium", tagline: "Personalised gifts made just for you" } },
     { key: "shipping", value: { flatRateP: R(59), freeAboveP: R(999) } },
     { key: "tax", value: { gstPercent: 18, pricesIncludeTax: true } },
   ]);

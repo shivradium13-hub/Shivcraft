@@ -183,7 +183,7 @@ export default async function HomePage() {
 
       {/* -------------------------------------------------- why choose us */}
       <section>
-        <SectionHeading eyebrow="Why GiftCraft" title="What you get, every order" />
+        <SectionHeading eyebrow="Why Shiv Radium" title="What you get, every order" />
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {PROMISES.map((promise) => (
             <div key={promise.title} className="rounded-card border border-line bg-paper p-4">

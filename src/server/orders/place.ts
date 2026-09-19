@@ -127,7 +127,10 @@ export async function placeOrder(input: {
     const numberRow = await tx.execute<{ n: string }>(
       sql`SELECT nextval('order_number_seq')::text AS n`,
     );
-    const orderNumber = `GC-${new Date().getFullYear()}-${numberRow.rows[0].n}`;
+    /* Orders placed before the rebrand keep their GC- numbers: an order number
+       is the customer's reference on an invoice, and rewriting history would
+       break every link and receipt that already quotes one. */
+    const orderNumber = `SR-${new Date().getFullYear()}-${numberRow.rows[0].n}`;
 
     const [order] = await tx
       .insert(orders)

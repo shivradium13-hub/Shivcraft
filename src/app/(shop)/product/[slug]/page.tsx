@@ -81,7 +81,7 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
     name: product.name,
     description: product.shortDescription ?? undefined,
     sku: product.sku,
-    brand: { "@type": "Brand", name: product.brand ?? "GiftCraft" },
+    brand: { "@type": "Brand", name: product.brand ?? "Shiv Radium" },
     offers: {
       "@type": "Offer",
       priceCurrency: "INR",

@@ -1,41 +1,55 @@
 @import "tailwindcss";
 
 /**
- * GiftCraft design tokens.
+ * Shiv Radium design tokens.
  *
- * Brand: mulberry (deep, premium, festive) with a marigold accent — chosen to
- * sit apart from the blues and pinks the big Indian marketplaces own.
- * Neutrals carry a slight warm bias toward the brand rather than pure grey.
+ * One brand, two views of the same palette. `brand-*` and the neutrals below
+ * dress the storefront; the `sr-*` set further down dresses the Categories
+ * browser and the admin. They resolve to the same orange, the same warm gold
+ * and the same warm-grey neutrals, so the two halves of the site read as one
+ * shop. Changing a value here moves every component that uses the token —
+ * which is the point, and why the class names carry no colour of their own.
+ *
+ * Orange is the single accent, gold is used sparingly for what the customer is
+ * meant to press, and the greys carry a warm bias rather than being pure.
  */
 @theme {
-  --color-brand-50: #fbf2f7;
-  --color-brand-100: #f6e6ef;
-  --color-brand-200: #ecc9dd;
-  --color-brand-300: #dda0c1;
-  --color-brand-400: #c66f9d;
-  --color-brand-500: #a8497b;
-  --color-brand-600: #8a3963;
-  --color-brand-700: #6d2e52;
-  --color-brand-800: #4a1c37;
-  --color-brand-900: #2f1123;
+  /* Shiv Radium orange. 50-700 match the sr-* ramp exactly; 800 and 900
+     continue it for the hero gradient and for text on a gold button. */
+  --color-brand-50: #fff4ee;
+  --color-brand-100: #ffe6d7;
+  --color-brand-200: #ffc9ab;
+  --color-brand-300: #ffa274;
+  --color-brand-400: #f77a42;
+  --color-brand-500: #e35d24;
+  --color-brand-600: #c54812;
+  --color-brand-700: #9d380e;
+  --color-brand-800: #7a2c0b;
+  --color-brand-900: #4a1a06;
 
-  --color-marigold-50: #fef8ec;
-  --color-marigold-100: #fdf0d4;
-  --color-marigold-200: #fadfa6;
-  --color-marigold-300: #f4c56d;
-  --color-marigold-400: #e8a33d;
-  --color-marigold-500: #d4861f;
-  --color-marigold-600: #ad6616;
-  --color-marigold-700: #874e16;
+  /* Warm gold, built around --color-sr-gold. 400 is the call-to-action fill
+     and 300 its lighter hover, so the ramp must lighten upwards there. */
+  --color-marigold-50: #fbf3dc;
+  --color-marigold-100: #f7e9bf;
+  --color-marigold-200: #eed893;
+  --color-marigold-300: #e2c45f;
+  --color-marigold-400: #c9a227;
+  --color-marigold-500: #a9871d;
+  --color-marigold-600: #8a6d17;
+  --color-marigold-700: #6b5413;
 
-  --color-ink: #241b21;
-  --color-ink-soft: #544a50;
-  --color-muted: #7d7076;
-  --color-line: #ece3e7;
-  --color-line-strong: #d8cad1;
-  --color-canvas: #fbf8f9;
+  /* The same neutrals the sr-* set uses, so a page built from either token
+     group sits on the same paper. */
+  --color-ink: #221f1d;
+  --color-ink-soft: #4a4542;
+  --color-muted: #7d7772;
+  --color-line: #ece8e4;
+  --color-line-strong: #ddd6d0;
+  --color-canvas: #fbfaf9;
   --color-paper: #ffffff;
 
+  /* Status colours stay as they are: these report what happened, and tinting
+     them toward the brand would make a failure look like an offer. */
   --color-success: #1f7a4d;
   --color-success-soft: #e6f4ec;
   --color-danger: #b3261e;
@@ -43,10 +57,11 @@
   --color-info: #1f5f7a;
   --color-info-soft: #e5f1f5;
 
-  /* ---------------------------------------------- SHIV RADIUM ----------
-     Brand for the Categories experience: near-white ground, deep charcoal
-     text, Shiv Radium orange as the single accent, warm gold used sparingly.
-     Kept as its own token set so it does not disturb the other pages.      */
+  /* ------------------------------------------ SHIV RADIUM (sr-*) -------
+     The same palette under the names the Categories browser and the admin
+     already use. Kept as its own set because those screens name their
+     neutrals differently (sr-surface, sr-body), not because the brand
+     differs — the values above and below are deliberately identical.      */
   --color-sr-50: #fff4ee;
   --color-sr-100: #ffe6d7;
   --color-sr-200: #ffc9ab;
@@ -75,9 +90,9 @@
 
   --radius-card: 0.875rem;
 
-  --shadow-card: 0 1px 2px rgba(36, 27, 33, 0.05), 0 6px 18px -10px rgba(36, 27, 33, 0.16);
-  --shadow-lift: 0 2px 4px rgba(36, 27, 33, 0.06), 0 14px 32px -14px rgba(36, 27, 33, 0.26);
-  --shadow-bar: 0 -1px 0 var(--color-line), 0 -8px 24px -18px rgba(36, 27, 33, 0.3);
+  --shadow-card: 0 1px 2px rgba(34, 31, 29, 0.05), 0 6px 18px -10px rgba(34, 31, 29, 0.16);
+  --shadow-lift: 0 2px 4px rgba(34, 31, 29, 0.06), 0 14px 32px -14px rgba(34, 31, 29, 0.26);
+  --shadow-bar: 0 -1px 0 var(--color-line), 0 -8px 24px -18px rgba(34, 31, 29, 0.3);
 }
 
 @layer base {

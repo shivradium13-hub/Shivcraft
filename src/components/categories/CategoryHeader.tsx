@@ -34,11 +34,11 @@ export function CategoryHeader({ search }: { search?: ReactNode }) {
           </button>
 
           <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="Shiv Radium home">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sr-500 text-sm font-bold text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sr-600 text-sm font-bold tracking-tight text-white">
               SR
             </span>
             <span className="hidden font-display text-[17px] leading-none font-semibold tracking-tight text-sr-ink sm:block">
-              SHIV <span className="text-sr-500">RADIUM</span>
+              Shiv <span className="text-sr-600">Radium</span>
             </span>
           </Link>
 

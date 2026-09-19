@@ -24,7 +24,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
       <header className="border-b border-sr-line bg-sr-ink">
         <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-3 px-4 py-3">
           <Link href="/admin" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sr-500 text-xs font-bold text-white">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sr-600 text-xs font-bold tracking-tight text-white">
               SR
             </span>
             <span className="font-display text-base font-semibold text-white">

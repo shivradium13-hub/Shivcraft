@@ -19,15 +19,15 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3100"),
   title: {
-    default: "GiftCraft — Personalised Gifts, Name Plates & Photo Frames",
-    template: "%s | GiftCraft",
+    default: "Shiv Radium — Personalised Gifts, Name Plates & Photo Frames",
+    template: "%s | Shiv Radium",
   },
   description:
     "Personalised gifts made to order in India — name plates, photo frames, photo mugs, handmade crafts and custom gift hampers. Free artwork proof before we make it.",
   openGraph: {
     type: "website",
-    siteName: "GiftCraft",
-    title: "GiftCraft — Personalised Gifts Made Just For You",
+    siteName: "Shiv Radium",
+    title: "Shiv Radium — Personalised Gifts Made Just For You",
     description:
       "Name plates, photo frames, photo mugs and custom gifts, made to order in India.",
   },

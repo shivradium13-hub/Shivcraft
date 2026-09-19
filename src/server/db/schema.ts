@@ -1,5 +1,5 @@
 /**
- * GiftCraft database schema.
+ * Shiv Radium database schema.
  *
  * Conventions used throughout:
  *  - Money is stored as INTEGER PAISE, never a float. ₹549.00 is 54900.
@@ -403,7 +403,7 @@ export const orders = pgTable(
   "orders",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    /** Human reference shown to the customer, e.g. GC-2026-0001. */
+    /** Human reference shown to the customer, e.g. SR-2026-0001. */
     orderNumber: varchar("order_number", { length: 32 }).notNull(),
     userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
     status: orderStatusEnum("status").notNull().default("PLACED"),
@@ -589,7 +589,7 @@ export const notifications = pgTable(
     type: notificationTypeEnum("type").notNull(),
     title: varchar("title", { length: 160 }).notNull(),
     body: varchar("body", { length: 400 }),
-    /** Deep link into the site, e.g. /account/orders/GC-2026-0001 */
+    /** Deep link into the site, e.g. /account/orders/SR-2026-0001 */
     href: varchar("href", { length: 300 }),
     readAt: timestamp("read_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
