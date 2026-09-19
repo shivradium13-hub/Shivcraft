@@ -258,7 +258,7 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
                 <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
                   <span className="font-medium text-ink">{review.author}</span>
                   {review.verified ? (
-                    <span className="rounded-full bg-success-soft px-2 py-0.5 font-medium text-success">
+                    <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-700">
                       Verified purchase
                     </span>
                   ) : null}

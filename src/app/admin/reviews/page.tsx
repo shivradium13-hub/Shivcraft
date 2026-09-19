@@ -174,7 +174,7 @@ export default async function AdminReviewsPage(props: PageProps<"/admin/reviews"
                 <span className="font-medium text-sr-ink">{review.authorName}</span>
                 <span>{review.authorEmail}</span>
                 {review.verified ? (
-                  <span className="rounded-full bg-success-soft px-2 py-0.5 font-medium text-success">
+                  <span className="rounded-full bg-sr-50 px-2 py-0.5 font-medium text-sr-700">
                     Verified purchase
                   </span>
                 ) : null}
