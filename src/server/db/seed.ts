@@ -558,7 +558,7 @@ async function main() {
 
   /* -- accounts --------------------------------------------------------- */
   console.log("→ accounts");
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@giftcraft.local";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@shivradium.local";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? randomBytes(9).toString("base64url");
 
   await db
@@ -571,7 +571,7 @@ async function main() {
     })
     .onConflictDoNothing();
 
-  const demoEmail = "demo@giftcraft.local";
+  const demoEmail = "demo@shivradium.local";
   const demoPassword = process.env.SEED_DEMO_PASSWORD ?? "demo1234";
   await db
     .insert(users)
