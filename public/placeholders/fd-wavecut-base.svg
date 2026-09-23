@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+  <rect width="800" height="800" fill="#eceef1"/>
+  <defs><clipPath id="wc"><rect x="40" y="240" width="720" height="320" rx="24"/></clipPath></defs>
+  <g clip-path="url(#wc)">
+    <rect x="40" y="240" width="720" height="320" fill="#d9bd94"/>
+    <path d="M40,432 C 210,388 330,472 470,436 S 700,392 760,424 L 760,560 L 40,560 Z" fill="#7a4a28"/>
+    <path d="M40,432 C 210,388 330,472 470,436 S 700,392 760,424" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="3"/>
+    <path d="M52,262 q180,-10 360,0 t360,-2" fill="none" stroke="#00000012" stroke-width="2"/><path d="M52,304 q180,-10 360,0 t360,-2" fill="none" stroke="#00000012" stroke-width="2"/><path d="M52,346 q180,-10 360,0 t360,-2" fill="none" stroke="#00000012" stroke-width="2"/><path d="M52,388 q180,-10 360,0 t360,-2" fill="none" stroke="#00000012" stroke-width="2"/><path d="M52,430 q180,-10 360,0 t360,-2" fill="none" stroke="#00000012" stroke-width="2"/><path d="M52,472 q180,-10 360,0 t360,-2" fill="none" stroke="#00000012" stroke-width="2"/><path d="M52,514 q180,-10 360,0 t360,-2" fill="none" stroke="#00000012" stroke-width="2"/>
+  </g>
+  <rect x="40" y="240" width="720" height="320" rx="24" fill="none" stroke="#5a3a1e" stroke-opacity="0.3" stroke-width="3"/>
+  
+</svg>
