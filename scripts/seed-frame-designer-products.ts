@@ -38,26 +38,31 @@ function backdropSvg(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fafafa"/><stop offset="1" stop-color="#eceef1"/></linearGradient></defs><rect width="800" height="800" fill="url(#g)"/></svg>`;
 }
 
-/** A card mock of a name plate: coloured plaque with sample wording. */
-function plateCardSvg(o: { plaque: string; text: string; name: string; sub: string }): string {
+/** A card mock of a name plate: a wide coloured plaque with sample wording,
+ *  matching the customizer's plate proportions. */
+function plateCardSvg(o: { plaque: string; text: string; edge?: string | null; name: string; sub: string }): string {
+  const edge = o.edge
+    ? `<rect x="68" y="288" width="664" height="224" rx="12" fill="none" stroke="${o.edge}" stroke-width="6"/>`
+    : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
   <rect width="800" height="800" fill="#eceef1"/>
-  <rect x="60" y="250" width="680" height="300" rx="28" fill="${o.plaque}"/>
-  <text x="400" y="410" font-family="Georgia, serif" font-size="96" font-weight="700" fill="${o.text}" text-anchor="middle">${esc(o.name)}</text>
-  <text x="400" y="480" font-family="Georgia, serif" font-size="30" letter-spacing="3" fill="${o.text}" fill-opacity="0.85" text-anchor="middle">${esc(o.sub.toUpperCase())}</text>
+  <rect x="48" y="264" width="704" height="272" rx="26" fill="${o.plaque}"/>
+  ${edge}
+  <text x="400" y="415" font-family="Georgia, serif" font-size="104" font-weight="700" fill="${o.text}" text-anchor="middle">${esc(o.name)}</text>
+  <text x="400" y="486" font-family="Georgia, serif" font-size="28" letter-spacing="3" fill="${o.text}" fill-opacity="0.85" text-anchor="middle">${esc(o.sub.toUpperCase())}</text>
 </svg>`;
 }
 
-/** A card mock of a framed photo collage: frame, mat, photo area, wording. */
+/** A card mock of a portrait framed photo: frame, mat, photo area, wording. */
 function frameCardSvg(o: { frame: string; names: string; date: string }): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
   <rect width="800" height="800" fill="#eceef1"/>
-  <rect x="120" y="90" width="560" height="620" rx="8" fill="${o.frame}"/>
-  <rect x="150" y="120" width="500" height="560" rx="2" fill="#ffffff"/>
-  <text x="400" y="205" font-family="'Brush Script MT', cursive" font-size="52" fill="#0f121f" text-anchor="middle">${esc(o.names)}</text>
-  <text x="400" y="250" font-family="Georgia, serif" font-size="26" fill="#70747e" text-anchor="middle">${esc(o.date)}</text>
-  <rect x="205" y="285" width="390" height="300" rx="4" fill="#e7e7e9"/>
-  <text x="400" y="445" font-family="Georgia, serif" font-size="30" fill="#acafb6" text-anchor="middle">YOUR PHOTO</text>
+  <rect x="192" y="48" width="416" height="704" rx="6" fill="${o.frame}"/>
+  <rect x="216" y="72" width="368" height="656" rx="3" fill="#ffffff"/>
+  <rect x="248" y="160" width="304" height="352" rx="4" fill="#e7e7e9"/>
+  <text x="400" y="352" font-family="Georgia, serif" font-size="28" fill="#acafb6" text-anchor="middle">YOUR PHOTO</text>
+  <text x="400" y="600" font-family="'Brush Script MT', cursive" font-size="46" fill="#0f121f" text-anchor="middle">${esc(o.names)}</text>
+  <text x="400" y="645" font-family="Georgia, serif" font-size="24" fill="#70747e" text-anchor="middle">${esc(o.date)}</text>
 </svg>`;
 }
 
@@ -85,6 +90,8 @@ function plateConfig(o: {
   templateName: string;
   base: string;
   plaque: string;
+  /** Optional engraved-edge colour for a premium plate look. */
+  edge?: string | null;
   frameColors: string[];
   textColors: string[];
   fonts: string[];
@@ -92,56 +99,79 @@ function plateConfig(o: {
   namePlaceholder: string;
   subPlaceholder: string;
 }): CustomizerConfig {
+  /* A name plate is wide (roughly 1:2.6), so the plaque is a broad band across
+     the middle of the square canvas. The name sits large and centred, the
+     address line small below it. An optional engraved edge frames the plate. */
+  const zones = [
+    {
+      id: "plaque",
+      kind: "FRAME" as const,
+      label: "Plate",
+      x: 6,
+      y: 33,
+      width: 88,
+      height: 34,
+      cornerRadius: 16,
+      fill: o.plaque,
+      tintByFrameColor: true,
+      required: false,
+    },
+    ...(o.edge
+      ? [
+          {
+            id: "edge",
+            kind: "FRAME" as const,
+            label: "Edge",
+            x: 8.5,
+            y: 36,
+            width: 83,
+            height: 28,
+            cornerRadius: 12,
+            fill: null,
+            stroke: o.edge,
+            strokeWidth: 3,
+            tintByFrameColor: false,
+            required: false,
+          },
+        ]
+      : []),
+    {
+      id: "name",
+      kind: "TEXT" as const,
+      label: "Name",
+      x: 10,
+      y: 37,
+      width: 80,
+      height: 17,
+      fontSizePct: 64,
+      color: o.textColors[0],
+      align: "center" as const,
+      defaultText: o.namePlaceholder,
+      maxChars: 24,
+      required: true,
+    },
+    {
+      id: "sub",
+      kind: "TEXT" as const,
+      label: "Address / society",
+      x: 10,
+      y: 56,
+      width: 80,
+      height: 7,
+      fontSizePct: 26,
+      color: o.textColors[0],
+      align: "center" as const,
+      defaultText: o.subPlaceholder,
+      maxChars: 44,
+      required: false,
+    },
+  ];
   return customizerConfigSchema.parse({
     enabled: true,
     templateName: o.templateName,
     colorNotice: true,
-    views: [{ id: "front", label: "Front", base: o.base, zoneIds: ["plaque", "name", "sub"] }],
-    zones: [
-      {
-        id: "plaque",
-        kind: "FRAME",
-        label: "Plate",
-        x: 7.5,
-        y: 31,
-        width: 85,
-        height: 38,
-        cornerRadius: 14,
-        fill: o.plaque,
-        tintByFrameColor: true,
-        required: false,
-      },
-      {
-        id: "name",
-        kind: "TEXT",
-        label: "Name",
-        x: 12,
-        y: 36,
-        width: 76,
-        height: 16,
-        fontSizePct: 68,
-        color: o.textColors[0],
-        align: "center",
-        defaultText: o.namePlaceholder,
-        maxChars: 24,
-        required: true,
-      },
-      {
-        id: "sub",
-        kind: "TEXT",
-        label: "Address / society",
-        x: 12,
-        y: 55,
-        width: 76,
-        height: 8,
-        fontSizePct: 34,
-        color: o.textColors[0],
-        align: "center",
-        defaultText: o.subPlaceholder,
-        maxChars: 44,
-        required: false,
-      },
-    ],
+    views: [{ id: "front", label: "Front", base: o.base, zoneIds: zones.map((z) => z.id) }],
+    zones,
     optionGroups: [
       {
         id: "size",
@@ -202,15 +232,17 @@ function frameConfig(o: {
     templateName: o.templateName,
     colorNotice: true,
     views: [{ id: "front", label: "Front", base: o.base, zoneIds: ["frame", "mat", "photo", "names", "date"] }],
+    /* A portrait frame (roughly 2:3) with a thin coloured border, a white mat,
+       the photo in the upper two-thirds and the names + date beneath it. */
     zones: [
       {
         id: "frame",
         kind: "FRAME",
         label: "Frame",
-        x: 15,
-        y: 11,
-        width: 70,
-        height: 78,
+        x: 24,
+        y: 6,
+        width: 52,
+        height: 88,
         cornerRadius: 2,
         fill: o.frameColors[0],
         tintByFrameColor: true,
@@ -220,10 +252,10 @@ function frameConfig(o: {
         id: "mat",
         kind: "FRAME",
         label: "Mat",
-        x: 18,
-        y: 14,
-        width: 64,
-        height: 72,
+        x: 27,
+        y: 9,
+        width: 46,
+        height: 82,
         cornerRadius: 1,
         fill: "#ffffff",
         tintByFrameColor: false,
@@ -233,12 +265,12 @@ function frameConfig(o: {
         id: "photo",
         kind: "PHOTO",
         label: "Your photo",
-        x: 23,
-        y: 28,
-        width: 54,
-        height: 40,
-        printWidthMm: 200,
-        printHeightMm: 150,
+        x: 31,
+        y: 20,
+        width: 38,
+        height: 44,
+        printWidthMm: 150,
+        printHeightMm: 170,
         minDpi: 150,
         required: true,
       },
@@ -246,11 +278,11 @@ function frameConfig(o: {
         id: "names",
         kind: "TEXT",
         label: "Names",
-        x: 20,
-        y: 71,
-        width: 60,
+        x: 29,
+        y: 69,
+        width: 42,
         height: 8,
-        fontSizePct: 55,
+        fontSizePct: 52,
         color: o.textColors[0],
         align: "center",
         defaultText: o.namesPlaceholder,
@@ -261,11 +293,11 @@ function frameConfig(o: {
         id: "date",
         kind: "TEXT",
         label: "Date",
-        x: 20,
-        y: 80,
-        width: 60,
+        x: 29,
+        y: 79,
+        width: 42,
         height: 5,
-        fontSizePct: 34,
+        fontSizePct: 32,
         color: "#70747e",
         align: "center",
         defaultText: o.datePlaceholder,
@@ -317,9 +349,8 @@ type ProductDef = {
   config: CustomizerConfig;
 };
 
-const PLATE_FONTS = ["Poppins", "Playfair Display", "Lobster"];
-const FRAME_FONTS = ["Great Vibes", "Pacifico", "Poppins"];
-const PLATE_TEXT_COLORS = ["#ffffff", "#f6a672", "#ee722e", "#facba8"];
+const GOLD = "#c9a24a";
+const PLATE_TEXT_COLORS = ["#ffffff", "#f2c14e", "#ee722e", "#facba8"];
 const PLATE_FRAME_COLORS = [BLACK, WOOD, NAVY, "#5c260c"];
 const FRAME_FRAME_COLORS = [BLACK, "#ffffff", "#5c260c", WOOD];
 const FRAME_TEXT_COLORS = [BLACK, "#ee722e", "#b3261e", NAVY];
@@ -342,9 +373,10 @@ const DEFS: ProductDef[] = [
       templateName: "Mandala Name Plate",
       base: "/placeholders/fd-backdrop.svg",
       plaque: BLACK,
+      edge: GOLD,
       frameColors: PLATE_FRAME_COLORS,
       textColors: PLATE_TEXT_COLORS,
-      fonts: PLATE_FONTS,
+      fonts: ["Poppins", "Montserrat", "Playfair Display"],
       defaultFont: "Poppins",
       namePlaceholder: "Your Name",
       subPlaceholder: "House / Society",
@@ -367,9 +399,10 @@ const DEFS: ProductDef[] = [
       templateName: "Peacock Door Plate",
       base: "/placeholders/fd-backdrop.svg",
       plaque: WOOD,
+      edge: GOLD,
       frameColors: [WOOD, BLACK, "#5c260c", NAVY],
       textColors: ["#0f121f", "#ffffff", "#5c260c", "#8a3a12"],
-      fonts: ["Playfair Display", "Great Vibes", "Poppins"],
+      fonts: ["Playfair Display", "Cinzel", "Great Vibes"],
       defaultFont: "Playfair Display",
       namePlaceholder: "Family Name",
       subPlaceholder: "Flat / Block",
@@ -394,8 +427,8 @@ const DEFS: ProductDef[] = [
       plaque: "#efe7d8",
       frameColors: ["#efe7d8", WOOD, BLACK, "#5c260c"],
       textColors: ["#5c260c", "#0f121f", "#8a3a12", "#b04a17"],
-      fonts: ["Playfair Display", "Poppins", "Great Vibes"],
-      defaultFont: "Playfair Display",
+      fonts: ["Great Vibes", "Playfair Display", "Poppins"],
+      defaultFont: "Great Vibes",
       namePlaceholder: "Welcome",
       subPlaceholder: "The Sharmas · B-204",
     }),
@@ -418,7 +451,7 @@ const DEFS: ProductDef[] = [
       base: "/placeholders/fd-backdrop.svg",
       frameColors: FRAME_FRAME_COLORS,
       textColors: FRAME_TEXT_COLORS,
-      fonts: FRAME_FONTS,
+      fonts: ["Great Vibes", "Dancing Script", "Pacifico"],
       defaultFont: "Great Vibes",
       namesPlaceholder: "Name & Name",
       datePlaceholder: "01.01.2025",
@@ -466,7 +499,7 @@ const DEFS: ProductDef[] = [
       base: "/placeholders/fd-backdrop.svg",
       frameColors: FRAME_FRAME_COLORS,
       textColors: FRAME_TEXT_COLORS,
-      fonts: FRAME_FONTS,
+      fonts: ["Great Vibes", "Dancing Script", "Playfair Display"],
       defaultFont: "Great Vibes",
       namesPlaceholder: "Name & Name",
       datePlaceholder: "01.01.2025",
@@ -486,8 +519,8 @@ const DESCRIPTION_TAIL =
 async function main() {
   // Card mock-ups and the shared backdrop the customizer draws on.
   const placeholders: Record<string, string> = { "fd-backdrop": backdropSvg() };
-  placeholders["fd-mandala"] = plateCardSvg({ plaque: BLACK, text: "#ffffff", name: "Ravi's", sub: "Ram Vihar" });
-  placeholders["fd-peacock"] = plateCardSvg({ plaque: WOOD, text: "#0f121f", name: "Krishna", sub: "Flat B-204" });
+  placeholders["fd-mandala"] = plateCardSvg({ plaque: BLACK, text: "#ffffff", edge: GOLD, name: "Ravi's", sub: "Ram Vihar" });
+  placeholders["fd-peacock"] = plateCardSvg({ plaque: WOOD, text: "#0f121f", edge: GOLD, name: "Krishna", sub: "Flat B-204" });
   placeholders["fd-modern"] = plateCardSvg({ plaque: "#efe7d8", text: "#5c260c", name: "Welcome", sub: "The Sharmas" });
   placeholders["fd-couple"] = frameCardSvg({ frame: BLACK, names: "Kunal & Divya", date: "12.04.2023" });
   placeholders["fd-social"] = frameCardSvg({ frame: BLACK, names: "@lovegram", date: "Est. 2025" });

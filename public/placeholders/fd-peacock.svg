@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
   <rect width="800" height="800" fill="#eceef1"/>
-  <rect x="60" y="250" width="680" height="300" rx="28" fill="#8a5a2b"/>
-  <text x="400" y="410" font-family="Georgia, serif" font-size="96" font-weight="700" fill="#0f121f" text-anchor="middle">Krishna</text>
-  <text x="400" y="480" font-family="Georgia, serif" font-size="30" letter-spacing="3" fill="#0f121f" fill-opacity="0.85" text-anchor="middle">FLAT B-204</text>
+  <rect x="48" y="264" width="704" height="272" rx="26" fill="#8a5a2b"/>
+  <rect x="68" y="288" width="664" height="224" rx="12" fill="none" stroke="#c9a24a" stroke-width="6"/>
+  <text x="400" y="415" font-family="Georgia, serif" font-size="104" font-weight="700" fill="#0f121f" text-anchor="middle">Krishna</text>
+  <text x="400" y="486" font-family="Georgia, serif" font-size="28" letter-spacing="3" fill="#0f121f" fill-opacity="0.85" text-anchor="middle">FLAT B-204</text>
 </svg>
