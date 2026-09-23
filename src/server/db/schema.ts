@@ -645,6 +645,41 @@ export const uploads = pgTable(
   ],
 );
 
+/**
+ * A design a signed-in customer saved to reuse or come back to later (§27).
+ *
+ * Holds the design JSON only — the customer's uploaded photos live in
+ * `uploads` and are referenced by id, never copied here, so one photo is not
+ * duplicated across every saved design that uses it. Deleting a saved design
+ * removes this row and nothing else: the underlying uploads may still belong
+ * to an order and are governed by the upload retention policy, not by this
+ * table (§44).
+ */
+export const savedDesigns = pgTable(
+  "saved_designs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    /** The customer's design (CustomerDesign shape from lib/customizer). */
+    design: jsonb("design").notNull(),
+    /** The customizer version the design was built against, so a saved design
+     *  from an older layout can be flagged when the product has since changed. */
+    configVersion: integer("config_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("saved_designs_user_idx").on(t.userId, t.createdAt),
+    index("saved_designs_product_idx").on(t.productId),
+  ],
+);
+
 /* ------------------------------------------------------- content & config */
 
 export const banners = pgTable(

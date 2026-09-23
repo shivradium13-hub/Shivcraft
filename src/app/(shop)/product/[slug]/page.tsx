@@ -9,8 +9,13 @@ import { ProductPurchase } from "@/components/shop/ProductPurchase";
 import { ProductRail } from "@/components/shop/ProductCard";
 import { ReviewForm, type ReviewEligibility } from "@/components/shop/ReviewForm";
 import { SectionHeading, Stars } from "@/components/ui/primitives";
+import { and, eq } from "drizzle-orm";
+
+import { designSchema, type CustomerDesign } from "@/lib/customizer/design";
 import { optionalUser } from "@/server/auth/guards";
 import { describeOffer, getLiveOffers } from "@/server/catalog/offers";
+import { db } from "@/server/db";
+import { savedDesigns } from "@/server/db/schema";
 import { getProductBySlug, getRelatedProducts } from "@/server/catalog/product";
 import { checkEligibility, getOwnReview } from "@/server/reviews/service";
 
@@ -50,6 +55,34 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
      still theirs to see and edit. */
   const viewer = await optionalUser();
   const ownReview = viewer ? await getOwnReview(viewer.id, product.id) : null;
+
+  /* A saved design opened from the account (?load=<id>). Fetched here, scoped
+     to this viewer and this product, so a design can only ever be loaded by
+     the account that owns it — the id in the URL is not enough on its own. */
+  const { load } = await props.searchParams;
+  const loadId = typeof load === "string" ? load : null;
+  let savedDesign: CustomerDesign | null = null;
+  let savedDesignName: string | null = null;
+  if (viewer && loadId) {
+    const [row] = await db
+      .select({ name: savedDesigns.name, design: savedDesigns.design })
+      .from(savedDesigns)
+      .where(
+        and(
+          eq(savedDesigns.id, loadId),
+          eq(savedDesigns.userId, viewer.id),
+          eq(savedDesigns.productId, product.id),
+        ),
+      )
+      .limit(1);
+    if (row) {
+      const parsed = designSchema.safeParse(row.design);
+      if (parsed.success) {
+        savedDesign = parsed.data;
+        savedDesignName = row.name;
+      }
+    }
+  }
 
   let eligibility: ReviewEligibility;
   if (!viewer) {
@@ -181,7 +214,12 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
           ) : null}
 
           <div className="mt-6">
-            <ProductPurchase product={product} />
+            <ProductPurchase
+              product={product}
+              signedIn={Boolean(viewer)}
+              savedDesign={savedDesign}
+              savedDesignName={savedDesignName}
+            />
           </div>
 
           <div className="mt-6">

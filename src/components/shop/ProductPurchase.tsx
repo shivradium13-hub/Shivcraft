@@ -38,7 +38,18 @@ const ProductCustomizer = dynamic(
   },
 );
 
-export function ProductPurchase({ product }: { product: ProductDetail }) {
+export function ProductPurchase({
+  product,
+  signedIn = false,
+  savedDesign = null,
+  savedDesignName = null,
+}: {
+  product: ProductDetail;
+  signedIn?: boolean;
+  /** A design opened from the customer's account, threaded into the customizer. */
+  savedDesign?: CustomerDesign | null;
+  savedDesignName?: string | null;
+}) {
   const router = useRouter();
 
   const [chosen, setChosen] = useState<Record<string, string>>(() => {
@@ -195,6 +206,9 @@ export function ProductPurchase({ product }: { product: ProductDetail }) {
           config={customizerConfig}
           basePriceP={effectivePriceP(product)}
           onDesignChange={setDesign}
+          signedIn={signedIn}
+          initialDesign={savedDesign}
+          initialDesignName={savedDesignName}
         />
       ) : null}
 

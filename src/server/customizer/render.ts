@@ -1,5 +1,11 @@
-import type { CustomerDesign } from "@/lib/customizer/design";
-import type { CustomizerConfig, CustomizerZone } from "@/lib/customizer/schema";
+import type { CustomerDesign, PhotoPlacement } from "@/lib/customizer/design";
+import {
+  isZoneVisible,
+  zonesForView,
+  type CustomizerConfig,
+  type CustomizerView,
+  type CustomizerZone,
+} from "@/lib/customizer/schema";
 
 /**
  * Print-ready output for a customised order.
@@ -86,6 +92,48 @@ export type ProductionFile = {
 };
 
 /**
+ * The customer's photo, placed to cover a box `w` × `h` in user units.
+ *
+ * The one implementation of the placement maths, shared by the single-zone
+ * print file and the composite proof, so the two can never disagree about
+ * where a photo sits. Returns a filter definition (empty when nothing was
+ * adjusted) and the drawing itself, positioned in local 0..w / 0..h space.
+ */
+function photoContent(
+  idSuffix: string,
+  placement: PhotoPlacement,
+  w: number,
+  h: number,
+  asset: ZoneAsset,
+): { defs: string; body: string } {
+  const p = placement;
+  const filter = adjustmentFilter(`adj-${idSuffix}`, p.brightness, p.contrast, p.saturation);
+
+  /* The same order the browser applies: cover the area, scale about the
+     centre, rotate about the centre, then move by the stored offset, where
+     100% is one box width or height. */
+  const offX = (p.offsetX / 100) * w;
+  const offY = (p.offsetY / 100) * h;
+  const flipX = p.flipH ? -1 : 1;
+  const flipY = p.flipV ? -1 : 1;
+
+  const transform = [
+    `translate(${round(w / 2 + offX)} ${round(h / 2 + offY)})`,
+    `rotate(${round(p.rotation)})`,
+    `scale(${round(p.scale * flipX)} ${round(p.scale * flipY)})`,
+    `translate(${round(-w / 2)} ${round(-h / 2)})`,
+  ].join(" ");
+
+  const body = `<g transform="${transform}"${filter.ref}>
+      <image x="0" y="0" width="${round(w)}" height="${round(h)}"
+        preserveAspectRatio="xMidYMid slice"
+        href="data:${asset.contentType};base64,${asset.base64}"/>
+    </g>`;
+
+  return { defs: filter.def, body };
+}
+
+/**
  * One photo zone as a print file at its configured physical size.
  *
  * This is what a print shop actually wants: the artwork for one area, at the
@@ -115,30 +163,9 @@ export function renderZoneFile(options: {
   let defs = "";
 
   if (value?.kind === "PHOTO" && asset) {
-    const p = value.photo;
-    const filter = adjustmentFilter(`adj-${zone.id}`, p.brightness, p.contrast, p.saturation);
-    defs += filter.def;
-
-    /* The same order the browser applies: cover the area, scale about the
-       centre, rotate about the centre, then move by the stored offset, where
-       100% is one zone width or height. */
-    const offX = (p.offsetX / 100) * w;
-    const offY = (p.offsetY / 100) * h;
-    const flipX = p.flipH ? -1 : 1;
-    const flipY = p.flipV ? -1 : 1;
-
-    const transform = [
-      `translate(${round(w / 2 + offX)} ${round(h / 2 + offY)})`,
-      `rotate(${round(p.rotation)})`,
-      `scale(${round(p.scale * flipX)} ${round(p.scale * flipY)})`,
-      `translate(${round(-w / 2)} ${round(-h / 2)})`,
-    ].join(" ");
-
-    body += `<g transform="${transform}"${filter.ref}>
-      <image x="0" y="0" width="${round(w)}" height="${round(h)}"
-        preserveAspectRatio="xMidYMid slice"
-        href="data:${asset.contentType};base64,${asset.base64}"/>
-    </g>`;
+    const content = photoContent(zone.id, value.photo, w, h, asset);
+    defs += content.defs;
+    body += content.body;
   } else if (value?.kind === "PHOTO") {
     warnings.push(`The original photo for ${zone.label} could not be read from storage.`);
   } else {
@@ -172,6 +199,119 @@ export function renderZoneFile(options: {
 </svg>`;
 
   return { svg, widthMm, heightMm, warnings };
+}
+
+export type ResolvedImage = { base64: string; contentType: string } | null;
+
+export type CompositeProof = { svg: string; warnings: string[] };
+
+/**
+ * A single-sheet visual proof of the whole finished piece.
+ *
+ * This is not the print artwork — the per-zone files are, at exact physical
+ * size. This is the reference the workshop checks against: the product view
+ * with every photo, word and colour choice composited exactly as the customer
+ * approved, on one page. It is built from the same placement maths and the
+ * same percentage coordinates as the on-screen preview and the per-zone files,
+ * so it cannot drift from either.
+ *
+ * The canvas is square to match the preview, and the product art is drawn
+ * "meet" (letterboxed) exactly as `object-contain` does on screen.
+ */
+export function renderComposite(options: {
+  config: CustomizerConfig;
+  design: CustomerDesign;
+  view: CustomizerView;
+  /** Customer photos, by zone id, already fetched from private storage. */
+  assets: Map<string, ZoneAsset>;
+  base: ResolvedImage;
+  overlay: ResolvedImage;
+  /** Square canvas side, in pixels. */
+  pxSize?: number;
+}): CompositeProof {
+  const { config, design, view, assets, base, overlay } = options;
+  const S = options.pxSize ?? 1600;
+  const warnings: string[] = [];
+
+  let defs = "";
+  let body = "";
+
+  if (base) {
+    body += `<image x="0" y="0" width="${S}" height="${S}" preserveAspectRatio="xMidYMid meet" href="data:${base.contentType};base64,${base.base64}"/>`;
+  } else {
+    warnings.push(
+      "The product background could not be embedded, so this proof shows the customer's content on a plain page. The per-zone print files are unaffected.",
+    );
+  }
+
+  /* Only the zones the customer's option choices actually reveal, in the same
+     order the preview draws them. */
+  const zones = zonesForView(config, view.id).filter((z) => isZoneVisible(config, z, design.options));
+
+  for (const zone of zones) {
+    const value = design.zones[zone.id];
+    if (!value) continue;
+
+    const zx = (zone.x / 100) * S;
+    const zy = (zone.y / 100) * S;
+    const zw = (zone.width / 100) * S;
+    const zh = (zone.height / 100) * S;
+    const cx = zx + zw / 2;
+    const cy = zy + zh / 2;
+
+    const clipId = `clip-${zone.id}`;
+    defs +=
+      zone.shape === "CIRCLE"
+        ? `<clipPath id="${clipId}"><ellipse cx="${round(cx)}" cy="${round(cy)}" rx="${round(zw / 2)}" ry="${round(zh / 2)}"/></clipPath>`
+        : `<clipPath id="${clipId}"><rect x="${round(zx)}" y="${round(zy)}" width="${round(zw)}" height="${round(zh)}" rx="${round((zone.cornerRadius / 100) * Math.min(zw, zh))}"/></clipPath>`;
+
+    let inner = "";
+    if (value.kind === "PHOTO" && assets.has(zone.id)) {
+      const content = photoContent(zone.id, value.photo, zw, zh, assets.get(zone.id)!);
+      defs += content.defs;
+      // photoContent draws in local 0..zw / 0..zh space; move it onto the zone.
+      inner = `<g transform="translate(${round(zx)} ${round(zy)})">${content.body}</g>`;
+    } else if (value.kind === "PHOTO") {
+      warnings.push(`The photo for ${zone.label} could not be embedded in the proof.`);
+    } else if (value.kind === "TEXT" && value.text.value.trim()) {
+      const sizePx = ((value.text.fontSizePct ?? zone.fontSizePct) / 100) * zh;
+      const fill = value.text.color ?? zone.color;
+      const align = value.text.align ?? zone.align;
+      const anchor = align === "left" ? "start" : align === "right" ? "end" : "middle";
+      const tx = align === "left" ? zx + zw * 0.04 : align === "right" ? zx + zw * 0.96 : cx;
+      const lines = value.text.value.split("\n");
+      // Centre the block of lines vertically about the zone centre.
+      const startY = cy - ((lines.length - 1) * sizePx * 1.15) / 2;
+      const tspans = lines
+        .map(
+          (line, i) =>
+            `<tspan x="${round(tx)}" y="${round(startY + i * sizePx * 1.15)}">${esc(line)}</tspan>`,
+        )
+        .join("");
+      inner = `<text font-family="Georgia, 'Times New Roman', serif" font-size="${round(sizePx)}" fill="${fill}" text-anchor="${anchor}" dominant-baseline="middle">${tspans}</text>`;
+    }
+
+    if (inner) {
+      const rotate = zone.rotation ? ` transform="rotate(${round(zone.rotation)} ${round(cx)} ${round(cy)})"` : "";
+      body += `<g${rotate}><g clip-path="url(#${clipId})">${inner}</g></g>`;
+    }
+  }
+
+  if (overlay) {
+    body += `<image x="0" y="0" width="${S}" height="${S}" preserveAspectRatio="xMidYMid meet" href="data:${overlay.contentType};base64,${overlay.base64}"/>`;
+  }
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+  width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">
+  <title>${esc(view.label)} — proof</title>
+  <desc>Shiv Radium proof sheet. A visual reference of the finished piece; the per-zone files are the print artwork.</desc>
+  <defs>${defs}</defs>
+  <rect x="0" y="0" width="${S}" height="${S}" fill="#ffffff"/>
+  ${body}
+</svg>`;
+
+  return { svg, warnings };
 }
 
 /** Which zones of a design have a photo that needs fetching. */

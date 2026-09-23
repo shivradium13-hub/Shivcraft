@@ -5,25 +5,64 @@ import { readStoredDesign } from "@/lib/customizer/design";
 import { readConfig } from "@/lib/customizer/schema";
 import { ApiError, route } from "@/server/api/http";
 import { requireAdmin } from "@/server/auth/guards";
-import { renderQuality, renderZoneFile } from "@/server/customizer/render";
+import {
+  photoZonesOf,
+  renderComposite,
+  renderQuality,
+  renderZoneFile,
+  type ResolvedImage,
+  type ZoneAsset,
+} from "@/server/customizer/render";
 import { db } from "@/server/db";
 import { orderItems, orders, uploads } from "@/server/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/* Reading a large original out of the blob store and base64ing it takes
+/* Reading large originals out of the blob store and base64ing them takes
    longer than a page render, and is worth waiting for. */
 export const maxDuration = 60;
 
+/** Reads one private blob to base64, or throws a written error. */
+async function readBlobBase64(pathname: string): Promise<string> {
+  const blob = await get(pathname, { access: "private" });
+  if (!blob || blob.statusCode !== 200) {
+    throw new ApiError("SERVER_ERROR", "A file could not be read from storage.");
+  }
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of blob.stream as unknown as AsyncIterable<Uint8Array>) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString("base64");
+}
+
+/** Fetches a product-art image (base/overlay) and base64s it for embedding.
+ *  Returns null on any failure — a proof without its background is still
+ *  useful, and the caller reports the gap rather than failing the download. */
+async function resolveImage(src: string, origin: string): Promise<ResolvedImage> {
+  if (!src) return null;
+  try {
+    const abs = /^https?:\/\//.test(src) ? src : new URL(src, origin).toString();
+    const res = await fetch(abs);
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type")?.split(";")[0]?.trim() || "image/png";
+    const buf = Buffer.from(await res.arrayBuffer());
+    return { base64: buf.toString("base64"), contentType };
+  } catch {
+    return null;
+  }
+}
+
 /**
- * GET /api/admin/orders/[orderNumber]/production?item=<id>&zone=<id>
+ * GET /api/admin/orders/[orderNumber]/production
  *
- * The print file for one photo area of one order line, built from the snapshot
- * frozen at checkout and the customer's untouched original.
+ *   ?item=<id>&zone=<id>   the print file for one photo area (exact physical
+ *                          size, the true artwork)
+ *   ?item=<id>&sheet=<viewId?>  a one-page visual proof of the whole view,
+ *                          every photo, word and colour composited as approved
  *
- * Admin only. Nothing here is taken from the request beyond which line and
- * which zone: the geometry, the crop and the physical size all come from the
- * order itself, so this cannot be steered into rendering something else.
+ * Both are built from the snapshot frozen at checkout and the customer's
+ * untouched originals. Admin only. Nothing but which line, zone or view is
+ * taken from the request — the geometry, crop and sizes come from the order.
  */
 export const GET = route(
   async (request: Request, context: RouteContext<"/api/admin/orders/[orderNumber]/production">) => {
@@ -33,6 +72,7 @@ export const GET = route(
 
     const itemId = url.searchParams.get("item") ?? "";
     const zoneId = url.searchParams.get("zone") ?? "";
+    const sheetView = url.searchParams.get("sheet");
 
     const rows = await db
       .select({ id: orderItems.id, design: orderItems.design })
@@ -48,6 +88,57 @@ export const GET = route(
     if (!stored) throw new ApiError("NOT_FOUND", "That line has no design to render.");
 
     const config = readConfig(stored.config);
+
+    /* --------------------------------------------- the composite proof sheet */
+    if (sheetView !== null) {
+      const view =
+        config.views.find((v) => v.id === sheetView) ??
+        config.views.find((v) => v.id === stored.design.viewId) ??
+        config.views[0];
+      if (!view) throw new ApiError("BAD_REQUEST", "This order has no view to proof.");
+
+      /* Every photo the view shows, read from the private store into an asset
+         map keyed by zone — the same originals the per-zone files use. */
+      const assets = new Map<string, ZoneAsset>();
+      for (const { zone, uploadId } of photoZonesOf(config, stored.design)) {
+        if (!view.zoneIds.includes(zone.id)) continue;
+        const uploadRow = (
+          await db
+            .select({ pathname: uploads.pathname, contentType: uploads.contentType })
+            .from(uploads)
+            .where(eq(uploads.id, uploadId))
+            .limit(1)
+        )[0];
+        if (!uploadRow) continue;
+        assets.set(zone.id, {
+          zoneId: zone.id,
+          base64: await readBlobBase64(uploadRow.pathname),
+          contentType: uploadRow.contentType,
+        });
+      }
+
+      const [base, overlay] = await Promise.all([
+        resolveImage(view.base, url.origin),
+        resolveImage(view.overlay, url.origin),
+      ]);
+
+      const proof = renderComposite({ config, design: stored.design, view, assets, base, overlay });
+      const safeName = `${orderNumber}-${view.label}-proof`
+        .replace(/[^a-zA-Z0-9-]+/g, "-")
+        .toLowerCase();
+
+      return new Response(proof.svg, {
+        headers: {
+          "content-type": "image/svg+xml; charset=utf-8",
+          "content-disposition": `attachment; filename="${safeName}.svg"`,
+          "x-proof-kind": "composite",
+          "x-render-warnings": proof.warnings.length > 0 ? proof.warnings.join(" | ") : "none",
+          "cache-control": "private, no-store",
+        },
+      });
+    }
+
+    /* ------------------------------------------ the single-zone print file */
     const zone = config.zones.find((z) => z.id === zoneId);
     const value = stored.design.zones[zoneId];
 
@@ -58,8 +149,6 @@ export const GET = route(
       throw new ApiError("NOT_FOUND", "The customer did not put a photo in that area.");
     }
 
-    /* The original, straight from the private store. Nothing the customer's
-       browser produced ends up in the output. */
     const uploadRows = await db
       .select({ pathname: uploads.pathname, contentType: uploads.contentType })
       .from(uploads)
@@ -70,18 +159,7 @@ export const GET = route(
       throw new ApiError("NOT_FOUND", "The customer's original photo is no longer in storage.");
     }
 
-    /* The store is private, so the blob is read with an authorised get rather
-       than fetched from a URL — the same call the customer-facing proxy uses. */
-    const blob = await get(uploadRows[0].pathname, { access: "private" });
-    if (!blob || blob.statusCode !== 200) {
-      throw new ApiError("SERVER_ERROR", "The original photo could not be read from storage.");
-    }
-
-    const chunks: Uint8Array[] = [];
-    for await (const chunk of blob.stream as unknown as AsyncIterable<Uint8Array>) {
-      chunks.push(chunk);
-    }
-    const base64 = Buffer.concat(chunks).toString("base64");
+    const base64 = await readBlobBase64(uploadRows[0].pathname);
 
     const file = renderZoneFile({
       zone,

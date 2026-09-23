@@ -7,8 +7,10 @@ import {
   EMPTY_CONFIG,
   type CustomizerConfig,
   type CustomizerOptionGroup,
+  type CustomizerTemplate,
   type CustomizerView,
   type CustomizerZone,
+  type VisibilityRule,
 } from "@/lib/customizer/schema";
 import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas";
 
@@ -28,7 +30,7 @@ import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas"
 const input =
   "w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
 
-type Tab = "views" | "zones" | "options" | "tools";
+type Tab = "views" | "zones" | "options" | "templates" | "tools";
 
 export function CustomizerBuilder({
   productId,
@@ -235,7 +237,7 @@ export function CustomizerBuilder({
       {/* ------------------------------------------------------- controls */}
       <div>
         <div className="flex flex-wrap gap-1.5">
-          {(["views", "zones", "options", "tools"] as Tab[]).map((t) => (
+          {(["views", "zones", "options", "templates", "tools"] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -250,7 +252,9 @@ export function CustomizerBuilder({
                   ? "Editable areas"
                   : t === "options"
                     ? "Colours & sizes"
-                    : "Customer tools"}
+                    : t === "templates"
+                      ? "Templates"
+                      : "Customer tools"}
             </button>
           ))}
         </div>
@@ -306,6 +310,7 @@ export function CustomizerBuilder({
                   cornerRadius: 0,
                   safeInset: kind === "PHOTO" ? 4 : 0,
                   required: true,
+                  visibleWhen: null,
                   printWidthMm: kind === "PHOTO" ? 150 : null,
                   printHeightMm: kind === "PHOTO" ? 100 : null,
                   minDpi: 150,
@@ -339,6 +344,8 @@ export function CustomizerBuilder({
           ) : null}
 
           {tab === "options" ? <OptionsTab config={config} onChange={setConfig} /> : null}
+
+          {tab === "templates" ? <TemplatesTab config={config} onChange={setConfig} /> : null}
 
           {tab === "tools" ? <ToolsTab config={config} onChange={setConfig} /> : null}
         </div>
@@ -631,6 +638,15 @@ function ZonesTab({
           </label>
 
           <div className="sm:col-span-2">
+            <VisibilityRuleEditor
+              config={config}
+              rule={selected.visibleWhen}
+              subject="area"
+              onChange={(visibleWhen) => onPatch(selected.id, { visibleWhen })}
+            />
+          </div>
+
+          <div className="sm:col-span-2">
             <button
               type="button"
               onClick={() => onRemove(selected.id)}
@@ -772,6 +788,16 @@ function OptionsTab({
             ))}
           </ul>
 
+          <div className="mt-3">
+            <VisibilityRuleEditor
+              config={config}
+              rule={group.visibleWhen}
+              subject="group"
+              excludeGroupId={group.id}
+              onChange={(visibleWhen) => patch(group.id, { visibleWhen })}
+            />
+          </div>
+
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
@@ -823,6 +849,7 @@ function OptionsTab({
                 kind: "SWATCH",
                 required: true,
                 helpText: "",
+                visibleWhen: null,
                 options: [
                   {
                     id: newId("opt"),
@@ -840,6 +867,253 @@ function OptionsTab({
         className="justify-self-start rounded-lg border border-sr-line-strong px-4 py-2 text-sm font-semibold text-sr-body"
       >
         Add a group
+      </button>
+    </div>
+  );
+}
+
+/**
+ * "Show this only when…" — a conditional-visibility rule.
+ *
+ * Lets the admin reveal a zone or an option group only for certain choices in
+ * another group, e.g. a photo area that appears only when "With photo" is
+ * picked. The server enforces the same rule when it prices and validates, so
+ * this is a real behaviour, not a preview trick (§18).
+ */
+function VisibilityRuleEditor({
+  config,
+  rule,
+  subject,
+  excludeGroupId,
+  onChange,
+}: {
+  config: CustomizerConfig;
+  rule: VisibilityRule;
+  subject: "area" | "group";
+  /** A group cannot depend on itself. */
+  excludeGroupId?: string;
+  onChange: (rule: VisibilityRule) => void;
+}) {
+  const groups = config.optionGroups.filter((g) => g.id !== excludeGroupId);
+  const dep = rule ? groups.find((g) => g.id === rule.groupId) ?? null : null;
+
+  if (groups.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed border-sr-line px-3 py-2 text-[11px] text-sr-muted">
+        Add an option group under “Colours &amp; sizes” to show this {subject} only for certain
+        choices.
+      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-sr-line bg-sr-canvas p-2.5">
+      <p className="text-[11px] font-semibold tracking-wide text-sr-muted uppercase">
+        When to show this {subject}
+      </p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <select
+          className={`${input} max-w-[220px]`}
+          value={rule?.groupId ?? ""}
+          onChange={(e) => {
+            const groupId = e.target.value;
+            if (!groupId) return onChange(null);
+            const first = groups.find((g) => g.id === groupId)?.options[0]?.id;
+            onChange({ groupId, optionIds: first ? [first] : [] });
+          }}
+        >
+          <option value="">Always show it</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              Only for a choice in “{g.label}”
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {dep ? (
+        <div className="mt-2">
+          <p className="text-[11px] text-sr-muted">Shown when any of these is chosen:</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {dep.options.map((option) => {
+              const on = rule?.optionIds.includes(option.id) ?? false;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => {
+                    if (!rule) return;
+                    const next = on
+                      ? rule.optionIds.filter((id) => id !== option.id)
+                      : [...rule.optionIds, option.id];
+                    // Never leave a rule matching nothing; that would hide the
+                    // subject forever. Fall back to "always" instead.
+                    onChange(next.length > 0 ? { ...rule, optionIds: next } : null);
+                  }}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                    on ? "border-sr-600 bg-sr-50 text-sr-700" : "border-sr-line-strong text-sr-body"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Starting templates: named sets of colours and wording a customer can begin
+ * from. A template never carries a photo — it is a head start, not a saved
+ * design.
+ */
+function TemplatesTab({
+  config,
+  onChange,
+}: {
+  config: CustomizerConfig;
+  onChange: (next: CustomizerConfig) => void;
+}) {
+  const newId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 7)}`;
+  const textZones = config.zones.filter((z) => z.kind === "TEXT");
+
+  const patch = (id: string, next: Partial<CustomizerTemplate>) =>
+    onChange({
+      ...config,
+      templates: config.templates.map((t) => (t.id === id ? { ...t, ...next } : t)),
+    });
+
+  return (
+    <div className="grid gap-4">
+      <p className="text-sm text-sr-muted">
+        A template pre-fills the colours, sizes and wording so the customer starts part-way there.
+        Their photo is never touched. Leave this empty and customers simply start from scratch.
+      </p>
+
+      {config.templates.map((template) => (
+        <div key={template.id} className="rounded-lg border border-sr-line p-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Template name">
+              <input
+                className={input}
+                value={template.label}
+                onChange={(e) => patch(template.id, { label: e.target.value })}
+              />
+            </Field>
+            <Field label="Description" hint="A short line shown under the name.">
+              <input
+                className={input}
+                value={template.description}
+                onChange={(e) => patch(template.id, { description: e.target.value })}
+              />
+            </Field>
+            <Field label="Opens on view">
+              <select
+                className={input}
+                value={template.viewId}
+                onChange={(e) => patch(template.id, { viewId: e.target.value })}
+              >
+                <option value="">Leave the view as-is</option>
+                {config.views.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          {config.optionGroups.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold tracking-wide text-sr-muted uppercase">
+                Preset choices
+              </p>
+              <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+                {config.optionGroups.map((group) => (
+                  <Field key={group.id} label={group.label}>
+                    <select
+                      className={input}
+                      value={template.options[group.id] ?? ""}
+                      onChange={(e) => {
+                        const options = { ...template.options };
+                        if (e.target.value) options[group.id] = e.target.value;
+                        else delete options[group.id];
+                        patch(template.id, { options });
+                      }}
+                    >
+                      <option value="">No preset</option>
+                      {group.options.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {textZones.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold tracking-wide text-sr-muted uppercase">
+                Preset wording
+              </p>
+              <div className="mt-1.5 grid gap-2">
+                {textZones.map((zone) => (
+                  <Field key={zone.id} label={zone.label}>
+                    <input
+                      className={input}
+                      maxLength={zone.maxChars ?? 120}
+                      value={template.text[zone.id] ?? ""}
+                      onChange={(e) => {
+                        const text = { ...template.text };
+                        if (e.target.value) text[zone.id] = e.target.value;
+                        else delete text[zone.id];
+                        patch(template.id, { text });
+                      }}
+                    />
+                  </Field>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() =>
+                onChange({
+                  ...config,
+                  templates: config.templates.filter((t) => t.id !== template.id),
+                })
+              }
+              className="rounded-lg border border-danger px-3 py-1.5 text-xs font-semibold text-danger"
+            >
+              Remove template
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() =>
+          onChange({
+            ...config,
+            templates: [
+              ...config.templates,
+              { id: newId("tpl"), label: "New template", description: "", viewId: "", options: {}, text: {} },
+            ],
+          })
+        }
+        className="justify-self-start rounded-lg border border-sr-line-strong px-4 py-2 text-sm font-semibold text-sr-body"
+      >
+        Add template
       </button>
     </div>
   );

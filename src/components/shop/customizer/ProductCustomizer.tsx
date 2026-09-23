@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatPaise } from "@/lib/money";
@@ -9,9 +10,12 @@ import {
   type PhotoPlacement,
 } from "@/lib/customizer/design";
 import {
+  isGroupVisible,
+  isZoneVisible,
   resolveOption,
   zonesForView,
   type CustomizerConfig,
+  type CustomizerTemplate,
   type CustomizerZone,
 } from "@/lib/customizer/schema";
 
@@ -37,6 +41,13 @@ type Props = {
   config: CustomizerConfig;
   basePriceP: number;
   onDesignChange?: (design: CustomerDesign) => void;
+  /** Whether the visitor is signed in, so the save action can be offered
+   *  honestly rather than shown to someone the API would refuse. */
+  signedIn?: boolean;
+  /** A saved design being opened from the account, used as the starting point
+   *  in place of any local draft. */
+  initialDesign?: CustomerDesign | null;
+  initialDesignName?: string | null;
 };
 
 const MAX_HISTORY = 40;
@@ -47,18 +58,38 @@ export function ProductCustomizer({
   config,
   basePriceP,
   onDesignChange,
+  signedIn = false,
+  initialDesign = null,
+  initialDesignName = null,
 }: Props) {
   const storageKey = `sr:design:${productId}:v${config.version}`;
   const firstView = config.views[0]?.id ?? "";
 
   const [design, setDesign] = useState<CustomerDesign>(() =>
-    withDefaultOptions(restore(storageKey, config.version) ?? emptyDesign(config.version, firstView), config),
+    withDefaultOptions(
+      // A design opened from the account wins over a local draft; otherwise the
+      // draft from last visit; otherwise a blank design.
+      normaliseLoaded(initialDesign, config, firstView) ??
+        restore(storageKey, config.version) ??
+        emptyDesign(config.version, firstView),
+      config,
+    ),
   );
   const [activeZoneId, setActiveZoneId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [restored, setRestored] = useState(() => restore(storageKey, config.version) !== null);
+  // The "we kept your earlier design" banner only makes sense for a local
+  // draft — not when we deliberately opened a saved one.
+  const [restored, setRestored] = useState(
+    () => !initialDesign && restore(storageKey, config.version) !== null,
+  );
   const [fullscreen, setFullscreen] = useState(false);
+
+  /* Saving the current design to the account. `null` name means the input is
+     closed; the flow is: open → type a name → save → confirmation. */
+  const [saveName, setSaveName] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "done">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
 
   /* State, not refs: the Undo and Redo buttons read these to decide whether
@@ -68,7 +99,14 @@ export function ProductCustomizer({
   const [future, setFuture] = useState<CustomerDesign[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const zones = useMemo(() => zonesForView(config, design.viewId), [config, design.viewId]);
+  /* Zones on the current view that the customer's option choices reveal. A
+     zone hidden by a conditional rule is not shown as a tab, a step or a
+     target — it is not part of this design right now (§18). */
+  const zones = useMemo(
+    () =>
+      zonesForView(config, design.viewId).filter((z) => isZoneVisible(config, z, design.options)),
+    [config, design.viewId, design.options],
+  );
   const activeZone = zones.find((z) => z.id === activeZoneId) ?? zones[0] ?? null;
   const activeValue = activeZone ? design.zones[activeZone.id] : undefined;
   const activePhoto = activeValue?.kind === "PHOTO" ? activeValue.photo : null;
@@ -154,6 +192,36 @@ export function ProductCustomizer({
     [],
   );
 
+  /**
+   * Applies a starting template: its option choices, its wording and the view
+   * it opens on. Photos are deliberately preserved — a template carries none,
+   * and wiping a picture the customer already placed would be a nasty surprise.
+   * Recorded as one history step, so a single undo takes it all back.
+   */
+  const applyTemplate = useCallback(
+    (template: CustomizerTemplate) => {
+      commit({
+        ...design,
+        viewId:
+          template.viewId && config.views.some((v) => v.id === template.viewId)
+            ? template.viewId
+            : design.viewId,
+        options: { ...design.options, ...template.options },
+        zones: {
+          ...design.zones,
+          ...Object.fromEntries(
+            Object.entries(template.text)
+              // Only fill text zones the product still has, so a stale template
+              // cannot inject content for a zone that was removed.
+              .filter(([zoneId]) => config.zones.some((z) => z.id === zoneId && z.kind === "TEXT"))
+              .map(([zoneId, value]) => [zoneId, { kind: "TEXT" as const, text: { value } }]),
+          ),
+        },
+      });
+    },
+    [commit, design, config.views, config.zones],
+  );
+
   const gestures = usePhotoGestures({
     placement: activePhoto,
     enabled: Boolean(activeZone && activePhoto),
@@ -161,6 +229,31 @@ export function ProductCustomizer({
       if (activeZone) setPhoto(activeZone.id, patch, true);
     },
   });
+
+  /* ----------------------------------------------------------- save */
+
+  async function saveDesign(name: string) {
+    setSaveState("saving");
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/designs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ productId, name, design }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setSaveError(json?.error?.message ?? "That design could not be saved.");
+        setSaveState("idle");
+        return;
+      }
+      setSaveState("done");
+      setSaveName(null);
+    } catch {
+      setSaveError("Network problem — check your connection and try again.");
+      setSaveState("idle");
+    }
+  }
 
   /* --------------------------------------------------------------- upload */
 
@@ -221,6 +314,7 @@ export function ProductCustomizer({
   /* Mirrors the server arithmetic so the customer sees the same number before
      committing. The server result is still what gets charged. */
   const optionsDeltaP = config.optionGroups.reduce((sum, group) => {
+    if (!isGroupVisible(config, group, design.options)) return sum;
     const option = resolveOption(group, design.options[group.id]);
     return sum + (option?.priceDeltaP ?? 0);
   }, 0);
@@ -231,7 +325,12 @@ export function ProductCustomizer({
   /* Progress over the zones this product actually requires, so a text-only
      product does not show a photo step it has no use for (§22). */
   const steps = config.zones
-    .filter((z) => z.required && config.views.some((v) => v.zoneIds.includes(z.id)))
+    .filter(
+      (z) =>
+        z.required &&
+        config.views.some((v) => v.zoneIds.includes(z.id)) &&
+        isZoneVisible(config, z, design.options),
+    )
     .map((z) => {
       const value = design.zones[z.id];
       const done =
@@ -262,6 +361,13 @@ export function ProductCustomizer({
         ) : null}
       </div>
 
+      {initialDesignName ? (
+        <p className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
+          Opened your saved design “{initialDesignName}”. Any changes here won’t alter the saved copy
+          until you save again.
+        </p>
+      ) : null}
+
       {restored ? (
         <p className="mt-2 rounded-lg bg-paper px-3 py-2 text-xs text-ink-soft">
           We kept the design you started earlier.{" "}
@@ -276,6 +382,30 @@ export function ProductCustomizer({
             Start again
           </button>
         </p>
+      ) : null}
+
+      {config.templates.length > 0 ? (
+        <div className="mt-3">
+          <p className="text-xs font-semibold text-ink">Start from a template</p>
+          <p className="mt-0.5 text-[11px] text-muted">
+            Sets the colours and wording. Your photo stays as it is.
+          </p>
+          <div className="gc-hide-scrollbar mt-1.5 flex gap-2 overflow-x-auto pb-1">
+            {config.templates.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                onClick={() => applyTemplate(template)}
+                className="shrink-0 rounded-lg border border-line-strong bg-paper px-3 py-1.5 text-left transition hover:border-brand-400"
+              >
+                <span className="block text-xs font-semibold text-ink-soft">{template.label}</span>
+                {template.description ? (
+                  <span className="block text-[11px] text-muted">{template.description}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : null}
 
       {/* ----------------------------------------------------------- canvas */}
@@ -353,6 +483,8 @@ export function ProductCustomizer({
 
       {/* ---------------------------------------------------------- options */}
       {config.optionGroups.map((group) => {
+        // A group revealed only by another choice stays hidden until then.
+        if (!isGroupVisible(config, group, design.options)) return null;
         const selected = resolveOption(group, design.options[group.id]);
         return (
           <fieldset key={group.id} className="mt-4">
@@ -637,6 +769,78 @@ export function ProductCustomizer({
         </div>
       ) : null}
 
+      {/* -------------------------------------------------- save to account */}
+      {personalised ? (
+        <div className="mt-4 border-t border-line pt-3">
+          {signedIn ? (
+            saveState === "done" ? (
+              <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
+                Saved to your account.{" "}
+                <Link href="/account/designs" className="font-semibold text-brand-700 underline">
+                  View saved designs
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setSaveState("idle")}
+                  className="ml-2 font-semibold text-brand-700 underline"
+                >
+                  Save another
+                </button>
+              </p>
+            ) : saveName !== null ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  value={saveName}
+                  onChange={(e) => setSaveName(e.target.value)}
+                  maxLength={120}
+                  placeholder="Name this design"
+                  autoFocus
+                  className="min-w-0 flex-1 rounded-lg border border-field bg-field-bg px-3 py-2 text-sm outline-none focus:border-brand-500"
+                />
+                <button
+                  type="button"
+                  disabled={saveState === "saving" || saveName.trim() === ""}
+                  onClick={() => saveDesign(saveName.trim())}
+                  className="rounded-lg bg-brand-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+                >
+                  {saveState === "saving" ? "Saving…" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaveName(null);
+                    setSaveError(null);
+                  }}
+                  className="rounded-lg border border-line-strong px-3 py-2 text-xs font-semibold text-ink-soft"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSaveName(initialDesignName ?? productName)}
+                className="w-full rounded-lg border border-line-strong bg-paper px-4 py-2 text-xs font-semibold text-ink-soft transition hover:border-brand-400"
+              >
+                Save this design to my account
+              </button>
+            )
+          ) : (
+            <p className="text-xs text-muted">
+              <Link href="/login" className="font-semibold text-brand-700 underline">
+                Sign in
+              </Link>{" "}
+              to save this design and come back to it later.
+            </p>
+          )}
+          {saveError ? (
+            <p role="alert" className="mt-2 rounded-lg bg-danger-soft px-3 py-2 text-xs font-medium text-danger">
+              {saveError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {config.customizationFeeP > 0 || config.optionGroups.length > 0 ? (
         <dl className="mt-4 space-y-1 border-t border-line pt-3 text-sm">
           <Row label={productName}>{formatPaise(basePriceP)}</Row>
@@ -646,6 +850,7 @@ export function ProductCustomizer({
             </Row>
           ) : null}
           {config.optionGroups.map((group) => {
+            if (!isGroupVisible(config, group, design.options)) return null;
             const option = resolveOption(group, design.options[group.id]);
             if (!option || option.priceDeltaP === 0) return null;
             return (
@@ -689,6 +894,24 @@ function withDefaultOptions(design: CustomerDesign, config: CustomizerConfig): C
     if (first) options[group.id] = first.id;
   }
   return { ...design, options };
+}
+
+/**
+ * Prepares a design opened from the account to run against the current config.
+ *
+ * The product may have been republished since the design was saved, so the
+ * view it remembers might no longer exist; fall back to the first view rather
+ * than open on a blank canvas. Zones the product no longer has simply do not
+ * render and are dropped on add-to-cart, so they need no handling here.
+ */
+function normaliseLoaded(
+  design: CustomerDesign | null,
+  config: CustomizerConfig,
+  firstView: string,
+): CustomerDesign | null {
+  if (!design) return null;
+  const viewId = config.views.some((v) => v.id === design.viewId) ? design.viewId : firstView;
+  return { ...design, viewId };
 }
 
 function restore(key: string, version: number): CustomerDesign | null {

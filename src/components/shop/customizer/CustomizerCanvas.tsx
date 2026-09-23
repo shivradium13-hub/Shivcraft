@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 
 import type { CustomerDesign } from "@/lib/customizer/design";
 import {
+  isZoneVisible,
   ledTint,
   zonesForView,
   type CustomizerConfig,
@@ -48,7 +49,11 @@ export function CustomizerCanvas({
   const view = config.views.find((v) => v.id === viewId) ?? config.views[0];
   if (!view) return null;
 
-  const zones = zonesForView(config, view.id);
+  /* A zone hidden by the customer's option choices is not drawn — the preview
+     shows exactly what the current configuration produces (§18). */
+  const zones = zonesForView(config, view.id).filter((z) =>
+    isZoneVisible(config, z, design.options),
+  );
   /* An LED group tints the glow layer, so choosing "warm white" or "blue"
      changes the light rather than only the wording. */
   const tint = view.isLit ? ledTint(config, design.options) : null;

@@ -12,6 +12,7 @@ const SECTIONS: Section[] = [
   { href: "/account", label: "My Profile", icon: "👤", exact: true },
   { href: "/account/orders", label: "My Orders", icon: "📦" },
   { href: "/account/wishlist", label: "Wishlist", icon: "♡" },
+  { href: "/account/designs", label: "Saved Designs", icon: "🎨" },
   { href: "/account/addresses", label: "Saved Addresses", icon: "📍" },
   { href: "/account/coupons", label: "Coupons", icon: "🎟" },
   { href: "/account/reviews", label: "Reviews", icon: "★" },

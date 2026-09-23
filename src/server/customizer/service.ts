@@ -6,6 +6,8 @@ import {
   type PhotoPlacement,
 } from "@/lib/customizer/design";
 import {
+  isGroupVisible,
+  isZoneVisible,
   readConfig,
   requiredZones,
   resolveOption,
@@ -100,6 +102,10 @@ export async function validateDesign(options: {
       continue;
     }
 
+    // A zone hidden by the customer's current option choices. Its content is
+    // left alone but not validated, priced or required — it is not on show.
+    if (!isZoneVisible(config, zone, design.options)) continue;
+
     if (value.kind === "PHOTO") {
       if (zone.kind !== "PHOTO") {
         issues.push({ zoneId, message: `${zone.label} does not take a photo.` });
@@ -129,7 +135,7 @@ export async function validateDesign(options: {
     }
   }
 
-  for (const zone of requiredZones(config)) {
+  for (const zone of requiredZones(config, design.options)) {
     const value = design.zones[zone.id];
     const missing =
       !value ||
@@ -152,6 +158,9 @@ export async function validateDesign(options: {
      rather than silently swapped, because the price would change under the
      customer. */
   for (const group of config.optionGroups) {
+    // A group hidden by another group's choice is neither required nor checked.
+    if (!isGroupVisible(config, group, design.options)) continue;
+
     const selectedId = design.options[group.id];
 
     if (!selectedId) {
@@ -216,6 +225,8 @@ export function customizationFeeP(config: CustomizerConfig, design: CustomerDesi
 
   let total = config.customizationFeeP;
   for (const group of config.optionGroups) {
+    // A hidden group's option is not on show, so it cannot add to the price.
+    if (!isGroupVisible(config, group, design.options)) continue;
     const option = resolveOption(group, design.options[group.id]);
     if (option) total += option.priceDeltaP;
   }
@@ -228,6 +239,7 @@ export function describeOptions(
   design: CustomerDesign,
 ): { label: string; value: string; sku: string; priceDeltaP: number }[] {
   return config.optionGroups.flatMap((group) => {
+    if (!isGroupVisible(config, group, design.options)) return [];
     const option = resolveOption(group, design.options[group.id]);
     return option
       ? [{ label: group.label, value: option.label, sku: option.sku, priceDeltaP: option.priceDeltaP }]

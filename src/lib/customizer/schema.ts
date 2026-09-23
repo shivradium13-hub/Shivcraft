@@ -30,6 +30,27 @@ export type ZoneKind = z.infer<typeof zoneKindSchema>;
 const percent = z.number().min(0).max(100);
 
 /**
+ * A rule that shows something only for certain option choices.
+ *
+ * "Show the photo area only when 'With photo' is selected." The rule names an
+ * option group and the options within it that reveal the target. Null means
+ * always shown, which is what every existing zone and group is. Visibility is
+ * cosmetic on its own — the server still refuses to require a hidden zone and
+ * still ignores a hidden option's price, so a customer cannot be charged for,
+ * or blocked by, something they were never shown (§18, §48).
+ */
+export const visibilityRuleSchema = z
+  .object({
+    /** The option group whose selection decides visibility. */
+    groupId: z.string().min(1).max(64),
+    /** The options in that group that reveal the target. */
+    optionIds: z.array(z.string().max(64)).min(1).max(40),
+  })
+  .nullable()
+  .default(null);
+export type VisibilityRule = z.infer<typeof visibilityRuleSchema>;
+
+/**
  * An editable region drawn over a product view.
  *
  * x/y are the top-left corner as a percentage of the view; width/height are
@@ -54,6 +75,9 @@ export const zoneSchema = z.object({
   safeInset: z.number().min(0).max(25).default(0),
 
   required: z.boolean().default(true),
+
+  /** Shown only for certain option choices; null means always shown. */
+  visibleWhen: visibilityRuleSchema,
 
   /** PHOTO zones only: the printable size this zone maps to, used to judge
    *  whether an uploaded photo has enough pixels. */
@@ -139,9 +163,34 @@ export const optionGroupSchema = z.object({
   kind: optionGroupKindSchema.default("CHOICE"),
   required: z.boolean().default(true),
   helpText: z.string().trim().max(160).default(""),
+  /** Shown only for certain choices in another group; null means always. */
+  visibleWhen: visibilityRuleSchema,
   options: z.array(optionSchema).min(1).max(40),
 });
 export type CustomizerOptionGroup = z.infer<typeof optionGroupSchema>;
+
+/**
+ * A named starting point the customer can begin from.
+ *
+ * A template is not a saved design — it carries no photos. It pre-selects
+ * options and pre-fills text so a customer choosing "Birthday" starts with the
+ * colour, layout and wording already set, then adds their own photo. Applying
+ * one sets its options and wording and switches to its view; it never touches
+ * an uploaded photo, so a customer can try templates without losing the
+ * picture they already placed (§19, §37).
+ */
+export const templateSchema = z.object({
+  id: z.string().min(1).max(64),
+  label: z.string().trim().min(1).max(60),
+  description: z.string().trim().max(160).default(""),
+  /** The view to open on when this template is applied. */
+  viewId: z.string().max(64).default(""),
+  /** optionGroupId -> optionId. */
+  options: z.record(z.string().max(64), z.string().max(64)).default({}),
+  /** textZoneId -> starting text. */
+  text: z.record(z.string().max(64), z.string().max(500)).default({}),
+});
+export type CustomizerTemplate = z.infer<typeof templateSchema>;
 
 export const customizerConfigSchema = z.object({
   enabled: z.boolean().default(false),
@@ -149,6 +198,7 @@ export const customizerConfigSchema = z.object({
   views: z.array(viewSchema).min(1, "Add at least one product view.").max(12),
   zones: z.array(zoneSchema).max(24).default([]),
   optionGroups: z.array(optionGroupSchema).max(12).default([]),
+  templates: z.array(templateSchema).max(20).default([]),
   tools: toolsSchema.default(() => toolsSchema.parse({})),
   /** Added to the line price when the customer personalises, in paise. */
   customizationFeeP: z.number().int().min(0).max(1_000_000).default(0),
@@ -167,6 +217,7 @@ export const EMPTY_CONFIG: CustomizerConfig = {
   views: [],
   zones: [],
   optionGroups: [],
+  templates: [],
   tools: {
     photoUpload: true,
     zoom: true,
@@ -207,10 +258,67 @@ export function zonesForView(config: CustomizerConfig, viewId: string): Customiz
     .filter((z): z is CustomizerZone => Boolean(z));
 }
 
-/** Every zone the customer must fill for the design to be complete. */
-export function requiredZones(config: CustomizerConfig): CustomizerZone[] {
+/**
+ * Whether an option group is currently shown, given the customer's selections.
+ *
+ * A group with no rule is always shown. A group whose rule points at another
+ * group is shown only when that group is itself shown and has one of the named
+ * options selected — so rules can chain. `seen` guards against a
+ * misconfigured cycle by treating it as shown rather than hiding everything.
+ */
+export function isGroupVisible(
+  config: CustomizerConfig,
+  group: CustomizerOptionGroup,
+  selections: Record<string, string>,
+  seen: Set<string> = new Set(),
+): boolean {
+  if (!group.visibleWhen) return true;
+  if (seen.has(group.id)) return true;
+  seen.add(group.id);
+
+  const dep = config.optionGroups.find((g) => g.id === group.visibleWhen!.groupId);
+  if (!dep) return true; // The referenced group is gone; don't hide on its account.
+  if (!isGroupVisible(config, dep, selections, seen)) return false;
+
+  const chosen = resolveOption(dep, selections[dep.id]);
+  return chosen ? group.visibleWhen.optionIds.includes(chosen.id) : false;
+}
+
+/** Whether a zone is currently shown, given the customer's selections. */
+export function isZoneVisible(
+  config: CustomizerConfig,
+  zone: CustomizerZone,
+  selections: Record<string, string>,
+): boolean {
+  const rule = zone.visibleWhen;
+  if (!rule) return true;
+
+  const group = config.optionGroups.find((g) => g.id === rule.groupId);
+  if (!group) return true; // Referenced group gone; leave the zone shown.
+  if (!isGroupVisible(config, group, selections)) return false;
+
+  const chosen = resolveOption(group, selections[group.id]);
+  return chosen ? rule.optionIds.includes(chosen.id) : false;
+}
+
+/**
+ * Every zone the customer must fill for the design to be complete.
+ *
+ * With no selections passed, this is the static set — every required zone used
+ * by a view, exactly as before. Pass the design's selections and a zone hidden
+ * by a conditional rule drops out, so a customer is never blocked by a slot
+ * they cannot see (§18).
+ */
+export function requiredZones(
+  config: CustomizerConfig,
+  selections?: Record<string, string>,
+): CustomizerZone[] {
   const used = new Set(config.views.flatMap((v) => v.zoneIds));
-  return config.zones.filter((z) => z.required && used.has(z.id));
+  return config.zones.filter((z) => {
+    if (!z.required || !used.has(z.id)) return false;
+    if (selections && !isZoneVisible(config, z, selections)) return false;
+    return true;
+  });
 }
 
 /** The option a design has selected in a group, falling back to the first

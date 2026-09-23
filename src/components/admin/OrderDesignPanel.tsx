@@ -56,6 +56,16 @@ export function OrderDesignPanel({
         </span>
       </div>
 
+      {config.enabled && config.views.length > 0 ? (
+        <a
+          href={`/api/admin/orders/${orderNumber}/production?item=${itemId}&sheet=${design.viewId}`}
+          download
+          className="mt-2 inline-flex rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400"
+        >
+          Download full proof sheet
+        </a>
+      ) : null}
+
       <div className="mt-3 grid gap-4 sm:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
         {/* What the customer approved, rendered from the frozen configuration. */}
         {config.enabled && config.views.length > 0 ? (
