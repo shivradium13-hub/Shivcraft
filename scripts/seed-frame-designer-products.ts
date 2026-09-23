@@ -570,38 +570,10 @@ type ProductDef = {
 };
 
 const GOLD = "#c9a24a";
-const PLATE_TEXT_COLORS = ["#ffffff", "#f2c14e", "#ee722e", "#facba8"];
-const PLATE_FRAME_COLORS = [BLACK, WOOD, NAVY, "#5c260c"];
 const FRAME_FRAME_COLORS = [BLACK, "#ffffff", "#5c260c", WOOD];
 const FRAME_TEXT_COLORS = [BLACK, "#ee722e", "#b3261e", NAVY];
 
 const DEFS: ProductDef[] = [
-  {
-    name: "Mandala Acrylic Name Plate",
-    sku: "SR-FD-01",
-    categorySlug: "acrylic-name-plates",
-    short: "A sleek acrylic door plate with a hand-drawn mandala motif and your family name in a finish you choose.",
-    price: 599,
-    sale: 499,
-    material: "Acrylic",
-    color: "Black",
-    size: "4×8 in and up",
-    occasion: "Housewarming",
-    tags: ["name plate", "acrylic", "mandala", "door", "personalised"],
-    card: "fd-mandala",
-    config: plateConfig({
-      templateName: "Mandala Name Plate",
-      base: "/placeholders/fd-backdrop.svg",
-      plaque: BLACK,
-      edge: GOLD,
-      frameColors: PLATE_FRAME_COLORS,
-      textColors: PLATE_TEXT_COLORS,
-      fonts: ["Poppins", "Montserrat", "Playfair Display"],
-      defaultFont: "Poppins",
-      namePlaceholder: "Your Name",
-      subPlaceholder: "House / Society",
-    }),
-  },
   {
     name: "Royal Peacock Door Name Plate",
     sku: "SR-FD-02",
@@ -626,31 +598,6 @@ const DEFS: ProductDef[] = [
       defaultFont: "Playfair Display",
       namePlaceholder: "Family Name",
       subPlaceholder: "Flat / Block",
-    }),
-  },
-  {
-    name: "Modern Home Entrance Name Plate",
-    sku: "SR-FD-03",
-    categorySlug: "acrylic-name-plates",
-    short: "A clean, contemporary acrylic plate for your entrance — set the welcome line, family name and house number.",
-    price: 1199,
-    sale: 999,
-    material: "Acrylic",
-    color: "Ivory",
-    size: "6×9 in and up",
-    occasion: "Housewarming",
-    tags: ["name plate", "modern", "entrance", "acrylic", "personalised"],
-    card: "fd-modern",
-    config: plateConfig({
-      templateName: "Modern Entrance Plate",
-      base: "/placeholders/fd-backdrop.svg",
-      plaque: "#efe7d8",
-      frameColors: ["#efe7d8", WOOD, BLACK, "#5c260c"],
-      textColors: ["#5c260c", "#0f121f", "#8a3a12", "#b04a17"],
-      fonts: ["Great Vibes", "Playfair Display", "Poppins"],
-      defaultFont: "Great Vibes",
-      namePlaceholder: "Welcome",
-      subPlaceholder: "The Sharmas · B-204",
     }),
   },
   {
@@ -699,30 +646,6 @@ const DEFS: ProductDef[] = [
       defaultFont: "Poppins",
       namesPlaceholder: "@yourhandle",
       datePlaceholder: "Est. 2025",
-    }),
-  },
-  {
-    name: "Love Birds Memory Collage Frame",
-    sku: "SR-FD-06",
-    categorySlug: "collage-frames",
-    short: "A dove-shaped memory collage framed for the wall — your photos, your names, your date.",
-    price: 899,
-    sale: 599,
-    material: "Framed print",
-    color: "Black",
-    size: "8×8 in and up",
-    occasion: "Wedding",
-    tags: ["photo frame", "collage", "wedding", "personalised", "memories"],
-    card: "fd-lovebirds",
-    config: frameConfig({
-      templateName: "Love Birds Collage",
-      base: "/placeholders/fd-backdrop.svg",
-      frameColors: FRAME_FRAME_COLORS,
-      textColors: FRAME_TEXT_COLORS,
-      fonts: ["Great Vibes", "Dancing Script", "Playfair Display"],
-      defaultFont: "Great Vibes",
-      namesPlaceholder: "Name & Name",
-      datePlaceholder: "01.01.2025",
     }),
   },
   {
@@ -807,12 +730,9 @@ const DESCRIPTION_TAIL =
 async function main() {
   // Card mock-ups and the shared backdrop the customizer draws on.
   const placeholders: Record<string, string> = { "fd-backdrop": backdropSvg() };
-  placeholders["fd-mandala"] = plateCardSvg({ plaque: BLACK, text: "#ffffff", edge: GOLD, name: "Ravi's", sub: "Ram Vihar" });
   placeholders["fd-peacock"] = plateCardSvg({ plaque: WOOD, text: "#0f121f", edge: GOLD, name: "Krishna", sub: "Flat B-204" });
-  placeholders["fd-modern"] = plateCardSvg({ plaque: "#efe7d8", text: "#5c260c", name: "Welcome", sub: "The Sharmas" });
   placeholders["fd-couple"] = frameCardSvg({ frame: BLACK, names: "Kunal & Divya", date: "12.04.2023" });
   placeholders["fd-social"] = frameCardSvg({ frame: BLACK, names: "@lovegram", date: "Est. 2025" });
-  placeholders["fd-lovebirds"] = frameCardSvg({ frame: BLACK, names: "Ronnie & Natalie", date: "08.09.1999" });
   // Wave-cut wooden plate: base (for the customizer) and a card mock.
   placeholders["fd-wavecut-base"] = waveCutBaseSvg();
   placeholders["fd-wavecut"] = waveCutBaseSvg({ name: "Bajwa", subs: "Deva, Bharat, Palak" });

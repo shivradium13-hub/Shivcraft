@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
-  <rect width="800" height="800" fill="#eceef1"/>
-  <rect x="48" y="264" width="704" height="272" rx="26" fill="#0f121f"/>
-  <rect x="68" y="288" width="664" height="224" rx="12" fill="none" stroke="#c9a24a" stroke-width="6"/>
-  <text x="400" y="415" font-family="Georgia, serif" font-size="104" font-weight="700" fill="#ffffff" text-anchor="middle">Ravi's</text>
-  <text x="400" y="486" font-family="Georgia, serif" font-size="28" letter-spacing="3" fill="#ffffff" fill-opacity="0.85" text-anchor="middle">RAM VIHAR</text>
-</svg>
