@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800">
+  <rect width="800" height="800" fill="#eceef1"/>
+  <rect x="120" y="90" width="560" height="620" rx="8" fill="#0f121f"/>
+  <rect x="150" y="120" width="500" height="560" rx="2" fill="#ffffff"/>
+  <text x="400" y="205" font-family="'Brush Script MT', cursive" font-size="52" fill="#0f121f" text-anchor="middle">Kunal &amp; Divya</text>
+  <text x="400" y="250" font-family="Georgia, serif" font-size="26" fill="#70747e" text-anchor="middle">12.04.2023</text>
+  <rect x="205" y="285" width="390" height="300" rx="4" fill="#e7e7e9"/>
+  <text x="400" y="445" font-family="Georgia, serif" font-size="30" fill="#acafb6" text-anchor="middle">YOUR PHOTO</text>
+</svg>
