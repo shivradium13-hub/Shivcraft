@@ -7,9 +7,11 @@ import { formatPaise } from "@/lib/money";
 import {
   emptyDesign,
   type CustomerDesign,
+  type DesignStyle,
   type PhotoPlacement,
 } from "@/lib/customizer/design";
 import {
+  fontStack,
   isGroupVisible,
   isZoneVisible,
   resolveOption,
@@ -66,12 +68,15 @@ export function ProductCustomizer({
   const firstView = config.views[0]?.id ?? "";
 
   const [design, setDesign] = useState<CustomerDesign>(() =>
-    withDefaultOptions(
-      // A design opened from the account wins over a local draft; otherwise the
-      // draft from last visit; otherwise a blank design.
-      normaliseLoaded(initialDesign, config, firstView) ??
-        restore(storageKey, config.version) ??
-        emptyDesign(config.version, firstView),
+    withDefaultStyle(
+      withDefaultOptions(
+        // A design opened from the account wins over a local draft; otherwise the
+        // draft from last visit; otherwise a blank design.
+        normaliseLoaded(initialDesign, config, firstView) ??
+          restore(storageKey, config.version) ??
+          emptyDesign(config.version, firstView),
+        config,
+      ),
       config,
     ),
   );
@@ -104,7 +109,10 @@ export function ProductCustomizer({
      target — it is not part of this design right now (§18). */
   const zones = useMemo(
     () =>
-      zonesForView(config, design.viewId).filter((z) => isZoneVisible(config, z, design.options)),
+      zonesForView(config, design.viewId).filter(
+        // Frames are the admin's decoration, not something the customer edits.
+        (z) => z.kind !== "FRAME" && isZoneVisible(config, z, design.options),
+      ),
     [config, design.viewId, design.options],
   );
   const activeZone = zones.find((z) => z.id === activeZoneId) ?? zones[0] ?? null;
@@ -229,6 +237,15 @@ export function ProductCustomizer({
       if (activeZone) setPhoto(activeZone.id, patch, true);
     },
   });
+
+  /** A global style choice (colour, font, size, gradient/LED switch). One
+   *  history step per choice, so undo steps back one decision. */
+  const setStyle = useCallback(
+    (patch: Partial<DesignStyle>) => {
+      commit({ ...design, style: { ...design.style, ...patch } });
+    },
+    [commit, design],
+  );
 
   /* ----------------------------------------------------------- save */
 
@@ -545,6 +562,9 @@ export function ProductCustomizer({
           </fieldset>
         );
       })}
+
+      {/* ----------------------------------------------------------- style */}
+      <StyleControls config={config} design={design} setStyle={setStyle} />
 
       {/* ------------------------------------------------------------ zones */}
       {zones.length > 1 ? (
@@ -897,6 +917,31 @@ function withDefaultOptions(design: CustomerDesign, config: CustomizerConfig): C
 }
 
 /**
+ * Fills in the customer's styling with the admin's defaults, for anything the
+ * customer has not yet chosen. Like the option defaults, done at creation so
+ * the first render already reflects the template's intended look.
+ */
+function withDefaultStyle(design: CustomerDesign, config: CustomizerConfig): CustomerDesign {
+  const co = config.customerOptions;
+  const style: DesignStyle = { ...design.style };
+  if (co.frameColor.enabled && style.frameColor === undefined && co.frameColor.default) {
+    style.frameColor = co.frameColor.default;
+  }
+  if (co.textColor.enabled && style.textColor === undefined && co.textColor.default) {
+    style.textColor = co.textColor.default;
+  }
+  if (co.font.enabled && style.fontFamily === undefined && co.font.default) {
+    style.fontFamily = co.font.default;
+  }
+  if (co.textSize.enabled && style.textSizePx === undefined && co.textSize.default) {
+    style.textSizePx = co.textSize.default;
+  }
+  if (co.ledGlow.enabled && style.ledOn === undefined) style.ledOn = true;
+  if (co.gradient.enabled && style.gradientOn === undefined) style.gradientOn = false;
+  return { ...design, style };
+}
+
+/**
  * Prepares a design opened from the account to run against the current config.
  *
  * The product may have been republished since the design was saved, so the
@@ -924,6 +969,188 @@ function restore(key: string, version: number): CustomerDesign | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The customer's global styling controls — only the ones the admin turned on,
+ * each drawn from an allowed set. Writing to `design.style`, which the canvas
+ * and the production render both read, so what the customer picks here is what
+ * gets made.
+ */
+function StyleControls({
+  config,
+  design,
+  setStyle,
+}: {
+  config: CustomizerConfig;
+  design: CustomerDesign;
+  setStyle: (patch: Partial<DesignStyle>) => void;
+}) {
+  const co = config.customerOptions;
+  const s = design.style;
+
+  const showFrame = co.frameColor.enabled && co.frameColor.colors.length > 0;
+  const showText = co.textColor.enabled && co.textColor.colors.length > 0;
+  const showFont = co.font.enabled && co.font.families.length > 0;
+  const showSize = co.textSize.enabled && co.textSize.choices.length > 0;
+  const showGradient = co.gradient.enabled;
+  const showLed = co.ledGlow.enabled;
+
+  if (!showFrame && !showText && !showFont && !showSize && !showGradient && !showLed) return null;
+
+  return (
+    <div className="mt-4 grid gap-4 border-t border-line pt-4">
+      {showFrame ? (
+        <Swatches
+          label="Frame colour"
+          colors={co.frameColor.colors}
+          selected={s.frameColor}
+          onPick={(c) => setStyle({ frameColor: c })}
+        />
+      ) : null}
+
+      {showText ? (
+        <Swatches
+          label="Text colour"
+          colors={co.textColor.colors}
+          selected={s.textColor}
+          onPick={(c) => setStyle({ textColor: c })}
+        />
+      ) : null}
+
+      {showFont ? (
+        <fieldset>
+          <legend className="text-xs font-semibold text-ink">Font</legend>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {co.font.families.map((f) => {
+              const active = (s.fontFamily ?? co.font.default) === f.name;
+              return (
+                <button
+                  key={f.name}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setStyle({ fontFamily: f.name })}
+                  style={{ fontFamily: fontStack(f.name) }}
+                  className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                    active
+                      ? "border-brand-600 bg-brand-50 text-brand-700"
+                      : "border-line-strong text-ink-soft hover:border-brand-400"
+                  }`}
+                >
+                  {f.name}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      ) : null}
+
+      {showSize ? (
+        <fieldset>
+          <legend className="text-xs font-semibold text-ink">Text size</legend>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {co.textSize.choices.map((c) => {
+              const active = (s.textSizePx ?? co.textSize.default) === c.px;
+              return (
+                <button
+                  key={`${c.label}-${c.px}`}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setStyle({ textSizePx: c.px })}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    active
+                      ? "border-brand-600 bg-brand-50 text-brand-700"
+                      : "border-line-strong text-ink-soft hover:border-brand-400"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      ) : null}
+
+      {showGradient ? (
+        <Toggle
+          label="Gradient"
+          on={s.gradientOn ?? false}
+          onToggle={(on) => setStyle({ gradientOn: on })}
+        />
+      ) : null}
+
+      {showLed ? (
+        <Toggle label="LED glow" on={s.ledOn ?? true} onToggle={(on) => setStyle({ ledOn: on })} />
+      ) : null}
+    </div>
+  );
+}
+
+function Swatches({
+  label,
+  colors,
+  selected,
+  onPick,
+}: {
+  label: string;
+  colors: string[];
+  selected: string | undefined;
+  onPick: (color: string) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="text-xs font-semibold text-ink">{label}</legend>
+      <div className="mt-1.5 flex flex-wrap gap-2">
+        {colors.map((c) => {
+          const active = selected === c;
+          return (
+            <button
+              key={c}
+              type="button"
+              aria-pressed={active}
+              aria-label={c}
+              title={c}
+              onClick={() => onPick(c)}
+              className={`h-9 w-9 rounded-full border-2 transition ${
+                active ? "border-brand-600 ring-2 ring-brand-200" : "border-line-strong"
+              }`}
+              style={{ background: c }}
+            />
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+function Toggle({
+  label,
+  on,
+  onToggle,
+}: {
+  label: string;
+  on: boolean;
+  onToggle: (on: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-xs font-semibold text-ink">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        onClick={() => onToggle(!on)}
+        className={`relative h-6 w-11 shrink-0 rounded-full transition ${on ? "bg-brand-600" : "bg-field"}`}
+      >
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+            on ? "left-[22px]" : "left-0.5"
+          }`}
+        />
+      </button>
+    </div>
+  );
 }
 
 function Row({

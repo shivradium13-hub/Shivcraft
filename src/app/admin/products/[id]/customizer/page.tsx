@@ -4,12 +4,13 @@ import { notFound } from "next/navigation";
 
 import { CustomizerBuilder } from "@/components/admin/CustomizerBuilder";
 import { readConfig } from "@/lib/customizer/schema";
+import { effectivePriceP } from "@/lib/money";
 import { getAdminProduct } from "@/server/admin/products";
 import { requireAdmin } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Customizer",
+  title: "Frame Designer",
   robots: { index: false, follow: false },
 };
 
@@ -37,10 +38,11 @@ export default async function ProductCustomizerPage(
 
       <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-sr-ink">Product customizer</h1>
+          <h1 className="font-display text-2xl font-semibold text-sr-ink">Frame Designer</h1>
           <p className="mt-1 max-w-prose text-sm text-sr-muted">
-            Decide what a customer can change on {product.name}, and where on the product it lands.
-            The preview here is the same renderer the customer uses.
+            Build the template for {product.name} — place image boxes, text boxes and frames, then
+            decide what the customer may change. The preview here is the same renderer the customer
+            uses.
           </p>
         </div>
         <span
@@ -63,6 +65,7 @@ export default async function ProductCustomizerPage(
             productName={product.name}
             initial={config}
             productImages={images}
+            basePriceP={effectivePriceP(product)}
           />
         </div>
       )}

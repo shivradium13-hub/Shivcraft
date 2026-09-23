@@ -4,11 +4,18 @@ import type { CSSProperties } from "react";
 
 import type { CustomerDesign } from "@/lib/customizer/design";
 import {
+  acrylicMirrorOn,
   isZoneVisible,
+  ledGlowOn,
   ledTint,
+  resolveFrameFill,
+  resolveGradient,
+  resolveTextStyle,
+  fontStack,
   zonesForView,
   type CustomizerConfig,
   type CustomizerZone,
+  type ResolvedGradient,
 } from "@/lib/customizer/schema";
 
 /**
@@ -21,7 +28,7 @@ import {
  * which is what makes dragging smooth on a phone.
  *
  * Layer order, bottom to top:
- *   base  →  zone content  →  overlay  →  glow
+ *   base  →  zones (frames / photos / text, in configuration order)  →  overlay  →  glow
  *
  * The same component renders the editor and the clean fullscreen preview; only
  * `interactive` differs, so what the customer drags is exactly what they get.
@@ -49,14 +56,17 @@ export function CustomizerCanvas({
   const view = config.views.find((v) => v.id === viewId) ?? config.views[0];
   if (!view) return null;
 
-  /* A zone hidden by the customer's option choices is not drawn — the preview
-     shows exactly what the current configuration produces (§18). */
-  const zones = zonesForView(config, view.id).filter((z) =>
-    isZoneVisible(config, z, design.options),
+  /* A zone hidden by the admin, or by the customer's option choices, is not
+     drawn — the preview shows exactly what the current configuration
+     produces (§18, Frame Designer layers). */
+  const zones = zonesForView(config, view.id).filter(
+    (z) => !z.hidden && isZoneVisible(config, z, design.options),
   );
   /* An LED group tints the glow layer, so choosing "warm white" or "blue"
      changes the light rather than only the wording. */
   const tint = view.isLit ? ledTint(config, design.options) : null;
+  const showGlow = view.glow && ledGlowOn(config, design);
+  const gradient = resolveGradient(config, design);
 
   return (
     <div
@@ -75,8 +85,10 @@ export function CustomizerCanvas({
       {zones.map((zone) => (
         <ZoneLayer
           key={zone.id}
+          config={config}
           zone={zone}
           design={design}
+          gradient={gradient}
           active={activeZoneId === zone.id}
           interactive={interactive}
           showGuides={showGuides}
@@ -98,7 +110,7 @@ export function CustomizerCanvas({
 
       {/* Screen blending is what makes an LED layer read as light rather than
           as a pale sticker over the product. */}
-      {view.glow ? (
+      {showGlow ? (
         <span className="pointer-events-none absolute inset-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -133,15 +145,19 @@ export function CustomizerCanvas({
 }
 
 function ZoneLayer({
+  config,
   zone,
   design,
+  gradient,
   active,
   interactive,
   showGuides,
   onSelect,
 }: {
+  config: CustomizerConfig;
   zone: CustomizerZone;
   design: CustomerDesign;
+  gradient: ResolvedGradient | null;
   active: boolean;
   interactive: boolean;
   showGuides: boolean;
@@ -163,50 +179,110 @@ function ZoneLayer({
     containerType: "size",
   };
 
+  const selectable = interactive && onSelect && !zone.locked;
+
+  /* ------------------------------------------------------------- FRAME */
+  if (zone.kind === "FRAME") {
+    const fill = resolveFrameFill(config, zone, design);
+    return (
+      <div
+        style={{
+          ...box,
+          background: !zone.imageUrl && fill ? fill : undefined,
+          border:
+            !zone.imageUrl && zone.strokeWidth > 0 && zone.stroke
+              ? `${zone.strokeWidth}px solid ${zone.stroke}`
+              : undefined,
+        }}
+        onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
+        className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
+          showGuides ? (active ? "outline-2 outline-brand-500" : "outline-1 outline-dashed outline-brand-300/70") : ""
+        }`}
+      >
+        {zone.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={zone.imageUrl}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 h-full w-full object-contain"
+          />
+        ) : null}
+      </div>
+    );
+  }
+
+  /* --------------------------------------------------------- PHOTO / TEXT */
+  const text = value?.kind === "TEXT" ? resolveTextStyle(config, zone, design) : null;
+
   return (
     <div
       style={box}
-      onPointerDown={interactive && onSelect ? () => onSelect(zone.id) : undefined}
-      className={`absolute overflow-hidden ${
-        interactive ? "cursor-pointer" : ""
-      } ${showGuides ? (active ? "outline-2 outline-brand-500" : "outline-1 outline-dashed outline-brand-300") : ""}`}
+      onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
+      className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
+        showGuides ? (active ? "outline-2 outline-brand-500" : "outline-1 outline-dashed outline-brand-300") : ""
+      }`}
     >
       {value?.kind === "PHOTO" ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={`/api/uploads/${value.photo.uploadId}`}
-          alt=""
-          draggable={false}
-          style={{
-            /* Centre first, then apply the customer's offset, zoom and turn.
-               Percentages are of the ZONE, so the same numbers reproduce this
-               crop at any output size, including the production render. */
-            transform: [
-              `translate(-50%, -50%)`,
-              `translate(${value.photo.offsetX}%, ${value.photo.offsetY}%)`,
-              `rotate(${value.photo.rotation}deg)`,
-              `scale(${value.photo.scale * (value.photo.flipH ? -1 : 1)}, ${value.photo.scale * (value.photo.flipV ? -1 : 1)})`,
-            ].join(" "),
-            transformOrigin: "center",
-            filter: `brightness(${value.photo.brightness}%) contrast(${value.photo.contrast}%) saturate(${value.photo.saturation}%)`,
-          }}
-          /* object-fit: cover is what makes scale 1 mean "exactly covers the
-             zone with the photo's own proportions kept". Without it the image
-             is stretched to the zone box, and a 3:2 photo in a 4:3 area comes
-             out squashed — which no amount of zooming can undo. The production
-             renderer reproduces this same rule. */
-          className="absolute top-1/2 left-1/2 h-full w-full max-w-none object-cover"
-        />
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/uploads/${value.photo.uploadId}`}
+            alt=""
+            draggable={false}
+            style={{
+              /* Centre first, then apply the customer's offset, zoom and turn.
+                 Percentages are of the ZONE, so the same numbers reproduce this
+                 crop at any output size, including the production render. */
+              transform: [
+                `translate(-50%, -50%)`,
+                `translate(${value.photo.offsetX}%, ${value.photo.offsetY}%)`,
+                `rotate(${value.photo.rotation}deg)`,
+                `scale(${value.photo.scale * (value.photo.flipH ? -1 : 1)}, ${value.photo.scale * (value.photo.flipV ? -1 : 1)})`,
+              ].join(" "),
+              transformOrigin: "center",
+              filter: `brightness(${value.photo.brightness}%) contrast(${value.photo.contrast}%) saturate(${value.photo.saturation}%)`,
+            }}
+            className="absolute top-1/2 left-1/2 h-full w-full max-w-none object-cover"
+          />
+          {/* A gradient wash over photos, when the admin extended the gradient
+              to photos and the customer turned it on. */}
+          {gradient?.applyToPhotos ? (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background: `linear-gradient(${gradient.direction}deg, ${gradient.color1}, ${gradient.color2})`,
+                mixBlendMode: "overlay",
+                opacity: 0.55,
+              }}
+            />
+          ) : null}
+        </>
       ) : null}
 
-      {value?.kind === "TEXT" && value.text.value.trim() ? (
+      {value?.kind === "TEXT" && value.text.value.trim() && text ? (
         <span
           style={{
-            fontFamily: value.text.fontFamily ?? zone.fontFamily,
-            color: value.text.color ?? zone.color,
+            fontFamily: fontStack(value.text.fontFamily ?? text.fontFamily),
             textAlign: value.text.align ?? zone.align,
-            fontSize: `${value.text.fontSizePct ?? zone.fontSizePct}cqh`,
+            fontSize: `${value.text.fontSizePct ?? text.fontSizePct}cqh`,
             lineHeight: 1.15,
+            ...(gradient
+              ? {
+                  backgroundImage: `linear-gradient(${gradient.direction}deg, ${gradient.color1}, ${gradient.color2})`,
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  color: "transparent",
+                  WebkitTextFillColor: "transparent",
+                }
+              : { color: value.text.color ?? text.color }),
+            ...(acrylicMirrorOn(config)
+              ? {
+                  textShadow:
+                    "0 1px 0 rgba(255,255,255,0.65), 0 -1px 0 rgba(0,0,0,0.25), 0 2px 3px rgba(0,0,0,0.35)",
+                }
+              : null),
           }}
           className="absolute inset-0 flex items-center justify-center overflow-hidden px-[2%] break-words whitespace-pre-wrap"
         >

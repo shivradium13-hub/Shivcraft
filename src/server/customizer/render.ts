@@ -1,6 +1,10 @@
 import type { CustomerDesign, PhotoPlacement } from "@/lib/customizer/design";
 import {
+  acrylicMirrorOn,
   isZoneVisible,
+  resolveFrameFill,
+  resolveGradient,
+  resolveTextStyle,
   zonesForView,
   type CustomizerConfig,
   type CustomizerView,
@@ -226,10 +230,12 @@ export function renderComposite(options: {
   assets: Map<string, ZoneAsset>;
   base: ResolvedImage;
   overlay: ResolvedImage;
+  /** Frame PNGs, by zone id, embedded when available. */
+  frameImages?: Map<string, ResolvedImage>;
   /** Square canvas side, in pixels. */
   pxSize?: number;
 }): CompositeProof {
-  const { config, design, view, assets, base, overlay } = options;
+  const { config, design, view, assets, base, overlay, frameImages } = options;
   const S = options.pxSize ?? 1600;
   const warnings: string[] = [];
 
@@ -244,56 +250,107 @@ export function renderComposite(options: {
     );
   }
 
-  /* Only the zones the customer's option choices actually reveal, in the same
-     order the preview draws them. */
-  const zones = zonesForView(config, view.id).filter((z) => isZoneVisible(config, z, design.options));
+  /* The customer's global styling — the same resolution the preview uses, so
+     the proof reproduces the colours, fonts, sizes and gradient they chose. */
+  const gradient = resolveGradient(config, design);
+  if (gradient) {
+    const rad = ((gradient.direction - 90) * Math.PI) / 180;
+    const dx = Math.cos(rad) / 2;
+    const dy = Math.sin(rad) / 2;
+    defs += `<linearGradient id="grad" x1="${round(0.5 - dx)}" y1="${round(0.5 - dy)}" x2="${round(0.5 + dx)}" y2="${round(0.5 + dy)}"><stop offset="0" stop-color="${gradient.color1}"/><stop offset="1" stop-color="${gradient.color2}"/></linearGradient>`;
+  }
+  if (acrylicMirrorOn(config)) {
+    defs += `<filter id="acrylic" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="${round(S * 0.0015)}" stdDeviation="${round(S * 0.0012)}" flood-color="#000000" flood-opacity="0.35"/></filter>`;
+  }
+
+  /* Only the zones the admin left visible and the customer's choices reveal,
+     in the same order the preview draws them. */
+  const zones = zonesForView(config, view.id).filter(
+    (z) => !z.hidden && isZoneVisible(config, z, design.options),
+  );
 
   for (const zone of zones) {
-    const value = design.zones[zone.id];
-    if (!value) continue;
-
     const zx = (zone.x / 100) * S;
     const zy = (zone.y / 100) * S;
     const zw = (zone.width / 100) * S;
     const zh = (zone.height / 100) * S;
     const cx = zx + zw / 2;
     const cy = zy + zh / 2;
+    const rx = round((zone.cornerRadius / 100) * Math.min(zw, zh));
 
     const clipId = `clip-${zone.id}`;
-    defs +=
+    const clipShape =
       zone.shape === "CIRCLE"
-        ? `<clipPath id="${clipId}"><ellipse cx="${round(cx)}" cy="${round(cy)}" rx="${round(zw / 2)}" ry="${round(zh / 2)}"/></clipPath>`
-        : `<clipPath id="${clipId}"><rect x="${round(zx)}" y="${round(zy)}" width="${round(zw)}" height="${round(zh)}" rx="${round((zone.cornerRadius / 100) * Math.min(zw, zh))}"/></clipPath>`;
+        ? `<ellipse cx="${round(cx)}" cy="${round(cy)}" rx="${round(zw / 2)}" ry="${round(zh / 2)}"/>`
+        : `<rect x="${round(zx)}" y="${round(zy)}" width="${round(zw)}" height="${round(zh)}" rx="${rx}"/>`;
 
     let inner = "";
-    if (value.kind === "PHOTO" && assets.has(zone.id)) {
-      const content = photoContent(zone.id, value.photo, zw, zh, assets.get(zone.id)!);
-      defs += content.defs;
-      // photoContent draws in local 0..zw / 0..zh space; move it onto the zone.
-      inner = `<g transform="translate(${round(zx)} ${round(zy)})">${content.body}</g>`;
-    } else if (value.kind === "PHOTO") {
-      warnings.push(`The photo for ${zone.label} could not be embedded in the proof.`);
-    } else if (value.kind === "TEXT" && value.text.value.trim()) {
-      const sizePx = ((value.text.fontSizePct ?? zone.fontSizePct) / 100) * zh;
-      const fill = value.text.color ?? zone.color;
-      const align = value.text.align ?? zone.align;
-      const anchor = align === "left" ? "start" : align === "right" ? "end" : "middle";
-      const tx = align === "left" ? zx + zw * 0.04 : align === "right" ? zx + zw * 0.96 : cx;
-      const lines = value.text.value.split("\n");
-      // Centre the block of lines vertically about the zone centre.
-      const startY = cy - ((lines.length - 1) * sizePx * 1.15) / 2;
-      const tspans = lines
-        .map(
-          (line, i) =>
-            `<tspan x="${round(tx)}" y="${round(startY + i * sizePx * 1.15)}">${esc(line)}</tspan>`,
-        )
-        .join("");
-      inner = `<text font-family="Georgia, 'Times New Roman', serif" font-size="${round(sizePx)}" fill="${fill}" text-anchor="${anchor}" dominant-baseline="middle">${tspans}</text>`;
+    let clipped = false;
+
+    if (zone.kind === "FRAME") {
+      const img = frameImages?.get(zone.id);
+      if (zone.imageUrl && img) {
+        inner = `<g transform="translate(${round(zx)} ${round(zy)})"><image x="0" y="0" width="${round(zw)}" height="${round(zh)}" preserveAspectRatio="xMidYMid meet" href="data:${img.contentType};base64,${img.base64}"/></g>`;
+        clipped = true;
+      } else if (zone.imageUrl) {
+        // Not embedded; reference the URL so an online viewer still sees it.
+        inner = `<g transform="translate(${round(zx)} ${round(zy)})"><image x="0" y="0" width="${round(zw)}" height="${round(zh)}" preserveAspectRatio="xMidYMid meet" href="${esc(zone.imageUrl)}"/></g>`;
+        clipped = true;
+      } else {
+        const fill = resolveFrameFill(config, zone, design);
+        const stroke =
+          zone.strokeWidth > 0 && zone.stroke
+            ? ` stroke="${zone.stroke}" stroke-width="${round(zone.strokeWidth)}"`
+            : "";
+        if (fill || stroke) {
+          const shape =
+            zone.shape === "CIRCLE"
+              ? `<ellipse cx="${round(cx)}" cy="${round(cy)}" rx="${round(zw / 2)}" ry="${round(zh / 2)}" fill="${fill ?? "none"}"${stroke}/>`
+              : `<rect x="${round(zx)}" y="${round(zy)}" width="${round(zw)}" height="${round(zh)}" rx="${rx}" fill="${fill ?? "none"}"${stroke}/>`;
+          inner = shape;
+        }
+      }
+    } else {
+      const value = design.zones[zone.id];
+      if (!value) continue;
+
+      if (value.kind === "PHOTO" && assets.has(zone.id)) {
+        const content = photoContent(zone.id, value.photo, zw, zh, assets.get(zone.id)!);
+        defs += content.defs;
+        // photoContent draws in local 0..zw / 0..zh space; move it onto the zone.
+        inner = `<g transform="translate(${round(zx)} ${round(zy)})">${content.body}</g>`;
+        if (gradient?.applyToPhotos) {
+          inner += `<rect x="${round(zx)}" y="${round(zy)}" width="${round(zw)}" height="${round(zh)}" fill="url(#grad)" opacity="0.5"/>`;
+        }
+        clipped = true;
+      } else if (value.kind === "PHOTO") {
+        warnings.push(`The photo for ${zone.label} could not be embedded in the proof.`);
+      } else if (value.kind === "TEXT" && value.text.value.trim()) {
+        const style = resolveTextStyle(config, zone, design);
+        const sizePx = ((value.text.fontSizePct ?? style.fontSizePct) / 100) * zh;
+        const fill = gradient ? "url(#grad)" : value.text.color ?? style.color;
+        const family = (value.text.fontFamily ?? style.fontFamily).replace(/"/g, "");
+        const align = value.text.align ?? zone.align;
+        const anchor = align === "left" ? "start" : align === "right" ? "end" : "middle";
+        const tx = align === "left" ? zx + zw * 0.04 : align === "right" ? zx + zw * 0.96 : cx;
+        const lines = value.text.value.split("\n");
+        const startY = cy - ((lines.length - 1) * sizePx * 1.15) / 2;
+        const tspans = lines
+          .map(
+            (line, i) =>
+              `<tspan x="${round(tx)}" y="${round(startY + i * sizePx * 1.15)}">${esc(line)}</tspan>`,
+          )
+          .join("");
+        const filter = acrylicMirrorOn(config) ? ` filter="url(#acrylic)"` : "";
+        inner = `<text font-family="&quot;${esc(family)}&quot;, Georgia, 'Times New Roman', serif" font-size="${round(sizePx)}" fill="${fill}" text-anchor="${anchor}" dominant-baseline="middle"${filter}>${tspans}</text>`;
+      }
     }
 
     if (inner) {
+      if (clipped) defs += `<clipPath id="${clipId}">${clipShape}</clipPath>`;
+      const wrapped = clipped ? `<g clip-path="url(#${clipId})">${inner}</g>` : inner;
       const rotate = zone.rotation ? ` transform="rotate(${round(zone.rotation)} ${round(cx)} ${round(cy)})"` : "";
-      body += `<g${rotate}><g clip-path="url(#${clipId})">${inner}</g></g>`;
+      body += `<g${rotate}>${wrapped}</g>`;
     }
   }
 

@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { CustomerDesign } from "@/lib/customizer/design";
 import type { CustomizerConfig } from "@/lib/customizer/schema";
 import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas";
+import { CustomizerFonts } from "@/components/shop/customizer/CustomizerFonts";
 
 export type SavedDesignItem = {
   id: string;
@@ -145,7 +146,10 @@ export function SavedDesignsList({ initial }: { initial: SavedDesignItem[] }) {
           >
             <div className="w-24 shrink-0">
               {canPreview ? (
-                <CustomizerCanvas config={item.config} design={item.design} viewId={viewId} />
+                <>
+                  <CustomizerFonts config={item.config} />
+                  <CustomizerCanvas config={item.config} design={item.design} viewId={viewId} />
+                </>
               ) : (
                 <div className="flex aspect-square items-center justify-center rounded-card bg-soft text-center text-[10px] text-muted">
                   Preview unavailable

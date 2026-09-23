@@ -122,7 +122,23 @@ export const GET = route(
         resolveImage(view.overlay, url.origin),
       ]);
 
-      const proof = renderComposite({ config, design: stored.design, view, assets, base, overlay });
+      /* Frame PNGs shown on this view, embedded so the proof is self-contained. */
+      const frameImages = new Map<string, ResolvedImage>();
+      for (const zone of config.zones) {
+        if (zone.kind === "FRAME" && zone.imageUrl && !zone.hidden && view.zoneIds.includes(zone.id)) {
+          frameImages.set(zone.id, await resolveImage(zone.imageUrl, url.origin));
+        }
+      }
+
+      const proof = renderComposite({
+        config,
+        design: stored.design,
+        view,
+        assets,
+        base,
+        overlay,
+        frameImages,
+      });
       const safeName = `${orderNumber}-${view.label}-proof`
         .replace(/[^a-zA-Z0-9-]+/g, "-")
         .toLowerCase();

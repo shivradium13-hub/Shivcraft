@@ -10,6 +10,7 @@ import { effectivePriceP, formatPaise } from "@/lib/money";
 import type { ProductDetail } from "@/server/catalog/product";
 
 import { notifyCartChanged } from "./CartBadge";
+import { CustomizerFonts } from "./customizer/CustomizerFonts";
 import { PhotoUploadField } from "./PhotoUploadField";
 
 type Uploaded = { id: string; url: string; name: string };
@@ -199,6 +200,7 @@ export function ProductPurchase({
       ))}
 
       {/* ---------------------------------------------------- customizer */}
+      {customizerConfig.enabled ? <CustomizerFonts config={customizerConfig} /> : null}
       {customizerConfig.enabled ? (
         <ProductCustomizer
           productId={product.id}

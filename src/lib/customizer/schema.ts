@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { CustomerDesign, DesignStyle } from "./design";
+
 /**
  * The product customizer configuration.
  *
@@ -24,7 +26,10 @@ export const CUSTOMIZER_VERSION = 1;
 export const zoneShapeSchema = z.enum(["RECT", "CIRCLE"]);
 export type ZoneShape = z.infer<typeof zoneShapeSchema>;
 
-export const zoneKindSchema = z.enum(["PHOTO", "TEXT"]);
+/** PHOTO takes a customer photo, TEXT takes customer wording, FRAME is a
+ *  decorative shape or PNG the admin places — a border, mask or accent the
+ *  customer never edits, though it may follow the chosen frame colour. */
+export const zoneKindSchema = z.enum(["PHOTO", "TEXT", "FRAME"]);
 export type ZoneKind = z.infer<typeof zoneKindSchema>;
 
 const percent = z.number().min(0).max(100);
@@ -75,6 +80,20 @@ export const zoneSchema = z.object({
   safeInset: z.number().min(0).max(25).default(0),
 
   required: z.boolean().default(true),
+
+  /** Layers: hidden drops the element from the design entirely; locked keeps
+   *  it from being moved or resized in the builder. Both are admin-side. */
+  hidden: z.boolean().default(false),
+  locked: z.boolean().default(false),
+
+  /** FRAME zones only. A frame is either a filled/outlined shape or a PNG.
+   *  `fill` is the shape colour; `tintByFrameColor` makes it follow the
+   *  customer's chosen frame colour instead. `imageUrl` is a PNG frame/mask. */
+  fill: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().default(null),
+  stroke: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().default(null),
+  strokeWidth: z.number().min(0).max(40).default(0),
+  imageUrl: z.string().trim().max(500).default(""),
+  tintByFrameColor: z.boolean().default(false),
 
   /** Shown only for certain option choices; null means always shown. */
   visibleWhen: visibilityRuleSchema,
@@ -192,6 +211,91 @@ export const templateSchema = z.object({
 });
 export type CustomizerTemplate = z.infer<typeof templateSchema>;
 
+/**
+ * A font the customer may choose. `google` families are loaded from Google
+ * Fonts by name; `upload` families are served from an uploaded file at `url`;
+ * `system` families need nothing loaded. The renderer never invents a font it
+ * cannot load — an unknown family simply falls back.
+ */
+export const fontSourceSchema = z.enum(["google", "upload", "system"]);
+export type FontSource = z.infer<typeof fontSourceSchema>;
+
+export const fontDefSchema = z.object({
+  /** The CSS family name, e.g. "Lobster". */
+  name: z.string().trim().min(1).max(80),
+  source: fontSourceSchema.default("google"),
+  /** Blob URL for an uploaded font file; empty for google/system. */
+  url: z.string().trim().max(500).default(""),
+  /** File format for an uploaded font, so @font-face can be written. */
+  format: z.enum(["woff2", "woff", "truetype", "opentype", ""]).default(""),
+});
+export type FontDef = z.infer<typeof fontDefSchema>;
+
+/** A fixed text-size the customer may pick, labelled in px. */
+export const textSizeChoiceSchema = z.object({
+  label: z.string().trim().min(1).max(24),
+  px: z.number().int().min(6).max(200),
+});
+export type TextSizeChoice = z.infer<typeof textSizeChoiceSchema>;
+
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
+/**
+ * What the customer is allowed to change (§ Frame Designer, "Customer
+ * Options"). Layout stays locked; these are the only styling controls the
+ * customer sees, and only when the admin turns each one on.
+ */
+export const customerOptionsSchema = z.object({
+  /** Allowed frame colours; tint any frame element set to follow them. */
+  frameColor: z
+    .object({
+      enabled: z.boolean().default(false),
+      colors: z.array(hexColor).max(40).default([]),
+      default: hexColor.nullable().default(null),
+    })
+    .default({ enabled: false, colors: [], default: null }),
+  /** Allowed text colours, applied to every text box. */
+  textColor: z
+    .object({
+      enabled: z.boolean().default(false),
+      colors: z.array(hexColor).max(40).default([]),
+      default: hexColor.nullable().default(null),
+    })
+    .default({ enabled: false, colors: [], default: null }),
+  /** Allowed fonts. */
+  font: z
+    .object({
+      enabled: z.boolean().default(false),
+      families: z.array(fontDefSchema).max(40).default([]),
+      default: z.string().max(80).default(""),
+    })
+    .default({ enabled: false, families: [], default: "" }),
+  /** Fixed text-size choices. */
+  textSize: z
+    .object({
+      enabled: z.boolean().default(false),
+      choices: z.array(textSizeChoiceSchema).max(12).default([]),
+      default: z.number().int().min(6).max(200).nullable().default(null),
+    })
+    .default({ enabled: false, choices: [], default: null }),
+  /** 4mm acrylic mirror / 3D raised text treatment. */
+  acrylicMirror: z.object({ enabled: z.boolean().default(false) }).default({ enabled: false }),
+  /** Gradient on text (and optionally photos), with a customer on/off switch. */
+  gradient: z
+    .object({
+      enabled: z.boolean().default(false),
+      color1: hexColor.default("#ff6b2c"),
+      color2: hexColor.default("#151b39"),
+      /** Direction in degrees, 0 = top-to-bottom, 90 = left-to-right. */
+      direction: z.number().min(0).max(360).default(135),
+      applyToPhotos: z.boolean().default(false),
+    })
+    .default({ enabled: false, color1: "#ff6b2c", color2: "#151b39", direction: 135, applyToPhotos: false }),
+  /** LED glow the customer can toggle on lit products. */
+  ledGlow: z.object({ enabled: z.boolean().default(false) }).default({ enabled: false }),
+});
+export type CustomerOptions = z.infer<typeof customerOptionsSchema>;
+
 export const customizerConfigSchema = z.object({
   enabled: z.boolean().default(false),
   version: z.number().int().min(1).default(CUSTOMIZER_VERSION),
@@ -199,6 +303,10 @@ export const customizerConfigSchema = z.object({
   zones: z.array(zoneSchema).max(24).default([]),
   optionGroups: z.array(optionGroupSchema).max(12).default([]),
   templates: z.array(templateSchema).max(20).default([]),
+  /** Optional template name shown in the Frame Designer. */
+  templateName: z.string().trim().max(80).default(""),
+  /** The styling the customer is allowed to change. */
+  customerOptions: customerOptionsSchema.default(() => customerOptionsSchema.parse({})),
   tools: toolsSchema.default(() => toolsSchema.parse({})),
   /** Added to the line price when the customer personalises, in paise. */
   customizationFeeP: z.number().int().min(0).max(1_000_000).default(0),
@@ -218,6 +326,16 @@ export const EMPTY_CONFIG: CustomizerConfig = {
   zones: [],
   optionGroups: [],
   templates: [],
+  templateName: "",
+  customerOptions: {
+    frameColor: { enabled: false, colors: [], default: null },
+    textColor: { enabled: false, colors: [], default: null },
+    font: { enabled: false, families: [], default: "" },
+    textSize: { enabled: false, choices: [], default: null },
+    acrylicMirror: { enabled: false },
+    gradient: { enabled: false, color1: "#ff6b2c", color2: "#151b39", direction: 135, applyToPhotos: false },
+    ledGlow: { enabled: false },
+  },
   tools: {
     photoUpload: true,
     zoom: true,
@@ -315,6 +433,8 @@ export function requiredZones(
 ): CustomizerZone[] {
   const used = new Set(config.views.flatMap((v) => v.zoneIds));
   return config.zones.filter((z) => {
+    // FRAME zones are admin decoration, never customer content, so never required.
+    if (z.kind === "FRAME") return false;
     if (!z.required || !used.has(z.id)) return false;
     if (selections && !isZoneVisible(config, z, selections)) return false;
     return true;
@@ -342,4 +462,112 @@ export function ledTint(
     if (option?.hex) return option.hex;
   }
   return null;
+}
+
+/* ----------------------------------------------- Frame Designer styling ---
+ *
+ * These resolve the customer's global style choices against the admin's
+ * allowed sets and the template's own defaults, in one place, so the on-screen
+ * preview and the production render can never style text or frames differently.
+ * A choice outside the allowed set is ignored, which is the same decision the
+ * server enforces — the customer only ever gets what the admin permitted.
+ */
+
+function styleOf(design: CustomerDesign | { style?: DesignStyle }): DesignStyle {
+  return design.style ?? {};
+}
+
+/** The effective colour, font family and size for a text zone. */
+export function resolveTextStyle(
+  config: CustomizerConfig,
+  zone: CustomizerZone,
+  design: CustomerDesign,
+): { color: string; fontFamily: string; fontSizePct: number } {
+  const style = styleOf(design);
+  const co = config.customerOptions;
+
+  let color = zone.color;
+  if (co.textColor.enabled) {
+    if (style.textColor && co.textColor.colors.includes(style.textColor)) color = style.textColor;
+    else if (co.textColor.default) color = co.textColor.default;
+  }
+
+  let fontFamily = zone.fontFamily;
+  if (co.font.enabled) {
+    const names = co.font.families.map((f) => f.name);
+    if (style.fontFamily && names.includes(style.fontFamily)) fontFamily = style.fontFamily;
+    else if (co.font.default && names.includes(co.font.default)) fontFamily = co.font.default;
+  }
+
+  let fontSizePct = zone.fontSizePct;
+  if (co.textSize.enabled && co.textSize.choices.length > 0) {
+    const base = co.textSize.default ?? co.textSize.choices[0].px;
+    const chosen =
+      style.textSizePx && co.textSize.choices.some((c) => c.px === style.textSizePx)
+        ? style.textSizePx
+        : base;
+    if (base > 0) fontSizePct = zone.fontSizePct * (chosen / base);
+  }
+
+  return { color, fontFamily, fontSizePct };
+}
+
+/** The fill colour for a FRAME zone: the customer's frame colour when the frame
+ *  follows it, otherwise the frame's own fill (which may be null = no fill). */
+export function resolveFrameFill(
+  config: CustomizerConfig,
+  zone: CustomizerZone,
+  design: CustomerDesign,
+): string | null {
+  if (zone.kind !== "FRAME") return null;
+  if (zone.tintByFrameColor) {
+    const co = config.customerOptions.frameColor;
+    const chosen = styleOf(design).frameColor;
+    if (co.enabled && chosen && co.colors.includes(chosen)) return chosen;
+    if (co.enabled && co.default) return co.default;
+  }
+  return zone.fill;
+}
+
+export type ResolvedGradient = {
+  color1: string;
+  color2: string;
+  direction: number;
+  applyToPhotos: boolean;
+};
+
+/** The gradient in force, or null. Admin must enable it; the customer opts in
+ *  with a switch (default off, since it is a strong effect). */
+export function resolveGradient(
+  config: CustomizerConfig,
+  design: CustomerDesign,
+): ResolvedGradient | null {
+  const g = config.customerOptions.gradient;
+  if (!g.enabled) return null;
+  if (!(styleOf(design).gradientOn ?? false)) return null;
+  return { color1: g.color1, color2: g.color2, direction: g.direction, applyToPhotos: g.applyToPhotos };
+}
+
+/** Whether the glow layer should show. Unmanaged (feature off) keeps the old
+ *  behaviour of always showing on a lit view; managed hands the switch to the
+ *  customer, defaulting on. */
+export function ledGlowOn(config: CustomizerConfig, design: CustomerDesign): boolean {
+  if (!config.customerOptions.ledGlow.enabled) return true;
+  return styleOf(design).ledOn ?? true;
+}
+
+/** Whether text should use the acrylic-mirror / 3D raised treatment. */
+export function acrylicMirrorOn(config: CustomizerConfig): boolean {
+  return config.customerOptions.acrylicMirror.enabled;
+}
+
+/** The fonts a configuration needs loaded for its allowed set. */
+export function fontsToLoad(config: CustomizerConfig): FontDef[] {
+  return config.customerOptions.font.enabled ? config.customerOptions.font.families : [];
+}
+
+/** A CSS font-family stack for a family name, with sensible fallbacks. */
+export function fontStack(name: string): string {
+  if (!name) return "inherit";
+  return `"${name.replace(/"/g, "")}", var(--font-jakarta), system-ui, sans-serif`;
 }

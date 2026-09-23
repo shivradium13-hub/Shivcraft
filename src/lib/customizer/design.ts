@@ -52,6 +52,29 @@ export const zoneValueSchema = z.union([
 ]);
 export type ZoneValue = z.infer<typeof zoneValueSchema>;
 
+/**
+ * The customer's global styling choices, each picked from a set the admin
+ * allowed (§ Frame Designer, "Customer Options"). Every field is optional:
+ * absent means "not chosen / not offered", and the renderer falls back to the
+ * template's own defaults. The customer changes styling, never layout — the
+ * positions and sizes of everything stay with the product's configuration.
+ */
+export const designStyleSchema = z.object({
+  /** Hex, tints frame elements that follow the frame colour. */
+  frameColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  /** Hex, applied to every text box. */
+  textColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  /** A family name from the allowed fonts. */
+  fontFamily: z.string().max(80).optional(),
+  /** A px value from the allowed fixed sizes; scales the text proportionally. */
+  textSizePx: z.number().int().min(6).max(200).optional(),
+  /** Customer's gradient on/off, only meaningful when the admin enabled it. */
+  gradientOn: z.boolean().optional(),
+  /** Customer's LED glow on/off, only meaningful when the admin enabled it. */
+  ledOn: z.boolean().optional(),
+});
+export type DesignStyle = z.infer<typeof designStyleSchema>;
+
 export const designSchema = z.object({
   /** The configuration version this design was built against. An order keeps
    *  its own copy, so republishing the product cannot rewrite history (§39). */
@@ -61,13 +84,15 @@ export const designSchema = z.object({
   zones: z.record(z.string().max(64), zoneValueSchema).default({}),
   /** { optionGroupId: optionId } — colour, size, material, LED colour. */
   options: z.record(z.string().max(64), z.string().max(64)).default({}),
+  /** Global styling the customer chose from the admin's allowed sets. */
+  style: designStyleSchema.default({}),
 });
 export type CustomerDesign = z.infer<typeof designSchema>;
 
 /** A design that is present but empty — used when a customer opens a
  *  customisable product before touching anything. */
 export function emptyDesign(configVersion: number, viewId: string): CustomerDesign {
-  return { configVersion, viewId, zones: {}, options: {} };
+  return { configVersion, viewId, zones: {}, options: {}, style: {} };
 }
 
 /**
@@ -95,7 +120,16 @@ export function designFingerprint(design: CustomerDesign | null): string {
     .sort()
     .map((key) => `${key}=${design.options[key]}`)
     .join(",");
-  return `${design.configVersion}#${zones}#${options}`;
+  const s = design.style ?? {};
+  const style = [
+    s.frameColor ?? "",
+    s.textColor ?? "",
+    s.fontFamily ?? "",
+    s.textSizePx ?? "",
+    s.gradientOn ? 1 : 0,
+    s.ledOn ? 1 : 0,
+  ].join(":");
+  return `${design.configVersion}#${zones}#${options}#${style}`;
 }
 
 /** Whether the customer has put anything in at all. */

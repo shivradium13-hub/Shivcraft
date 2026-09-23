@@ -13,6 +13,8 @@ import {
   type VisibilityRule,
 } from "@/lib/customizer/schema";
 import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas";
+import { CustomizerFonts } from "@/components/shop/customizer/CustomizerFonts";
+import { ProductCustomizer } from "@/components/shop/customizer/ProductCustomizer";
 
 /**
  * The admin's customizer builder.
@@ -30,33 +32,86 @@ import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas"
 const input =
   "w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
 
-type Tab = "views" | "zones" | "options" | "templates" | "tools";
+type Tab = "views" | "zones" | "options" | "customer" | "templates" | "tools";
 
 export function CustomizerBuilder({
   productId,
   productName,
   initial,
   productImages,
+  basePriceP = 0,
 }: {
   productId: string;
   productName: string;
   initial: CustomizerConfig;
   productImages: string[];
+  basePriceP?: number;
 }) {
-  const [config, setConfig] = useState<CustomizerConfig>(
+  const [config, setConfigRaw] = useState<CustomizerConfig>(
     initial.views.length > 0 ? initial : withStarterView(initial, productImages[0] ?? ""),
   );
+
+  /* Undo/redo history and a saved/unsaved flag. Every edit flows through
+     `setConfig`, so wrapping it here records history and marks the design dirty
+     for the whole builder in one place — no call site has to remember to. */
+  const [past, setPast] = useState<CustomizerConfig[]>([]);
+  const [future, setFuture] = useState<CustomizerConfig[]>([]);
+  const [dirty, setDirty] = useState(false);
+
+  const setConfig = useCallback(
+    (action: CustomizerConfig | ((prev: CustomizerConfig) => CustomizerConfig)) => {
+      setConfigRaw((prev) => {
+        const next = typeof action === "function" ? action(prev) : action;
+        setPast((p) => [...p, prev].slice(-80));
+        setFuture([]);
+        setDirty(true);
+        return next;
+      });
+    },
+    [],
+  );
+
+  function undo() {
+    if (past.length === 0) return;
+    const prev = past[past.length - 1];
+    setPast(past.slice(0, -1));
+    setFuture([config, ...future].slice(0, 80));
+    setConfigRaw(prev);
+    setDirty(true);
+  }
+
+  function redo() {
+    if (future.length === 0) return;
+    const next = future[0];
+    setFuture(future.slice(1));
+    setPast([...past, config].slice(-80));
+    setConfigRaw(next);
+    setDirty(true);
+  }
+
   const [tab, setTab] = useState<Tab>("views");
   const [viewId, setViewId] = useState(() => initial.views[0]?.id ?? "front");
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
 
   const surface = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ zoneId: string; startX: number; startY: number; zx: number; zy: number } | null>(
-    null,
-  );
+  const drag = useRef<{
+    zoneId: string;
+    mode: "move" | "resize" | "rotate";
+    startX: number;
+    startY: number;
+    zx: number;
+    zy: number;
+    zw: number;
+    zh: number;
+    zr: number;
+    /** Zone centre in screen pixels, for rotation. */
+    cx: number;
+    cy: number;
+  } | null>(null);
 
   const view = config.views.find((v) => v.id === viewId) ?? config.views[0];
   const zone = config.zones.find((z) => z.id === selectedZone) ?? null;
@@ -72,43 +127,94 @@ export function CustomizerBuilder({
     ),
   };
 
-  const patchZone = useCallback((zoneId: string, patch: Partial<CustomizerZone>) => {
-    setConfig((prev) => ({
-      ...prev,
-      zones: prev.zones.map((z) => (z.id === zoneId ? { ...z, ...patch } : z)),
-    }));
-  }, []);
+  const patchZone = useCallback(
+    (zoneId: string, patch: Partial<CustomizerZone>) => {
+      setConfig((prev) => ({
+        ...prev,
+        zones: prev.zones.map((z) => (z.id === zoneId ? { ...z, ...patch } : z)),
+      }));
+    },
+    [setConfig],
+  );
 
-  const patchView = useCallback((id: string, patch: Partial<CustomizerView>) => {
-    setConfig((prev) => ({
-      ...prev,
-      views: prev.views.map((v) => (v.id === id ? { ...v, ...patch } : v)),
-    }));
-  }, []);
+  const patchView = useCallback(
+    (id: string, patch: Partial<CustomizerView>) => {
+      setConfig((prev) => ({
+        ...prev,
+        views: prev.views.map((v) => (v.id === id ? { ...v, ...patch } : v)),
+      }));
+    },
+    [setConfig],
+  );
 
   /* ------------------------------------------------------------- dragging */
 
-  function onPointerDown(event: React.PointerEvent<HTMLDivElement>, z: CustomizerZone) {
+  /** Inner canvas box (surface minus its 0.5rem padding), which is the frame
+   *  the percentage coordinates are measured against. */
+  function innerBox() {
+    const box = surface.current?.getBoundingClientRect();
+    if (!box) return null;
+    return { left: box.left + 8, top: box.top + 8, width: box.width - 16, height: box.height - 16 };
+  }
+
+  function onPointerDown(
+    event: React.PointerEvent<HTMLDivElement>,
+    z: CustomizerZone,
+    mode: "move" | "resize" | "rotate",
+  ) {
+    if (z.locked) return;
     event.preventDefault();
+    event.stopPropagation();
     setSelectedZone(z.id);
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    drag.current = { zoneId: z.id, startX: event.clientX, startY: event.clientY, zx: z.x, zy: z.y };
+    const b = innerBox();
+    const cx = b ? b.left + (b.width * (z.x + z.width / 2)) / 100 : 0;
+    const cy = b ? b.top + (b.height * (z.y + z.height / 2)) / 100 : 0;
+    drag.current = {
+      zoneId: z.id,
+      mode,
+      startX: event.clientX,
+      startY: event.clientY,
+      zx: z.x,
+      zy: z.y,
+      zw: z.width,
+      zh: z.height,
+      zr: z.rotation,
+      cx,
+      cy,
+    };
   }
 
   function onPointerMove(event: React.PointerEvent<HTMLDivElement>) {
     const state = drag.current;
-    const box = surface.current?.getBoundingClientRect();
-    if (!state || !box) return;
-
-    const dx = ((event.clientX - state.startX) / box.width) * 100;
-    const dy = ((event.clientY - state.startY) / box.height) * 100;
+    const b = innerBox();
+    if (!state || !b) return;
     const target = config.zones.find((z) => z.id === state.zoneId);
     if (!target) return;
 
-    patchZone(state.zoneId, {
-      x: round(clamp(state.zx + dx, 0, 100 - target.width)),
-      y: round(clamp(state.zy + dy, 0, 100 - target.height)),
-    });
+    if (state.mode === "rotate") {
+      const now = (Math.atan2(event.clientY - state.cy, event.clientX - state.cx) * 180) / Math.PI;
+      const start = (Math.atan2(state.startY - state.cy, state.startX - state.cx) * 180) / Math.PI;
+      let r = state.zr + (now - start);
+      r = (((r + 180) % 360) + 360) % 360 - 180;
+      patchZone(state.zoneId, { rotation: round(r) });
+      return;
+    }
+
+    const dx = ((event.clientX - state.startX) / b.width) * 100;
+    const dy = ((event.clientY - state.startY) / b.height) * 100;
+
+    if (state.mode === "resize") {
+      patchZone(state.zoneId, {
+        width: round(clamp(state.zw + dx, 3, 100 - state.zx)),
+        height: round(clamp(state.zh + dy, 3, 100 - state.zy)),
+      });
+    } else {
+      patchZone(state.zoneId, {
+        x: round(clamp(state.zx + dx, 0, 100 - target.width)),
+        y: round(clamp(state.zy + dy, 0, 100 - target.height)),
+      });
+    }
   }
 
   function endDrag() {
@@ -133,7 +239,8 @@ export function CustomizerBuilder({
         setError(json?.error?.message ?? "Those settings could not be saved.");
         return;
       }
-      setConfig(json.data.config);
+      setConfigRaw(json.data.config);
+      setDirty(false);
       setNotice(
         enabled
           ? `Published as version ${json.data.config.version}. Orders already placed keep the version they were made with.`
@@ -163,6 +270,54 @@ export function CustomizerBuilder({
   /* ----------------------------------------------------------------- view */
 
   return (
+    <div className="grid gap-4">
+      {/* ----------------------------------------------------- top controls */}
+      <div className="flex flex-wrap items-center gap-2 rounded-card border border-sr-line bg-sr-surface p-2.5">
+        <label className="flex min-w-0 flex-1 items-center gap-2 text-xs font-semibold text-sr-body">
+          <span className="shrink-0 text-sr-muted">Template name</span>
+          <input
+            className={`${input} min-w-0 flex-1`}
+            value={config.templateName}
+            placeholder={productName}
+            onChange={(e) => setConfig((prev) => ({ ...prev, templateName: e.target.value }))}
+          />
+        </label>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={undo}
+            disabled={past.length === 0}
+            className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body disabled:opacity-40"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            onClick={redo}
+            disabled={future.length === 0}
+            className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body disabled:opacity-40"
+          >
+            Redo
+          </button>
+          <span
+            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+              dirty ? "bg-warn/10 text-warn" : "bg-success-soft text-success"
+            }`}
+          >
+            {dirty ? "Unsaved changes" : "All saved"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPreviewing(true)}
+            disabled={!view}
+            className="rounded-lg bg-sr-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sr-700 disabled:opacity-40"
+          >
+            Preview customer experience
+          </button>
+        </div>
+      </div>
+
     <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start">
       {/* ------------------------------------------------------- preview */}
       <div className="lg:sticky lg:top-4">
@@ -186,32 +341,65 @@ export function CustomizerBuilder({
             <p className="p-8 text-center text-sm text-sr-muted">Add a view to begin.</p>
           )}
 
-          {/* Drag handles sit over the canvas so the admin moves the real zone
-              rather than a separate drawing that could disagree with it. */}
+          {/* Handles sit over the canvas so the admin moves the real zone
+              rather than a separate drawing that could disagree with it.
+              Hidden zones are not shown; locked zones show but cannot be moved. */}
           {view
             ? config.zones
-                .filter((z) => view.zoneIds.includes(z.id))
-                .map((z) => (
-                  <div
-                    key={z.id}
-                    onPointerDown={(e) => onPointerDown(e, z)}
-                    style={{
-                      left: `calc(${z.x}% + 0.5rem)`,
-                      top: `calc(${z.y}% + 0.5rem)`,
-                      width: `${z.width}%`,
-                      height: `${z.height}%`,
-                    }}
-                    className={`absolute cursor-move rounded ${
-                      selectedZone === z.id ? "ring-2 ring-sr-600" : "ring-1 ring-sr-400/60"
-                    }`}
-                    title={`Drag ${z.label}`}
-                  />
-                ))
+                .filter((z) => view.zoneIds.includes(z.id) && !z.hidden)
+                .map((z) => {
+                  const isSel = selectedZone === z.id;
+                  return (
+                    <div
+                      key={z.id}
+                      style={{
+                        left: `calc(${z.x}% + 0.5rem)`,
+                        top: `calc(${z.y}% + 0.5rem)`,
+                        width: `${z.width}%`,
+                        height: `${z.height}%`,
+                        transform: z.rotation ? `rotate(${z.rotation}deg)` : undefined,
+                      }}
+                      className="absolute"
+                    >
+                      <div
+                        onPointerDown={(e) => onPointerDown(e, z, "move")}
+                        onClick={() => setSelectedZone(z.id)}
+                        className={`absolute inset-0 rounded ${
+                          z.locked ? "cursor-not-allowed" : "cursor-move"
+                        } ${
+                          isSel
+                            ? "ring-2 ring-sr-600"
+                            : z.locked
+                              ? "ring-1 ring-sr-line-strong"
+                              : "ring-1 ring-sr-400/60"
+                        }`}
+                        title={z.locked ? `${z.label} (locked)` : `Drag ${z.label}`}
+                      />
+                      {isSel && !z.locked ? (
+                        <>
+                          {/* Resize, bottom-right. */}
+                          <div
+                            onPointerDown={(e) => onPointerDown(e, z, "resize")}
+                            className="absolute -right-1.5 -bottom-1.5 h-3.5 w-3.5 cursor-nwse-resize rounded-sm border-2 border-white bg-sr-600 shadow"
+                            title="Resize"
+                          />
+                          {/* Rotate, above the top edge. */}
+                          <div
+                            onPointerDown={(e) => onPointerDown(e, z, "rotate")}
+                            className="absolute -top-6 left-1/2 h-3.5 w-3.5 -translate-x-1/2 cursor-grab rounded-full border-2 border-white bg-sr-600 shadow"
+                            title="Rotate"
+                          />
+                        </>
+                      ) : null}
+                    </div>
+                  );
+                })
             : null}
         </div>
 
         <p className="mt-2 text-xs text-sr-muted">
-          Drag a zone to move it. Use the numbers on the right for exact placement.
+          Drag to move. Select an area to resize (corner) or rotate (top handle). Use the numbers on
+          the right for exact placement.
         </p>
 
         {config.views.length > 1 ? (
@@ -237,7 +425,7 @@ export function CustomizerBuilder({
       {/* ------------------------------------------------------- controls */}
       <div>
         <div className="flex flex-wrap gap-1.5">
-          {(["views", "zones", "options", "templates", "tools"] as Tab[]).map((t) => (
+          {(["views", "zones", "options", "customer", "templates", "tools"] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -251,10 +439,12 @@ export function CustomizerBuilder({
                 : t === "zones"
                   ? "Editable areas"
                   : t === "options"
-                    ? "Colours & sizes"
-                    : t === "templates"
-                      ? "Templates"
-                      : "Customer tools"}
+                    ? "Variants & price"
+                    : t === "customer"
+                      ? "Customer options"
+                      : t === "templates"
+                        ? "Templates"
+                        : "Customer tools"}
             </button>
           ))}
         </div>
@@ -300,16 +490,26 @@ export function CustomizerBuilder({
                 const created: CustomizerZone = {
                   id,
                   kind,
-                  label: kind === "PHOTO" ? "Photo" : "Text",
+                  label: kind === "PHOTO" ? "Photo" : kind === "TEXT" ? "Text" : "Frame",
                   shape: "RECT",
-                  x: 25,
-                  y: 25,
-                  width: 50,
-                  height: kind === "PHOTO" ? 40 : 10,
+                  x: kind === "FRAME" ? 12 : 25,
+                  y: kind === "FRAME" ? 12 : 25,
+                  width: kind === "FRAME" ? 76 : 50,
+                  height: kind === "PHOTO" ? 40 : kind === "TEXT" ? 10 : 76,
                   rotation: 0,
                   cornerRadius: 0,
                   safeInset: kind === "PHOTO" ? 4 : 0,
-                  required: true,
+                  // A frame is decoration, not something the customer must fill.
+                  required: kind !== "FRAME",
+                  hidden: false,
+                  locked: false,
+                  // A new frame follows the customer's frame colour by default,
+                  // so the "frame colour" option is meaningful straight away.
+                  fill: kind === "FRAME" ? "#151b39" : null,
+                  stroke: null,
+                  strokeWidth: 0,
+                  imageUrl: "",
+                  tintByFrameColor: kind === "FRAME",
                   visibleWhen: null,
                   printWidthMm: kind === "PHOTO" ? 150 : null,
                   printHeightMm: kind === "PHOTO" ? 100 : null,
@@ -325,7 +525,15 @@ export function CustomizerBuilder({
                   ...prev,
                   zones: [...prev.zones, created],
                   views: prev.views.map((v) =>
-                    v.id === (view?.id ?? "") ? { ...v, zoneIds: [...v.zoneIds, id] } : v,
+                    v.id === (view?.id ?? "")
+                      ? {
+                          ...v,
+                          // A frame defaults to the bottom of the stack so a
+                          // filled frame sits behind the photos rather than
+                          // hiding them; other elements go on top.
+                          zoneIds: kind === "FRAME" ? [id, ...v.zoneIds] : [...v.zoneIds, id],
+                        }
+                      : v,
                   ),
                 }));
                 setSelectedZone(id);
@@ -340,10 +548,31 @@ export function CustomizerBuilder({
                   })),
                 }))
               }
+              productImages={productImages}
+              onReorder={(id, dir) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  views: prev.views.map((v) => {
+                    if (v.id !== (view?.id ?? "")) return v;
+                    const ids = [...v.zoneIds];
+                    const i = ids.indexOf(id);
+                    // Layers are drawn bottom-first, so "up" (towards the front)
+                    // is later in the array.
+                    const j = dir === "up" ? i + 1 : i - 1;
+                    if (i < 0 || j < 0 || j >= ids.length) return v;
+                    [ids[i], ids[j]] = [ids[j], ids[i]];
+                    return { ...v, zoneIds: ids };
+                  }),
+                }))
+              }
             />
           ) : null}
 
           {tab === "options" ? <OptionsTab config={config} onChange={setConfig} /> : null}
+
+          {tab === "customer" ? (
+            <CustomerOptionsTab config={config} onChange={setConfig} />
+          ) : null}
 
           {tab === "templates" ? <TemplatesTab config={config} onChange={setConfig} /> : null}
 
@@ -388,6 +617,65 @@ export function CustomizerBuilder({
           </button>
         </div>
       </div>
+    </div>
+
+      {/* --------------------------------------------- customer preview */}
+      {previewing ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Customer preview"
+          className="fixed inset-0 z-50 flex flex-col bg-ink/80 p-3 sm:p-6"
+          onClick={() => setPreviewing(false)}
+        >
+          <div
+            className="mx-auto flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-card bg-canvas"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
+              <div>
+                <p className="text-sm font-semibold text-ink">Customer preview</p>
+                <p className="text-[11px] text-muted">Exactly what the customer sees. Unsaved.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewing(false)}
+                className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="gc-hide-scrollbar flex flex-wrap gap-1.5 border-b border-line px-4 py-2 text-[10px] font-semibold text-muted">
+              {["Upload photo", "Enter text", "Adjust photo", "Live preview", "Add to cart"].map(
+                (step, i) => (
+                  <span key={step} className="rounded-full bg-paper px-2 py-0.5 ring-1 ring-line">
+                    {i + 1}. {step}
+                  </span>
+                ),
+              )}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {/* Loads the allowed fonts so the preview shows them, and renders
+                  the real customer component against the unsaved config. */}
+              <CustomizerFonts config={config} />
+              {config.views.length > 0 ? (
+                <ProductCustomizer
+                  key={config.version}
+                  productId={productId}
+                  productName={productName}
+                  config={{ ...config, enabled: true }}
+                  basePriceP={basePriceP}
+                  signedIn={false}
+                />
+              ) : (
+                <p className="text-sm text-muted">Add a view to preview.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -509,22 +797,36 @@ function ZonesTab({
   onPatch,
   onAdd,
   onRemove,
+  onReorder,
+  productImages,
 }: {
   config: CustomizerConfig;
   view: CustomizerView | null;
   selected: CustomizerZone | null;
   onSelect: (id: string) => void;
   onPatch: (id: string, patch: Partial<CustomizerZone>) => void;
-  onAdd: (kind: "PHOTO" | "TEXT") => void;
+  onAdd: (kind: "PHOTO" | "TEXT" | "FRAME") => void;
   onRemove: (id: string) => void;
+  onReorder: (id: string, dir: "up" | "down") => void;
+  productImages: string[];
 }) {
   const inView = view ? config.zones.filter((z) => view.zoneIds.includes(z.id)) : [];
+  // Layers are drawn bottom-first; show them front-to-back like a design tool.
+  const layers = view
+    ? view.zoneIds
+        .map((id) => config.zones.find((z) => z.id === id))
+        .filter((z): z is CustomizerZone => Boolean(z))
+        .reverse()
+    : [];
+
+  const kindLabel = (k: CustomizerZone["kind"]) =>
+    k === "PHOTO" ? "Image box" : k === "TEXT" ? "Text box" : "Frame";
 
   return (
     <div className="grid gap-4">
       <p className="text-sm text-sr-muted">
-        An editable area on {view?.label ?? "this view"}. Drag it on the preview, then fine-tune the
-        numbers here.
+        Place image boxes, text boxes and frames on {view?.label ?? "this view"}. Drag to move;
+        select to resize or rotate. The layers list on the right sets what sits in front.
       </p>
 
       <div className="flex flex-wrap gap-1.5">
@@ -545,16 +847,88 @@ function ZonesTab({
           onClick={() => onAdd("PHOTO")}
           className="rounded-full border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
         >
-          + Photo area
+          + Image box
         </button>
         <button
           type="button"
           onClick={() => onAdd("TEXT")}
           className="rounded-full border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
         >
-          + Text area
+          + Text box
+        </button>
+        <button
+          type="button"
+          onClick={() => onAdd("FRAME")}
+          className="rounded-full border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
+        >
+          + Frame
         </button>
       </div>
+
+      {/* Layers: show/hide, lock, and stacking order, like a design tool. */}
+      {layers.length > 0 ? (
+        <div className="rounded-lg border border-sr-line p-2.5">
+          <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-sr-muted uppercase">
+            Layers ({layers.length})
+          </p>
+          <ul className="grid gap-1">
+            {layers.map((z, i) => (
+              <li
+                key={z.id}
+                className={`flex items-center gap-1.5 rounded-md px-1.5 py-1 ${
+                  selected?.id === z.id ? "bg-sr-50" : ""
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => onPatch(z.id, { hidden: !z.hidden })}
+                  title={z.hidden ? "Show" : "Hide"}
+                  aria-label={z.hidden ? `Show ${z.label}` : `Hide ${z.label}`}
+                  className="text-sm"
+                >
+                  {z.hidden ? "🚫" : "👁"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onPatch(z.id, { locked: !z.locked })}
+                  title={z.locked ? "Unlock" : "Lock"}
+                  aria-label={z.locked ? `Unlock ${z.label}` : `Lock ${z.label}`}
+                  className="text-sm"
+                >
+                  {z.locked ? "🔒" : "🔓"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSelect(z.id)}
+                  className={`flex-1 truncate text-left text-xs font-medium ${
+                    z.hidden ? "text-sr-muted line-through" : "text-sr-body"
+                  }`}
+                >
+                  {z.label} <span className="text-sr-muted">· {kindLabel(z.kind)}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onReorder(z.id, "up")}
+                  disabled={i === 0}
+                  title="Bring forward"
+                  className="rounded px-1 text-xs text-sr-body disabled:opacity-30"
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onReorder(z.id, "down")}
+                  disabled={i === layers.length - 1}
+                  title="Send backward"
+                  className="rounded px-1 text-xs text-sr-body disabled:opacity-30"
+                >
+                  ▼
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {selected ? (
         <div className="grid gap-3 rounded-lg border border-sr-line p-3 sm:grid-cols-2">
@@ -602,7 +976,7 @@ function ZonesTab({
                 />
               </Field>
             </>
-          ) : (
+          ) : selected.kind === "TEXT" ? (
             <>
               <Field label="Maximum characters">
                 <input
@@ -617,7 +991,7 @@ function ZonesTab({
                 value={selected.fontSizePct}
                 onChange={(v) => onPatch(selected.id, { fontSizePct: v })}
               />
-              <Field label="Text colour">
+              <Field label="Default text colour" hint="Used if you don't allow text colours.">
                 <input
                   type="color"
                   className="h-10 w-full rounded-lg border border-field bg-field-bg"
@@ -626,16 +1000,93 @@ function ZonesTab({
                 />
               </Field>
             </>
+          ) : (
+            /* FRAME: a decorative shape or PNG the customer never edits. */
+            <>
+              <label className="flex items-center gap-2 text-sm text-sr-body sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={selected.tintByFrameColor}
+                  onChange={(e) => onPatch(selected.id, { tintByFrameColor: e.target.checked })}
+                />
+                Follows the customer’s chosen frame colour
+              </label>
+              <Field label="Fill colour" hint={selected.tintByFrameColor ? "Fallback if no frame colour is chosen." : undefined}>
+                <input
+                  type="color"
+                  className="h-10 w-full rounded-lg border border-field bg-field-bg"
+                  value={selected.fill ?? "#151b39"}
+                  onChange={(e) => onPatch(selected.id, { fill: e.target.value })}
+                />
+              </Field>
+              <Field label="Border colour">
+                <input
+                  type="color"
+                  className="h-10 w-full rounded-lg border border-field bg-field-bg"
+                  value={selected.stroke ?? "#000000"}
+                  onChange={(e) => onPatch(selected.id, { stroke: e.target.value })}
+                />
+              </Field>
+              <Num
+                label="Border width (px)"
+                value={selected.strokeWidth}
+                onChange={(v) => onPatch(selected.id, { strokeWidth: v })}
+              />
+              <Num
+                label="Corner radius %"
+                value={selected.cornerRadius}
+                onChange={(v) => onPatch(selected.id, { cornerRadius: v })}
+              />
+              <Field label="Frame PNG (optional)" hint="A transparent PNG overrides the fill." >
+                <input
+                  className={input}
+                  placeholder="Image URL"
+                  value={selected.imageUrl}
+                  onChange={(e) => onPatch(selected.id, { imageUrl: e.target.value })}
+                />
+              </Field>
+              {productImages.length > 0 ? (
+                <div className="sm:col-span-2">
+                  <p className="mb-1 text-[11px] text-sr-muted">Or pick a product image:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {productImages.map((url, i) => (
+                      <button
+                        key={`${url}-${i}`}
+                        type="button"
+                        onClick={() => onPatch(selected.id, { imageUrl: url })}
+                        className={`h-10 w-10 overflow-hidden rounded border ${
+                          selected.imageUrl === url ? "border-sr-600 ring-1 ring-sr-600" : "border-sr-line-strong"
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ))}
+                    {selected.imageUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => onPatch(selected.id, { imageUrl: "" })}
+                        className="rounded border border-sr-line-strong px-2 text-[11px] font-semibold text-sr-body"
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </>
           )}
 
-          <label className="flex items-center gap-2 text-sm text-sr-body">
-            <input
-              type="checkbox"
-              checked={selected.required}
-              onChange={(e) => onPatch(selected.id, { required: e.target.checked })}
-            />
-            The customer must fill this
-          </label>
+          {selected.kind !== "FRAME" ? (
+            <label className="flex items-center gap-2 text-sm text-sr-body">
+              <input
+                type="checkbox"
+                checked={selected.required}
+                onChange={(e) => onPatch(selected.id, { required: e.target.checked })}
+              />
+              The customer must fill this
+            </label>
+          ) : null}
 
           <div className="sm:col-span-2">
             <VisibilityRuleEditor
@@ -1115,6 +1566,512 @@ function TemplatesTab({
       >
         Add template
       </button>
+    </div>
+  );
+}
+
+/**
+ * A named, allow-listed set of colours the customer may choose from.
+ * The customer never gets a free colour picker — only these.
+ */
+function AllowedColorsEditor({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: { enabled: boolean; colors: string[]; default: string | null };
+  onChange: (next: { enabled: boolean; colors: string[]; default: string | null }) => void;
+}) {
+  const [pending, setPending] = useState("#ff6b2c");
+
+  return (
+    <div className="rounded-lg border border-sr-line p-3">
+      <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
+        <input
+          type="checkbox"
+          checked={value.enabled}
+          onChange={(e) => onChange({ ...value, enabled: e.target.checked })}
+        />
+        {label} (allowed)
+      </label>
+      <p className="mt-0.5 text-[11px] text-sr-muted">{hint}</p>
+
+      {value.enabled ? (
+        <div className="mt-2 grid gap-2">
+          {value.colors.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {value.colors.map((c) => (
+                <span
+                  key={c}
+                  className={`inline-flex items-center gap-1 rounded-full border py-0.5 pr-1 pl-1.5 text-xs ${
+                    value.default === c ? "border-sr-600" : "border-sr-line-strong"
+                  }`}
+                >
+                  <span className="h-4 w-4 rounded-full border border-sr-line" style={{ background: c }} />
+                  {c}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChange({
+                        ...value,
+                        colors: value.colors.filter((x) => x !== c),
+                        default: value.default === c ? null : value.default,
+                      })
+                    }
+                    className="rounded px-1 text-sr-muted hover:text-danger"
+                    aria-label={`Remove ${c}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-sr-muted">No colours yet — add at least one.</p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="color"
+              value={pending}
+              onChange={(e) => setPending(e.target.value)}
+              className="h-9 w-12 rounded-lg border border-field bg-field-bg"
+            />
+            <input
+              value={pending}
+              onChange={(e) => setPending(e.target.value)}
+              className={`${input} max-w-[120px]`}
+              placeholder="#ff6b2c"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const hex = pending.trim().toLowerCase();
+                if (!/^#[0-9a-f]{6}$/.test(hex) || value.colors.includes(hex)) return;
+                onChange({
+                  ...value,
+                  colors: [...value.colors, hex],
+                  default: value.default ?? hex,
+                });
+              }}
+              className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
+            >
+              Add
+            </button>
+          </div>
+
+          {value.colors.length > 0 ? (
+            <label className="flex items-center gap-2 text-xs text-sr-body">
+              Default
+              <select
+                className={`${input} max-w-[140px]`}
+                value={value.default ?? ""}
+                onChange={(e) => onChange({ ...value, default: e.target.value || null })}
+              >
+                {value.colors.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Everything the customer is allowed to restyle (§ Frame Designer, "Customer
+ * Options"). Layout stays locked; each control here is off until the admin
+ * turns it on, and the customer only ever sees what is turned on.
+ */
+function CustomerOptionsTab({
+  config,
+  onChange,
+}: {
+  config: CustomizerConfig;
+  onChange: (next: CustomizerConfig) => void;
+}) {
+  const co = config.customerOptions;
+  const setCO = (next: Partial<typeof co>) =>
+    onChange({ ...config, customerOptions: { ...co, ...next } });
+
+  const [newGoogle, setNewGoogle] = useState("");
+  const [uploadingFont, setUploadingFont] = useState(false);
+  const [fontError, setFontError] = useState<string | null>(null);
+  const [sizeLabel, setSizeLabel] = useState("");
+  const [sizePx, setSizePx] = useState("");
+  const fontFileRef = useRef<HTMLInputElement>(null);
+
+  async function uploadFonts(files: FileList) {
+    setUploadingFont(true);
+    setFontError(null);
+    try {
+      const added: typeof co.font.families = [];
+      for (const file of Array.from(files)) {
+        const body = new FormData();
+        body.append("file", file);
+        const res = await fetch("/api/admin/customizer/fonts", { method: "POST", body });
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          setFontError(json?.error?.message ?? "That font could not be uploaded.");
+          continue;
+        }
+        added.push({
+          name: json.data.name as string,
+          source: "upload",
+          url: json.data.url as string,
+          format: json.data.format as typeof co.font.families[number]["format"],
+        });
+      }
+      if (added.length > 0) {
+        const merged = [...co.font.families];
+        for (const f of added) if (!merged.some((m) => m.name === f.name)) merged.push(f);
+        setCO({ font: { ...co.font, families: merged, default: co.font.default || added[0].name } });
+      }
+    } finally {
+      setUploadingFont(false);
+      if (fontFileRef.current) fontFileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="grid gap-4">
+      <p className="text-sm text-sr-muted">
+        The customer can change only what you turn on here — the layout stays locked. Everything is
+        off by default.
+      </p>
+
+      <AllowedColorsEditor
+        label="Frame colour"
+        hint="Tints any frame set to follow the frame colour."
+        value={co.frameColor}
+        onChange={(v) => setCO({ frameColor: v })}
+      />
+      <AllowedColorsEditor
+        label="Text colour"
+        hint="Applied to every text box."
+        value={co.textColor}
+        onChange={(v) => setCO({ textColor: v })}
+      />
+
+      {/* -------------------------------------------------------- fonts */}
+      <div className="rounded-lg border border-sr-line p-3">
+        <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
+          <input
+            type="checkbox"
+            checked={co.font.enabled}
+            onChange={(e) => setCO({ font: { ...co.font, enabled: e.target.checked } })}
+          />
+          Font style (allowed)
+        </label>
+        <p className="mt-0.5 text-[11px] text-sr-muted">
+          Add Google Fonts by name, or upload your own font files.
+        </p>
+
+        {co.font.enabled ? (
+          <div className="mt-2 grid gap-2">
+            {co.font.families.length > 0 ? (
+              <ul className="grid gap-1">
+                {co.font.families.map((f) => (
+                  <li
+                    key={f.name}
+                    className="flex items-center gap-2 rounded-md bg-sr-canvas px-2 py-1 text-xs"
+                  >
+                    <span className="flex-1 truncate font-medium text-sr-body" style={{ fontFamily: `"${f.name}"` }}>
+                      {f.name}
+                    </span>
+                    <span className="rounded bg-sr-surface px-1.5 py-0.5 text-[10px] text-sr-muted">
+                      {f.source}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCO({
+                          font: {
+                            ...co.font,
+                            families: co.font.families.filter((x) => x.name !== f.name),
+                            default: co.font.default === f.name ? "" : co.font.default,
+                          },
+                        })
+                      }
+                      className="rounded px-1 text-sr-muted hover:text-danger"
+                      aria-label={`Remove ${f.name}`}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[11px] text-sr-muted">No fonts yet.</p>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={newGoogle}
+                onChange={(e) => setNewGoogle(e.target.value)}
+                placeholder="Google font name (e.g. Lobster)"
+                className={`${input} max-w-[220px]`}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const name = newGoogle.trim();
+                  if (!name || co.font.families.some((f) => f.name === name)) return;
+                  setCO({
+                    font: {
+                      ...co.font,
+                      families: [...co.font.families, { name, source: "google", url: "", format: "" }],
+                      default: co.font.default || name,
+                    },
+                  });
+                  setNewGoogle("");
+                }}
+                className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
+              >
+                + Add Google font
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={fontFileRef}
+                type="file"
+                accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2"
+                multiple
+                className="sr-only"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) void uploadFonts(e.target.files);
+                }}
+              />
+              <button
+                type="button"
+                disabled={uploadingFont}
+                onClick={() => fontFileRef.current?.click()}
+                className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body disabled:opacity-60"
+              >
+                {uploadingFont ? "Uploading…" : "Upload font file (.ttf / .otf / .woff)"}
+              </button>
+            </div>
+            {fontError ? <p className="text-[11px] text-danger">{fontError}</p> : null}
+
+            {co.font.families.length > 0 ? (
+              <label className="flex items-center gap-2 text-xs text-sr-body">
+                Default
+                <select
+                  className={`${input} max-w-[180px]`}
+                  value={co.font.default}
+                  onChange={(e) => setCO({ font: { ...co.font, default: e.target.value } })}
+                >
+                  {co.font.families.map((f) => (
+                    <option key={f.name} value={f.name}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {/* ---------------------------------------------------- text size */}
+      <div className="rounded-lg border border-sr-line p-3">
+        <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
+          <input
+            type="checkbox"
+            checked={co.textSize.enabled}
+            onChange={(e) => setCO({ textSize: { ...co.textSize, enabled: e.target.checked } })}
+          />
+          Text size (fixed choices)
+        </label>
+        <p className="mt-0.5 text-[11px] text-sr-muted">
+          The customer picks from these sizes; they scale the text proportionally.
+        </p>
+
+        {co.textSize.enabled ? (
+          <div className="mt-2 grid gap-2">
+            {co.textSize.choices.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {co.textSize.choices.map((c) => (
+                  <span
+                    key={`${c.label}-${c.px}`}
+                    className={`inline-flex items-center gap-1 rounded-full border py-0.5 pr-1 pl-2.5 text-xs ${
+                      co.textSize.default === c.px ? "border-sr-600" : "border-sr-line-strong"
+                    }`}
+                  >
+                    {c.label} — {c.px}px
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCO({
+                          textSize: {
+                            ...co.textSize,
+                            choices: co.textSize.choices.filter((x) => !(x.label === c.label && x.px === c.px)),
+                            default: co.textSize.default === c.px ? null : co.textSize.default,
+                          },
+                        })
+                      }
+                      className="rounded px-1 text-sr-muted hover:text-danger"
+                      aria-label={`Remove ${c.label}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-sr-muted">No sizes yet.</p>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={sizeLabel}
+                onChange={(e) => setSizeLabel(e.target.value)}
+                placeholder="Label (e.g. Medium)"
+                className={`${input} max-w-[150px]`}
+              />
+              <input
+                value={sizePx}
+                onChange={(e) => setSizePx(e.target.value)}
+                placeholder="px"
+                inputMode="numeric"
+                className={`${input} max-w-[80px]`}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const px = Math.round(Number(sizePx));
+                  const label = sizeLabel.trim();
+                  if (!label || !Number.isFinite(px) || px < 6 || px > 200) return;
+                  if (co.textSize.choices.some((c) => c.px === px)) return;
+                  setCO({
+                    textSize: {
+                      ...co.textSize,
+                      choices: [...co.textSize.choices, { label, px }].sort((a, b) => a.px - b.px),
+                      default: co.textSize.default ?? px,
+                    },
+                  });
+                  setSizeLabel("");
+                  setSizePx("");
+                }}
+                className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
+              >
+                Add
+              </button>
+            </div>
+
+            {co.textSize.choices.length > 0 ? (
+              <label className="flex items-center gap-2 text-xs text-sr-body">
+                Default
+                <select
+                  className={`${input} max-w-[160px]`}
+                  value={co.textSize.default ?? ""}
+                  onChange={(e) =>
+                    setCO({ textSize: { ...co.textSize, default: Number(e.target.value) || null } })
+                  }
+                >
+                  {co.textSize.choices.map((c) => (
+                    <option key={c.px} value={c.px}>
+                      {c.label} ({c.px}px)
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {/* ------------------------------------------------ acrylic mirror */}
+      <div className="rounded-lg border border-sr-line p-3">
+        <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
+          <input
+            type="checkbox"
+            checked={co.acrylicMirror.enabled}
+            onChange={(e) => setCO({ acrylicMirror: { enabled: e.target.checked } })}
+          />
+          Acrylic mirror text
+        </label>
+        <p className="mt-0.5 text-[11px] text-sr-muted">
+          4mm mirror finish, 3D raised text — normal colours still apply.
+        </p>
+      </div>
+
+      {/* ------------------------------------------------------ gradient */}
+      <div className="rounded-lg border border-sr-line p-3">
+        <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
+          <input
+            type="checkbox"
+            checked={co.gradient.enabled}
+            onChange={(e) => setCO({ gradient: { ...co.gradient, enabled: e.target.checked } })}
+          />
+          Gradient
+        </label>
+        <p className="mt-0.5 text-[11px] text-sr-muted">
+          Shows the customer an on/off switch; off by default.
+        </p>
+
+        {co.gradient.enabled ? (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <Field label="Colour 1">
+              <input
+                type="color"
+                className="h-10 w-full rounded-lg border border-field bg-field-bg"
+                value={co.gradient.color1}
+                onChange={(e) => setCO({ gradient: { ...co.gradient, color1: e.target.value } })}
+              />
+            </Field>
+            <Field label="Colour 2">
+              <input
+                type="color"
+                className="h-10 w-full rounded-lg border border-field bg-field-bg"
+                value={co.gradient.color2}
+                onChange={(e) => setCO({ gradient: { ...co.gradient, color2: e.target.value } })}
+              />
+            </Field>
+            <Field label={`Direction: ${co.gradient.direction}°`}>
+              <input
+                type="range"
+                min={0}
+                max={360}
+                value={co.gradient.direction}
+                onChange={(e) => setCO({ gradient: { ...co.gradient, direction: Number(e.target.value) } })}
+                className="w-full accent-sr-600"
+              />
+            </Field>
+            <label className="flex items-center gap-2 self-end text-sm text-sr-body">
+              <input
+                type="checkbox"
+                checked={co.gradient.applyToPhotos}
+                onChange={(e) => setCO({ gradient: { ...co.gradient, applyToPhotos: e.target.checked } })}
+              />
+              Also apply to photos
+            </label>
+          </div>
+        ) : null}
+      </div>
+
+      {/* --------------------------------------------------------- LED */}
+      <div className="rounded-lg border border-sr-line p-3">
+        <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
+          <input
+            type="checkbox"
+            checked={co.ledGlow.enabled}
+            onChange={(e) => setCO({ ledGlow: { enabled: e.target.checked } })}
+          />
+          Light / LED glow
+        </label>
+        <p className="mt-0.5 text-[11px] text-sr-muted">
+          Gives the customer an LED glow on/off toggle on lit views.
+        </p>
+      </div>
     </div>
   );
 }
