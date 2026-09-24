@@ -430,13 +430,15 @@ export function ProductCustomizer({
         className="mt-3 rounded-card border border-line bg-paper p-2"
         {...gestures.handlers}
       >
+        {/* No guides for the customer — the preview stays clean, exactly like
+            the finished product. They pick areas from the chips/buttons below,
+            and their photo or text appears in place. */}
         <CustomizerCanvas
           config={config}
           design={design}
           viewId={design.viewId}
           activeZoneId={activeZone?.id ?? null}
           interactive
-          showGuides
           onZoneSelect={setActiveZoneId}
         />
       </div>

@@ -196,7 +196,7 @@ function ZoneLayer({
         }}
         onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
         className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
-          showGuides ? (active ? "outline-2 outline-brand-500" : "outline-1 outline-dashed outline-brand-300/70") : ""
+          showGuides && active ? "outline-2 outline-dashed outline-brand-500" : ""
         }`}
       >
         {zone.imageUrl ? (
@@ -220,7 +220,7 @@ function ZoneLayer({
       style={box}
       onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
       className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
-        showGuides ? (active ? "outline-2 outline-brand-500" : "outline-1 outline-dashed outline-brand-300") : ""
+        showGuides && active ? "outline-2 outline-dashed outline-brand-500" : ""
       }`}
     >
       {value?.kind === "PHOTO" ? (
@@ -290,15 +290,16 @@ function ZoneLayer({
         </span>
       ) : null}
 
-      {/* The margin printing is guaranteed to reach. Shown only while editing. */}
-      {showGuides && zone.safeInset > 0 ? (
+      {/* Guides — the safe-area margin and the empty-slot hint — show only for
+          the selected area, so the canvas is not covered in outlines. */}
+      {showGuides && active && zone.safeInset > 0 ? (
         <span
           style={{ inset: `${zone.safeInset}%` }}
           className="pointer-events-none absolute border border-dashed border-white/70"
         />
       ) : null}
 
-      {showGuides && !value ? (
+      {showGuides && active && !value ? (
         <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-brand-50/70 text-center text-[10px] leading-tight font-semibold text-brand-700">
           {zone.kind === "PHOTO" ? "Add photo" : zone.label}
         </span>
