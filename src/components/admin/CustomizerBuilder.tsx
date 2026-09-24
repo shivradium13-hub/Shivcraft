@@ -1855,13 +1855,14 @@ function CustomerOptionsTab({
             checked={co.font.enabled}
             onChange={(e) => setCO({ font: { ...co.font, enabled: e.target.checked } })}
           />
-          Font style (allowed)
+          Font style — let customers pick the font
         </label>
         <p className="mt-0.5 text-[11px] text-sr-muted">
-          Add Google Fonts by name, or upload your own font files.
+          Add or remove fonts below (Google Fonts by name, or your own font files). Tick the box to
+          offer the font picker to customers.
         </p>
 
-        {co.font.enabled ? (
+        {
           <div className="mt-2 grid gap-2">
             {co.font.families.length > 0 ? (
               <ul className="grid gap-1">
@@ -1965,7 +1966,7 @@ function CustomerOptionsTab({
               </label>
             ) : null}
           </div>
-        ) : null}
+        }
       </div>
 
       {/* ---------------------------------------------------- text size */}
