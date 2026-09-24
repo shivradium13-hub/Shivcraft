@@ -151,7 +151,7 @@ export function ProductForm({
     }
   }
 
-  async function save() {
+  async function save(thenDesign = false) {
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -203,7 +203,10 @@ export function ProductForm({
         setNotice("Saved. The storefront shows the change immediately.");
         router.refresh();
       } else {
-        router.replace(`/admin/products/${json.data.product.id}`);
+        const newId = json.data.product.id;
+        // After creating, either open the Frame Designer for the new product
+        // or land on its editor.
+        router.replace(thenDesign ? `/admin/products/${newId}/customizer` : `/admin/products/${newId}`);
       }
     } catch {
       setError("Network problem — try again.");
@@ -404,10 +407,25 @@ export function ProductForm({
         {/* -------------------------------------------------- frame designer */}
         <Card title="Frame Designer">
           {!productId ? (
-            <p className="text-sm text-sr-muted">
-              Save this product first, then a “Design personalizer” button appears here to build its
-              live customizer.
-            </p>
+            <div className="grid gap-2">
+              <p className="text-sm text-sr-muted">
+                Design a live personalizer for this product — image boxes, text boxes, frames,
+                layers, colours, fonts and more. Fill in the details above (at least a name, category
+                and price), then open the Frame Designer.
+              </p>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => save(true)}
+                className="justify-self-start rounded-full bg-sr-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-700 disabled:opacity-50"
+              >
+                {busy ? "Saving…" : "Save & design personalizer →"}
+              </button>
+              <p className="text-xs text-sr-muted">
+                This creates the product and opens the Frame Designer. Tip: add a product image first
+                (in the sidebar) so you have a background to design on.
+              </p>
+            </div>
           ) : (
             <div className="grid gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -604,7 +622,7 @@ export function ProductForm({
           <button
             type="button"
             disabled={busy}
-            onClick={save}
+            onClick={() => save()}
             className="w-full rounded-full bg-sr-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-sr-700 disabled:opacity-50"
           >
             {busy ? "Saving…" : productId ? "Save changes" : "Create product"}
