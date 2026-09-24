@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { formatPaise } from "@/lib/money";
+import { ProductsTable } from "@/components/admin/ProductsTable";
 import { adminCategoryTree } from "@/server/admin/catalog";
 import { listAdminProducts } from "@/server/admin/products";
 import { requireAdmin } from "@/server/auth/guards";
@@ -109,76 +109,7 @@ export default async function AdminProductsPage(props: PageProps<"/admin/product
           No products match this filter.
         </p>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-sr-line bg-sr-surface">
-          <table className="w-full min-w-[820px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-sr-line bg-sr-soft text-left">
-                {["", "Product", "Category", "Price", "Stock", "Status", ""].map((h, i) => (
-                  <th key={i} className="px-3 py-2.5 text-[11px] font-semibold tracking-wide text-sr-muted uppercase">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const low = row.stock <= row.lowStockThreshold;
-                return (
-                  <tr key={row.id} className="border-b border-sr-line last:border-0 hover:bg-sr-canvas">
-                    <td className="px-3 py-2">
-                      <span className="block h-10 w-10 overflow-hidden rounded-lg bg-sr-50">
-                        {row.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={row.imageUrl} alt="" className="h-full w-full object-cover" />
-                        ) : null}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <Link href={`/admin/products/${row.id}`} className="font-medium text-sr-600 hover:underline">
-                        {row.name}
-                      </Link>
-                      <span className="block text-xs text-sr-muted">{row.sku}</span>
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-sr-muted">{row.categoryName}</td>
-                    <td className="px-3 py-2.5 tabular-nums">
-                      {formatPaise(row.discountPriceP ?? row.priceP)}
-                      {row.discountPriceP ? (
-                        <span className="block text-xs text-sr-muted line-through">
-                          {formatPaise(row.priceP)}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className={`px-3 py-2.5 font-semibold tabular-nums ${low ? "text-danger" : ""}`}>
-                      {row.stock}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          row.isActive ? "bg-success-soft text-success" : "bg-sr-canvas text-sr-muted"
-                        }`}
-                      >
-                        {row.isActive ? "Live" : "Hidden"}
-                      </span>
-                      {row.isPersonalizable ? (
-                        <span className="ml-1 rounded bg-sr-gold-soft px-1.5 py-0.5 text-[10px] font-semibold text-sr-gold">
-                          CUSTOM
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2.5 text-right">
-                      <Link
-                        href={`/admin/products/${row.id}`}
-                        className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-xs font-semibold text-sr-body hover:border-sr-400 hover:text-sr-700"
-                      >
-                        Edit
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <ProductsTable rows={rows} />
       )}
 
       {totalPages > 1 ? (

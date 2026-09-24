@@ -1,7 +1,12 @@
+import { inArray } from "drizzle-orm";
+import { z } from "zod";
+
 import { productSchema } from "@/lib/adminValidation";
-import { created, ok, readJson, readPaging, route } from "@/server/api/http";
+import { ApiError, created, ok, readJson, readPaging, route } from "@/server/api/http";
 import { createProduct, listAdminProducts } from "@/server/admin/products";
 import { requireAdmin } from "@/server/auth/guards";
+import { db } from "@/server/db";
+import { products } from "@/server/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,4 +46,28 @@ export const POST = route(async (request: Request) => {
   const input = await readJson(request, productSchema);
   const row = await createProduct(input);
   return created({ product: row });
+});
+
+/**
+ * DELETE /api/admin/products — bulk delete by id.
+ *
+ * order_items.product_id is ON DELETE SET NULL and every other reference
+ * cascades, so removing a product does not damage order history. Used by the
+ * "Delete selected" action on the products list.
+ */
+export const DELETE = route(async (request: Request) => {
+  await requireAdmin();
+  const { ids } = await readJson(
+    request,
+    z.object({ ids: z.array(z.string().uuid()).min(1).max(100) }),
+  );
+
+  const deleted = await db
+    .delete(products)
+    .where(inArray(products.id, ids))
+    .returning({ id: products.id });
+
+  if (deleted.length === 0) throw new ApiError("NOT_FOUND", "No matching products to delete.");
+
+  return ok({ deleted: deleted.length });
 });
