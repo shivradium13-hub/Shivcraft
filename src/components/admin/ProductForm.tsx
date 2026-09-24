@@ -175,14 +175,17 @@ export function ProductForm({
       occasion: values.occasion,
       tags: values.tags.split(",").map((t) => t.trim()).filter(Boolean),
       videoUrl: values.videoUrl,
-      isPersonalizable: values.isPersonalizable,
+      // The Frame Designer path does not use the simple personalisation fields,
+      // so it is never blocked by their "add at least one field" rule — the
+      // admin builds the template in the designer instead.
+      isPersonalizable: thenDesign ? false : values.isPersonalizable,
       isActive: values.isActive,
       isBestSeller: values.isBestSeller,
       isTrending: values.isTrending,
       metaTitle: values.metaTitle,
       metaDescription: values.metaDescription,
       images: values.images,
-      customizationFields: values.customizationFields,
+      customizationFields: thenDesign ? [] : values.customizationFields,
     };
 
     try {
