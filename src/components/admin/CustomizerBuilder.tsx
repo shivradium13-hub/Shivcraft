@@ -286,6 +286,18 @@ export function CustomizerBuilder({
         <div className="flex items-center gap-1.5">
           <button
             type="button"
+            onClick={() => {
+              // Start a fresh blank template. Undoable, so it is safe.
+              setConfig(withStarterView(EMPTY_CONFIG, productImages[0] ?? ""));
+              setSelectedZone(null);
+            }}
+            className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
+            title="Start a fresh blank template (Undo restores it)"
+          >
+            + New template
+          </button>
+          <button
+            type="button"
             onClick={undo}
             disabled={past.length === 0}
             className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body disabled:opacity-40"
@@ -682,6 +694,94 @@ export function CustomizerBuilder({
 
 /* ------------------------------------------------------------------ tabs */
 
+/**
+ * The admin-controlled background for a view: pick a product image, upload a
+ * new one, or leave it blank. The customer never changes this — it is the
+ * fixed base the template and their content sit on.
+ */
+function ViewBackground({
+  view,
+  productImages,
+  onPatch,
+}: {
+  view: CustomizerView;
+  productImages: string[];
+  onPatch: (id: string, patch: Partial<CustomizerView>) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function upload(file: File) {
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.data?.url) {
+        setError(json?.error?.message ?? "That image did not upload.");
+        return;
+      }
+      onPatch(view.id, { base: json.data.url });
+    } catch {
+      setError("Upload failed — check your connection.");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <Field label="Background image" hint="What the customer's content sits on. The customer can't change it.">
+      <select
+        className={input}
+        value={view.base}
+        onChange={(e) => onPatch(view.id, { base: e.target.value })}
+      >
+        <option value="">Blank</option>
+        {productImages.map((url, i) => (
+          <option key={`${url}-${i}`} value={url}>
+            {url.split("/").pop()}
+          </option>
+        ))}
+        {view.base && !productImages.includes(view.base) ? (
+          <option value={view.base}>Uploaded background</option>
+        ) : null}
+      </select>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void upload(f);
+        }}
+      />
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body disabled:opacity-60"
+        >
+          {uploading ? "Uploading…" : "Upload background"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onPatch(view.id, { base: "" })}
+          className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
+        >
+          Blank
+        </button>
+      </div>
+      {error ? <p className="mt-1 text-[11px] text-danger">{error}</p> : null}
+    </Field>
+  );
+}
+
 function ViewsTab({
   config,
   productImages,
@@ -712,20 +812,7 @@ function ViewsTab({
                 onChange={(e) => onPatch(view.id, { label: e.target.value })}
               />
             </Field>
-            <Field label="Base image" hint="What the customer's content sits on.">
-              <select
-                className={input}
-                value={view.base}
-                onChange={(e) => onPatch(view.id, { base: e.target.value })}
-              >
-                <option value="">Choose an image</option>
-                {productImages.map((url, i) => (
-                  <option key={`${url}-${i}`} value={url}>
-                    {url.split("/").pop()}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <ViewBackground view={view} productImages={productImages} onPatch={onPatch} />
             <Field label="Overlay" hint="Sits above the photo, e.g. a frame. Optional.">
               <select
                 className={input}
