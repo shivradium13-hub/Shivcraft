@@ -71,10 +71,11 @@ export function ProductCustomizer({
     withDefaultStyle(
       withDefaultOptions(
         // A design opened from the account wins over a local draft; otherwise the
-        // draft from last visit; otherwise a blank design.
+        // draft from last visit; otherwise the product as the admin designed it —
+        // its default wording already in place, ready for the customer to edit.
         normaliseLoaded(initialDesign, config, firstView) ??
           restore(storageKey, config.version) ??
-          emptyDesign(config.version, firstView),
+          withStarterText(emptyDesign(config.version, firstView), config),
         config,
       ),
       config,
@@ -391,7 +392,7 @@ export function ProductCustomizer({
           <button
             type="button"
             onClick={() => {
-              commit(emptyDesign(config.version, firstView));
+              commit(withStarterText(emptyDesign(config.version, firstView), config));
               setRestored(false);
             }}
             className="font-semibold text-brand-700 underline"
@@ -901,6 +902,27 @@ export function ProductCustomizer({
  * effect, which this component can do because it is mounted client-only — there
  * is no server render for it to disagree with.
  */
+/**
+ * Seeds the admin's default wording, so a fresh design opens on the product
+ * exactly as it was designed — the same text the admin typed into each area —
+ * and the customer edits from there rather than starting on a blank plate.
+ *
+ * Only areas the admin actually gave a default get one, and existing content is
+ * never overwritten, so this is safe to run over any starting design (though we
+ * only call it for a brand-new one). The customer's own text later replaces the
+ * default, and the server still enforces required areas on add-to-cart.
+ */
+function withStarterText(design: CustomerDesign, config: CustomizerConfig): CustomerDesign {
+  const zones = { ...design.zones };
+  for (const zone of config.zones) {
+    if (zone.kind !== "TEXT") continue;
+    if (zones[zone.id]) continue;
+    if (!zone.defaultText || !zone.defaultText.trim()) continue;
+    zones[zone.id] = { kind: "TEXT", text: { value: zone.defaultText } };
+  }
+  return { ...design, zones };
+}
+
 /**
  * Fills in any option group the design has not chosen yet.
  *
