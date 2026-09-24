@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProductForm, type ProductFormValues } from "@/components/admin/ProductForm";
+import { readConfig } from "@/lib/customizer/schema";
 import { subcategoryOptions } from "@/server/admin/catalog";
 import { getAdminProduct, productOrderCount } from "@/server/admin/products";
 import { requireAdmin } from "@/server/auth/guards";
@@ -31,6 +32,9 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
     subcategoryOptions(),
     productOrderCount(id),
   ]);
+
+  // Whether the Frame Designer is live (enabled) and whether a template exists.
+  const customizerConfig = readConfig(product.customizer);
 
   /* Paise back to rupees for the form; the API converts the other way. */
   const initial: ProductFormValues = {
@@ -76,18 +80,6 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-card border border-sr-line bg-sr-soft px-4 py-3">
-        <p className="text-sm text-sr-body">
-          Let customers personalise this product — photos, text and where they land on it.
-        </p>
-        <Link
-          href={`/admin/products/${id}/customizer`}
-          className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sr-700"
-        >
-          Open customizer
-        </Link>
-      </div>
-
       <Link href="/admin/products" className="text-sm font-semibold text-sr-600 hover:underline">
         ← All products
       </Link>
@@ -116,6 +108,8 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
         initial={initial}
         categories={categories}
         orderCount={orderCount}
+        customizerEnabled={customizerConfig.enabled}
+        customizerConfigured={customizerConfig.views.length > 0}
       />
     </div>
   );

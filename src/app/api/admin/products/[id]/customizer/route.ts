@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 
 import { customizerConfigSchema, readConfig } from "@/lib/customizer/schema";
 import { ApiError, ok, readJson, route } from "@/server/api/http";
@@ -8,6 +9,51 @@ import { products } from "@/server/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * PATCH — turn the Frame Designer on or off for a product without rebuilding
+ * its template. This is the toggle on the product editor: on makes the product
+ * personalisable, off makes it a normal direct-sale product. The saved
+ * template is kept either way, so turning it back on restores it.
+ *
+ * Turning it on is refused until a template exists (at least one view with a
+ * product image), because an empty configuration would show the customer
+ * nothing.
+ */
+export const PATCH = route(
+  async (request: Request, context: RouteContext<"/api/admin/products/[id]/customizer">) => {
+    await requireAdmin();
+    const { id } = await context.params;
+    const { enabled } = await readJson(request, z.object({ enabled: z.boolean() }));
+
+    const rows = await db
+      .select({ customizer: products.customizer })
+      .from(products)
+      .where(eq(products.id, id))
+      .limit(1);
+
+    if (!rows[0]) throw new ApiError("NOT_FOUND", "That product does not exist.");
+
+    const parsed = customizerConfigSchema.safeParse(rows[0].customizer);
+    const hasTemplate =
+      parsed.success && parsed.data.views.length > 0 && parsed.data.views.some((v) => v.base);
+
+    if (enabled && !hasTemplate) {
+      throw new ApiError(
+        "BAD_REQUEST",
+        "Set up the template in the Frame Designer first — add a view with a product image, then turn it on.",
+      );
+    }
+
+    // No template and turning off: nothing to store, already a normal product.
+    if (!parsed.success) return ok({ enabled: false, configured: false });
+
+    const next = { ...parsed.data, enabled };
+    await db.update(products).set({ customizer: next, updatedAt: new Date() }).where(eq(products.id, id));
+
+    return ok({ enabled, configured: hasTemplate });
+  },
+);
 
 export const GET = route(
   async (_request: Request, context: RouteContext<"/api/admin/products/[id]/customizer">) => {

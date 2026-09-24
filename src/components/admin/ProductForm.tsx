@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
@@ -62,13 +63,46 @@ export function ProductForm({
   initial,
   categories,
   orderCount = 0,
+  customizerEnabled = false,
+  customizerConfigured = false,
 }: {
   productId?: string;
   initial: ProductFormValues;
   categories: CategoryOption[];
   orderCount?: number;
+  /** Whether the Frame Designer is currently live for this product. */
+  customizerEnabled?: boolean;
+  /** Whether a template has been built (so it can be turned on). */
+  customizerConfigured?: boolean;
 }) {
   const router = useRouter();
+  const [fdEnabled, setFdEnabled] = useState(customizerEnabled);
+  const [fdBusy, setFdBusy] = useState(false);
+  const [fdError, setFdError] = useState<string | null>(null);
+
+  async function toggleFrameDesigner(next: boolean) {
+    if (!productId) return;
+    setFdBusy(true);
+    setFdError(null);
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/customizer`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled: next }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        setFdError(json?.error?.message ?? "Could not change this setting.");
+        return;
+      }
+      setFdEnabled(Boolean(json?.data?.enabled));
+      router.refresh();
+    } catch {
+      setFdError("Network problem — please try again.");
+    } finally {
+      setFdBusy(false);
+    }
+  }
   const [values, setValues] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -367,13 +401,83 @@ export function ProductForm({
           </Field>
         </Card>
 
+        {/* -------------------------------------------------- frame designer */}
+        <Card title="Frame Designer">
+          {!productId ? (
+            <p className="text-sm text-sr-muted">
+              Save this product first, then a “Design personalizer” button appears here to build its
+              live customizer.
+            </p>
+          ) : (
+            <div className="grid gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-sr-ink">
+                    {fdEnabled
+                      ? "ON — customers can personalise this product"
+                      : "OFF — normal direct-sale product"}
+                  </p>
+                  <p className="text-xs text-sr-muted">
+                    When on, the live preview &amp; “Personalise it” panel show on the product page.
+                    When off, it sells as a normal product.
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    fdEnabled ? "bg-success-soft text-success" : "bg-sr-canvas text-sr-muted"
+                  }`}
+                >
+                  {fdEnabled ? "Live" : "Off"}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* The toggle is only meaningful once a template exists. */}
+                {customizerConfigured || fdEnabled ? (
+                  <button
+                    type="button"
+                    disabled={fdBusy}
+                    onClick={() => toggleFrameDesigner(!fdEnabled)}
+                    className={`rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${
+                      fdEnabled
+                        ? "border border-danger text-danger hover:bg-danger-soft"
+                        : "bg-sr-600 text-white hover:bg-sr-700"
+                    }`}
+                  >
+                    {fdBusy
+                      ? "Saving…"
+                      : fdEnabled
+                        ? "Turn off personalisation"
+                        : "Turn on personalisation"}
+                  </button>
+                ) : null}
+
+                <Link
+                  href={`/admin/products/${productId}/customizer`}
+                  className="rounded-full border border-sr-line-strong px-5 py-2.5 text-sm font-semibold text-sr-body transition hover:border-sr-400"
+                >
+                  {customizerConfigured ? "Open Frame Designer" : "Design personalizer"}
+                </Link>
+              </div>
+
+              {!customizerConfigured && !fdEnabled ? (
+                <p className="text-xs text-sr-muted">
+                  No template yet. Open the Frame Designer to place image/text boxes and frames, then
+                  turn it on.
+                </p>
+              ) : null}
+              {fdError ? <p className="text-xs font-medium text-danger">{fdError}</p> : null}
+            </div>
+          )}
+        </Card>
+
         {/* ------------------------------------------------ personalisation */}
-        <Card title="Personalisation">
+        <Card title="Simple personalisation fields">
           <Toggle
             checked={values.isPersonalizable}
             onChange={(v) => set("isPersonalizable", v)}
             label="This product is personalised"
-            hint="The customer fills in the fields below before adding it to their cart."
+            hint="A simpler alternative to the Frame Designer: the customer fills in the fields below (name, photo, etc.) before adding to cart."
           />
 
           {values.isPersonalizable ? (
