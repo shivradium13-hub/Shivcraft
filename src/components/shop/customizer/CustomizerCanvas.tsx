@@ -220,7 +220,8 @@ function ZoneLayer({
       style={box}
       onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
       className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
-        showGuides && active ? "outline-2 outline-dashed outline-brand-500" : ""
+        // Text areas never get an outline — just the text itself.
+        showGuides && active && zone.kind === "PHOTO" ? "outline-2 outline-dashed outline-brand-500" : ""
       }`}
     >
       {value?.kind === "PHOTO" ? (

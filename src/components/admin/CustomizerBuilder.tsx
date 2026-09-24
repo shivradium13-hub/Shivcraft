@@ -379,11 +379,15 @@ export function CustomizerBuilder({
                         className={`absolute inset-0 rounded ${
                           z.locked ? "cursor-not-allowed" : "cursor-move"
                         } ${
-                          isSel
-                            ? "ring-2 ring-sr-600"
-                            : z.locked
-                              ? "ring-1 ring-sr-line-strong"
-                              : "ring-1 ring-sr-400/60"
+                          // Text areas carry no outline — just the text — so the
+                          // canvas stays clean; other areas show a select ring.
+                          z.kind === "TEXT"
+                            ? ""
+                            : isSel
+                              ? "ring-2 ring-sr-600"
+                              : z.locked
+                                ? "ring-1 ring-sr-line-strong"
+                                : "ring-1 ring-sr-400/60"
                         }`}
                         title={z.locked ? `${z.label} (locked)` : `Drag ${z.label}`}
                       />
@@ -1026,16 +1030,20 @@ function ZonesTab({
               onChange={(e) => onPatch(selected.id, { label: e.target.value })}
             />
           </Field>
-          <Field label="Shape">
-            <select
-              className={input}
-              value={selected.shape}
-              onChange={(e) => onPatch(selected.id, { shape: e.target.value as "RECT" | "CIRCLE" })}
-            >
-              <option value="RECT">Rectangle</option>
-              <option value="CIRCLE">Circle</option>
-            </select>
-          </Field>
+          {/* Shape (rectangle / circle) is meaningless for a text area, so it
+              only shows for image boxes and frames. */}
+          {selected.kind !== "TEXT" ? (
+            <Field label="Shape">
+              <select
+                className={input}
+                value={selected.shape}
+                onChange={(e) => onPatch(selected.id, { shape: e.target.value as "RECT" | "CIRCLE" })}
+              >
+                <option value="RECT">Rectangle</option>
+                <option value="CIRCLE">Circle</option>
+              </select>
+            </Field>
+          ) : null}
 
           <Num label="Left %" value={selected.x} onChange={(v) => onPatch(selected.id, { x: v })} />
           <Num label="Top %" value={selected.y} onChange={(v) => onPatch(selected.id, { y: v })} />
