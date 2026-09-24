@@ -75,6 +75,9 @@ export function ProductForm({
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Two-step delete confirmation, in-page rather than a native confirm() —
+  // which some in-app browsers suppress, making the button seem dead.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function set<K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) {
@@ -176,22 +179,24 @@ export function ProductForm({
   }
 
   async function remove() {
-    const warning =
-      orderCount > 0
-        ? `Delete "${values.name}"? It appears in ${orderCount} order line${orderCount === 1 ? "" : "s"}. Those orders keep their own record of the name, price and image, but will no longer link here.\n\nDisabling it instead keeps everything intact.`
-        : `Delete "${values.name}"? This cannot be undone.`;
-
-    if (!window.confirm(warning)) return;
-
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch(`/api/admin/products/${productId}`, { method: "DELETE" });
-      const json = await res.json();
+      const json = await res.json().catch(() => null);
       if (!res.ok) {
         setError(json?.error?.message ?? "Could not delete this product.");
+        setConfirmingDelete(false);
         return;
       }
-      router.replace("/admin/products");
+      // refresh() clears the client router cache so the just-deleted product
+      // does not linger on the list; without it the delete looks like it
+      // failed. push + refresh, then land on the list.
+      router.push("/admin/products");
+      router.refresh();
+    } catch {
+      setError("Network problem — please try again.");
+      setConfirmingDelete(false);
     } finally {
       setBusy(false);
     }
@@ -501,15 +506,46 @@ export function ProductForm({
             {busy ? "Saving…" : productId ? "Save changes" : "Create product"}
           </button>
 
-          {productId ? (
+          {productId && !confirmingDelete ? (
             <button
               type="button"
               disabled={busy}
-              onClick={remove}
+              onClick={() => {
+                setError(null);
+                setConfirmingDelete(true);
+              }}
               className="w-full rounded-full border border-danger px-6 py-2.5 text-sm font-semibold text-danger transition hover:bg-danger-soft disabled:opacity-50"
             >
               Delete product
             </button>
+          ) : null}
+
+          {productId && confirmingDelete ? (
+            <div className="rounded-lg border border-danger bg-danger-soft p-3">
+              <p className="text-sm text-danger">
+                {orderCount > 0
+                  ? `Delete “${values.name}”? It appears in ${orderCount} order line${orderCount === 1 ? "" : "s"}. Those orders keep their own record and are not affected, but will no longer link here. This cannot be undone — to hide it instead, turn off “Live on the storefront”.`
+                  : `Delete “${values.name}”? This cannot be undone.`}
+              </p>
+              <div className="mt-2.5 flex gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={remove}
+                  className="flex-1 rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                >
+                  {busy ? "Deleting…" : "Yes, delete"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setConfirmingDelete(false)}
+                  className="flex-1 rounded-full border border-sr-line-strong px-4 py-2 text-sm font-semibold text-sr-body disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           ) : null}
 
           {notice ? (
