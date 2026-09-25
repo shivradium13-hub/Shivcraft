@@ -41,6 +41,7 @@ export function CustomizerCanvas({
   activeZoneId = null,
   interactive = false,
   showGuides = false,
+  highlightActive = false,
   onZoneSelect,
   className = "",
 }: {
@@ -50,6 +51,11 @@ export function CustomizerCanvas({
   activeZoneId?: string | null;
   interactive?: boolean;
   showGuides?: boolean;
+  /** A subtle, temporary outline on the currently-selected area — used on the
+   *  customer preview to show which element the focused field edits. Separate
+   *  from `showGuides` (the admin builder's full guides), so the customer sees
+   *  only this one indicator on the active element and nothing else. */
+  highlightActive?: boolean;
   onZoneSelect?: (zoneId: string) => void;
   className?: string;
 }) {
@@ -92,6 +98,7 @@ export function CustomizerCanvas({
           active={activeZoneId === zone.id}
           interactive={interactive}
           showGuides={showGuides}
+          highlightActive={highlightActive}
           onSelect={onZoneSelect}
         />
       ))}
@@ -152,6 +159,7 @@ function ZoneLayer({
   active,
   interactive,
   showGuides,
+  highlightActive,
   onSelect,
 }: {
   config: CustomizerConfig;
@@ -161,6 +169,7 @@ function ZoneLayer({
   active: boolean;
   interactive: boolean;
   showGuides: boolean;
+  highlightActive: boolean;
   onSelect?: (zoneId: string) => void;
 }) {
   const value = design.zones[zone.id];
@@ -220,8 +229,12 @@ function ZoneLayer({
       style={box}
       onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
       className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
-        // Text areas never get an outline — just the text itself.
+        // Admin builder guides: full dashed outline on the selected photo area.
         showGuides && active && zone.kind === "PHOTO" ? "outline-2 outline-dashed outline-brand-500" : ""
+      } ${
+        // Customer selection indicator: a subtle, temporary dashed outline on the
+        // area the focused field edits (photo or text). Only the active one.
+        highlightActive && active ? "outline-2 outline-dashed outline-brand-500/45 outline-offset-2" : ""
       }`}
     >
       {value?.kind === "PHOTO" ? (
@@ -313,6 +326,14 @@ function ZoneLayer({
       {showGuides && active && !value ? (
         <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-brand-50/70 text-center text-[10px] leading-tight font-semibold text-brand-700">
           {zone.kind === "PHOTO" ? "Add photo" : zone.label}
+        </span>
+      ) : null}
+
+      {/* Customer side: a faint hint on the selected, still-empty photo area so
+          it is clear where the upload will land. Text areas get no fill. */}
+      {highlightActive && !showGuides && active && !value && zone.kind === "PHOTO" ? (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-brand-50/40 text-center text-[10px] leading-tight font-semibold text-brand-700/80">
+          Add photo
         </span>
       ) : null}
     </div>
