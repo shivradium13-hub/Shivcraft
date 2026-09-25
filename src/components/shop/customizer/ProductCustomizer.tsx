@@ -1241,8 +1241,13 @@ function withStarterText(design: CustomerDesign, config: CustomizerConfig): Cust
   for (const zone of config.zones) {
     if (zone.kind !== "TEXT") continue;
     if (zones[zone.id]) continue;
-    if (!zone.defaultText || !zone.defaultText.trim()) continue;
-    zones[zone.id] = { kind: "TEXT", text: { value: zone.defaultText } };
+    // Match the admin's Frame Designer preview exactly: it fills every text area
+    // with its default text, or the area's label when no default was set. So the
+    // customer opens on the same composition the admin sees on the edit page,
+    // then edits from there.
+    const seed = zone.defaultText && zone.defaultText.trim() ? zone.defaultText : zone.label;
+    if (!seed || !seed.trim()) continue;
+    zones[zone.id] = { kind: "TEXT", text: { value: seed } };
   }
   return { ...design, zones };
 }
