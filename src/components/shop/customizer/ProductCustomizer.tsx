@@ -9,12 +9,14 @@ import {
   type CustomerDesign,
   type DesignStyle,
   type PhotoPlacement,
+  type TextPlacement,
 } from "@/lib/customizer/design";
 import {
   fontStack,
   isGroupVisible,
   isZoneVisible,
   resolveOption,
+  resolveTextStyle,
   zonesForView,
   type CustomizerConfig,
   type CustomizerTemplate,
@@ -90,6 +92,16 @@ export function ProductCustomizer({
     () => !initialDesign && restore(storageKey, config.version) !== null,
   );
   const [fullscreen, setFullscreen] = useState(false);
+
+  /* Reposition mode: the id of the text area the customer is dragging into
+     place, or null. The area shows a handle box only while this is set, so the
+     preview stays clean the rest of the time. */
+  const [reposition, setReposition] = useState<string | null>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  /* Optional areas the customer has switched off, and the wording they had in
+     them — kept so turning an area back on restores exactly what they wrote. */
+  const [hiddenZones, setHiddenZones] = useState<Set<string>>(new Set());
+  const hiddenTextRef = useRef<Record<string, string>>({});
 
   /* Saving the current design to the account. `null` name means the input is
      closed; the flow is: open → type a name → save → confirmation. */
@@ -193,13 +205,62 @@ export function ProductCustomizer({
 
   const setText = useCallback(
     (zoneId: string, value: string) => {
-      setDesign((prev) => ({
-        ...prev,
-        zones: { ...prev.zones, [zoneId]: { kind: "TEXT", text: { value } } },
-      }));
+      setDesign((prev) => {
+        const current = prev.zones[zoneId];
+        const text = current?.kind === "TEXT" ? current.text : {};
+        return {
+          ...prev,
+          zones: { ...prev.zones, [zoneId]: { kind: "TEXT", text: { ...text, value } } },
+        };
+      });
     },
     [],
   );
+
+  /** Sets styling/placement on a text area, keeping its wording. `live` is a
+   *  drag in progress: it updates the design without adding a history step, so
+   *  one undo steps back the whole gesture rather than one frame. */
+  const setTextProps = useCallback(
+    (zoneId: string, patch: Partial<TextPlacement>, live = false) => {
+      setDesign((prev) => {
+        const current = prev.zones[zoneId];
+        if (current?.kind !== "TEXT") return prev;
+        if (!live) {
+          setHistory((h) => [...h, prev].slice(-MAX_HISTORY));
+          setFuture([]);
+        }
+        return {
+          ...prev,
+          zones: { ...prev.zones, [zoneId]: { kind: "TEXT", text: { ...current.text, ...patch } } },
+        };
+      });
+    },
+    [],
+  );
+
+  /** Turns an optional text area off (removed from the preview, its wording
+   *  stashed) or back on (wording restored). */
+  const setZoneHidden = useCallback((zoneId: string, hidden: boolean) => {
+    setHiddenZones((prev) => {
+      const next = new Set(prev);
+      if (hidden) next.add(zoneId);
+      else next.delete(zoneId);
+      return next;
+    });
+    setDesign((prev) => {
+      setHistory((h) => [...h, prev].slice(-MAX_HISTORY));
+      setFuture([]);
+      const zones = { ...prev.zones };
+      if (hidden) {
+        const cur = zones[zoneId];
+        if (cur?.kind === "TEXT") hiddenTextRef.current[zoneId] = cur.text.value;
+        delete zones[zoneId];
+      } else {
+        zones[zoneId] = { kind: "TEXT", text: { value: hiddenTextRef.current[zoneId] ?? "" } };
+      }
+      return { ...prev, zones };
+    });
+  }, []);
 
   /**
    * Applies a starting template: its option choices, its wording and the view
@@ -361,6 +422,14 @@ export function ProductCustomizer({
     });
   const remaining = steps.filter((s) => !s.done).length;
 
+  /* The area currently being dragged into place, resolved to its configuration
+     so the handle box can be drawn exactly over it. */
+  const repositionZone = reposition ? config.zones.find((z) => z.id === reposition) ?? null : null;
+
+  /* An honest four-step indicator: the product is chosen, personalisation is
+     done once nothing is left, and the last two are what remains. */
+  const stepIndex = remaining > 0 ? 1 : 2;
+
   /* ----------------------------------------------------------------- view */
 
   return (
@@ -426,9 +495,11 @@ export function ProductCustomizer({
         </div>
       ) : null}
 
+      <ProgressSteps current={stepIndex} />
+
       {/* ----------------------------------------------------------- canvas */}
       <div
-        className="mt-3 rounded-card border border-line bg-paper p-2"
+        className="relative mt-3 rounded-card border border-line bg-paper p-2"
         {...gestures.handlers}
       >
         {/* No guides for the customer — the preview stays clean, exactly like
@@ -442,7 +513,63 @@ export function ProductCustomizer({
           interactive
           onZoneSelect={setActiveZoneId}
         />
+
+        {/* The reposition handle box sits exactly over the area being moved.
+            It only exists while the customer is repositioning, so text carries
+            no box the rest of the time. */}
+        {reposition && repositionZone ? (
+          <div ref={overlayRef} className="pointer-events-none absolute inset-2">
+            <RepositionBox
+              zone={repositionZone}
+              placement={
+                design.zones[reposition]?.kind === "TEXT"
+                  ? (design.zones[reposition] as { kind: "TEXT"; text: TextPlacement }).text
+                  : null
+              }
+              overlayRef={overlayRef}
+              onChange={(patch, live) => setTextProps(reposition, patch, live)}
+            />
+          </div>
+        ) : null}
       </div>
+
+      {reposition ? (
+        <div className="mt-2 rounded-card border border-brand-300 bg-brand-50/60 p-3">
+          <p className="text-xs font-semibold text-brand-800">Repositioning “{repositionZone?.label}”</p>
+          <p className="mt-0.5 text-[11px] text-brand-700">
+            Drag the text on the product to move it. Use the round handle to turn it.
+          </p>
+          <div className="mt-2">
+            <p className="text-[11px] font-semibold text-ink-soft">Quick position</p>
+            <div className="mt-1 grid w-[92px] grid-cols-3 gap-1">
+              {PRESET_GRID.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  aria-label={preset.label}
+                  title={preset.label}
+                  onClick={() => setTextProps(reposition, { offsetX: preset.x, offsetY: preset.y })}
+                  className="flex h-7 items-center justify-center rounded border border-line-strong bg-paper text-ink-soft transition hover:border-brand-400"
+                >
+                  <span className="text-xs leading-none">{preset.glyph}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Small onClick={() => setTextProps(reposition, { offsetX: 0, offsetY: 0, rotation: 0 })}>
+              Reset position
+            </Small>
+            <button
+              type="button"
+              onClick={() => setReposition(null)}
+              className="rounded-lg bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-700"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {config.views.length > 1 ? (
         <div className="gc-hide-scrollbar mt-2 flex gap-2 overflow-x-auto">
@@ -720,25 +847,154 @@ export function ProductCustomizer({
               ) : null}
             </>
           ) : (
-            <label className="grid gap-1.5">
-              <span className="text-xs font-semibold text-ink">
-                {activeZone.label}
-                {activeZone.required ? <span className="text-danger"> *</span> : null}
-              </span>
-              <input
-                value={activeValue?.kind === "TEXT" ? activeValue.text.value : ""}
-                maxLength={activeZone.maxChars ?? 120}
-                onChange={(e) => setText(activeZone.id, e.target.value)}
-                placeholder={activeZone.defaultText || "Type here"}
-                className="w-full rounded-lg border border-field bg-field-bg px-3 py-2.5 text-sm outline-none focus:border-brand-500"
-              />
-              {activeZone.maxChars ? (
-                <span className="text-[11px] text-muted">
-                  {(activeValue?.kind === "TEXT" ? activeValue.text.value.length : 0)} of{" "}
-                  {activeZone.maxChars} characters
-                </span>
-              ) : null}
-            </label>
+            (() => {
+              const tv = activeValue?.kind === "TEXT" ? activeValue.text : null;
+              const hidden = hiddenZones.has(activeZone.id);
+              return (
+                <div className="grid gap-2.5">
+                  {/* Optional areas can be switched off entirely — the wording
+                      is kept so turning them back on restores it. */}
+                  {!activeZone.required ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-semibold text-ink">Show “{activeZone.label}”</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={!hidden}
+                        aria-label={`Show ${activeZone.label}`}
+                        onClick={() => setZoneHidden(activeZone.id, !hidden)}
+                        className={`relative h-6 w-11 shrink-0 rounded-full transition ${!hidden ? "bg-brand-600" : "bg-field"}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${!hidden ? "left-[22px]" : "left-0.5"}`}
+                        />
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {hidden ? (
+                    <p className="text-[11px] text-muted">
+                      This text is turned off and won’t appear on the product.
+                    </p>
+                  ) : (
+                    <>
+                      <label className="grid gap-1.5">
+                        <span className="text-xs font-semibold text-ink">
+                          {activeZone.label}
+                          {activeZone.required ? <span className="text-danger"> *</span> : null}
+                        </span>
+                        <input
+                          value={tv?.value ?? ""}
+                          maxLength={activeZone.maxChars ?? 120}
+                          onChange={(e) => setText(activeZone.id, e.target.value)}
+                          placeholder={activeZone.defaultText || "Type here"}
+                          className="w-full rounded-lg border border-field bg-field-bg px-3 py-2.5 text-sm outline-none focus:border-brand-500"
+                        />
+                        {activeZone.maxChars ? (
+                          <span className="text-[11px] text-muted">
+                            {tv?.value.length ?? 0} of {activeZone.maxChars} characters
+                          </span>
+                        ) : null}
+                      </label>
+
+                      {tv ? (
+                        <>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Segmented
+                              value={tv.align ?? activeZone.align}
+                              options={[
+                                ["left", "Align left", "⇤"],
+                                ["center", "Align centre", "≡"],
+                                ["right", "Align right", "⇥"],
+                              ]}
+                              onPick={(v) =>
+                                setTextProps(activeZone.id, { align: v as TextPlacement["align"] })
+                              }
+                            />
+                            <div className="flex gap-1" role="group" aria-label="Text style">
+                              <StyleToggle
+                                on={!!tv.bold}
+                                label="Bold"
+                                onClick={() => setTextProps(activeZone.id, { bold: !tv.bold })}
+                              >
+                                <span className="font-bold">B</span>
+                              </StyleToggle>
+                              <StyleToggle
+                                on={!!tv.italic}
+                                label="Italic"
+                                onClick={() => setTextProps(activeZone.id, { italic: !tv.italic })}
+                              >
+                                <span className="italic">I</span>
+                              </StyleToggle>
+                              <StyleToggle
+                                on={!!tv.underline}
+                                label="Underline"
+                                onClick={() => setTextProps(activeZone.id, { underline: !tv.underline })}
+                              >
+                                <span className="underline">U</span>
+                              </StyleToggle>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-ink">Size</span>
+                            <div className="flex items-center rounded-lg border border-line-strong">
+                              <button
+                                type="button"
+                                aria-label="Smaller"
+                                onClick={() =>
+                                  setTextProps(activeZone.id, {
+                                    fontSizePct: clampSize((tv.fontSizePct ?? activeZone.fontSizePct) - 1),
+                                  })
+                                }
+                                className="px-3 py-1.5 text-sm leading-none text-ink"
+                              >
+                                −
+                              </button>
+                              <span className="min-w-9 text-center text-xs font-semibold tabular-nums">
+                                {Math.round(tv.fontSizePct ?? activeZone.fontSizePct)}
+                              </span>
+                              <button
+                                type="button"
+                                aria-label="Larger"
+                                onClick={() =>
+                                  setTextProps(activeZone.id, {
+                                    fontSizePct: clampSize((tv.fontSizePct ?? activeZone.fontSizePct) + 1),
+                                  })
+                                }
+                                className="px-3 py-1.5 text-sm leading-none text-ink"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs font-semibold text-ink">Position</span>
+                            <Small
+                              onClick={() =>
+                                setReposition(reposition === activeZone.id ? null : activeZone.id)
+                              }
+                            >
+                              {reposition === activeZone.id ? "Finish reposition" : "↔ Reposition"}
+                            </Small>
+                            {tv.offsetX || tv.offsetY || tv.rotation ? (
+                              <Small
+                                onClick={() =>
+                                  setTextProps(activeZone.id, { offsetX: 0, offsetY: 0, rotation: 0 })
+                                }
+                              >
+                                Reset
+                              </Small>
+                            ) : null}
+                          </div>
+                        </>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              );
+            })()
           )}
         </div>
       ) : null}
@@ -862,6 +1118,18 @@ export function ProductCustomizer({
             </p>
           ) : null}
         </div>
+      ) : null}
+
+      {/* ------------------------------------------------ your customisation */}
+      {personalised ? (
+        <CustomizationSummary
+          config={config}
+          design={design}
+          onEdit={(id) => {
+            setReposition(null);
+            setActiveZoneId(id);
+          }}
+        />
       ) : null}
 
       {config.customizationFeeP > 0 || config.optionGroups.length > 0 ? (
@@ -1212,6 +1480,325 @@ function Small({
     >
       {children}
     </button>
+  );
+}
+
+/* The nine quick-position presets, as offsets (percent of the area from its
+   centre). The middle one recentres. */
+const PRESET_GRID: { label: string; glyph: string; x: number; y: number }[] = [
+  { label: "Top left", glyph: "↖", x: -40, y: -40 },
+  { label: "Top", glyph: "↑", x: 0, y: -40 },
+  { label: "Top right", glyph: "↗", x: 40, y: -40 },
+  { label: "Left", glyph: "←", x: -40, y: 0 },
+  { label: "Centre", glyph: "•", x: 0, y: 0 },
+  { label: "Right", glyph: "→", x: 40, y: 0 },
+  { label: "Bottom left", glyph: "↙", x: -40, y: 40 },
+  { label: "Bottom", glyph: "↓", x: 0, y: 40 },
+  { label: "Bottom right", glyph: "↘", x: 40, y: 40 },
+];
+
+function clampSize(n: number) {
+  return Math.min(80, Math.max(4, Math.round(n)));
+}
+
+function clampOffset(n: number) {
+  return Math.min(50, Math.max(-50, Math.round(n)));
+}
+
+function clampRot(n: number) {
+  const wrapped = (((n + 180) % 360) + 360) % 360 - 180;
+  return Math.round(wrapped);
+}
+
+/** A four-step, honest indicator of where the customer is in the flow. */
+function ProgressSteps({ current }: { current: number }) {
+  const labels = ["Product", "Personalise", "Preview", "Add to cart"];
+  return (
+    <ol className="mt-3 flex flex-wrap items-center gap-x-1 gap-y-1 text-[11px] font-semibold">
+      {labels.map((label, i) => {
+        const done = i < current;
+        const active = i === current;
+        return (
+          <li key={label} className="flex items-center gap-1">
+            <span
+              className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
+                done
+                  ? "bg-brand-600 text-white"
+                  : active
+                    ? "bg-brand-100 text-brand-700 ring-1 ring-brand-500"
+                    : "bg-field text-muted"
+              }`}
+            >
+              {done ? "✓" : i + 1}
+            </span>
+            <span className={active ? "text-brand-700" : done ? "text-ink-soft" : "text-muted"}>{label}</span>
+            {i < labels.length - 1 ? (
+              <span className="mx-0.5 h-px w-3 bg-line-strong" aria-hidden="true" />
+            ) : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** A small segmented control (used for text alignment). */
+function Segmented({
+  value,
+  options,
+  onPick,
+}: {
+  value: string;
+  options: [string, string, string][];
+  onPick: (value: string) => void;
+}) {
+  return (
+    <div className="inline-flex overflow-hidden rounded-lg border border-line-strong" role="group">
+      {options.map(([val, label, glyph], i) => {
+        const active = value === val;
+        return (
+          <button
+            key={val}
+            type="button"
+            aria-label={label}
+            aria-pressed={active}
+            title={label}
+            onClick={() => onPick(val)}
+            className={`px-2.5 py-1.5 text-xs leading-none ${i > 0 ? "border-l border-line-strong" : ""} ${
+              active ? "bg-brand-600 text-white" : "text-ink-soft hover:bg-brand-50"
+            }`}
+          >
+            {glyph}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A single bold/italic/underline toggle. */
+function StyleToggle({
+  on,
+  label,
+  onClick,
+  children,
+}: {
+  on: boolean;
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className={`h-8 w-8 rounded-lg border text-sm transition ${
+        on
+          ? "border-brand-600 bg-brand-50 text-brand-700"
+          : "border-line-strong text-ink-soft hover:border-brand-400"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * The handle box the customer drags to place text inside its area.
+ *
+ * It is drawn exactly over the area (same percentage coordinates the canvas
+ * uses), and only exists while repositioning — so text carries no box the rest
+ * of the time. A drag moves the wording within the area (offset is a percentage
+ * of the area, clamped so it stays on the product); the round handle turns it.
+ * Moves are live, with a single history entry taken at the start of the gesture.
+ */
+function RepositionBox({
+  zone,
+  placement,
+  overlayRef,
+  onChange,
+}: {
+  zone: CustomizerZone;
+  placement: TextPlacement | null;
+  overlayRef: { current: HTMLDivElement | null };
+  onChange: (patch: Partial<TextPlacement>, live?: boolean) => void;
+}) {
+  const drag = useRef<{
+    mode: "move" | "rotate";
+    startX: number;
+    startY: number;
+    ox: number;
+    oy: number;
+    rectW: number;
+    rectH: number;
+    cx: number;
+    cy: number;
+  } | null>(null);
+
+  const begin = (e: React.PointerEvent<HTMLDivElement>, mode: "move" | "rotate") => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = overlayRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    // Snapshot one history step before the gesture, so a single undo takes the
+    // whole move or turn back.
+    onChange(
+      mode === "move"
+        ? { offsetX: placement?.offsetX ?? 0, offsetY: placement?.offsetY ?? 0 }
+        : { rotation: placement?.rotation ?? 0 },
+      false,
+    );
+    drag.current = {
+      mode,
+      startX: e.clientX,
+      startY: e.clientY,
+      ox: placement?.offsetX ?? 0,
+      oy: placement?.offsetY ?? 0,
+      rectW: rect.width,
+      rectH: rect.height,
+      cx: rect.left + ((zone.x + zone.width / 2) / 100) * rect.width,
+      cy: rect.top + ((zone.y + zone.height / 2) / 100) * rect.height,
+    };
+  };
+
+  const move = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    if (d.mode === "move") {
+      const zw = (d.rectW * zone.width) / 100 || 1;
+      const zh = (d.rectH * zone.height) / 100 || 1;
+      onChange(
+        {
+          offsetX: clampOffset(d.ox + ((e.clientX - d.startX) / zw) * 100),
+          offsetY: clampOffset(d.oy + ((e.clientY - d.startY) / zh) * 100),
+        },
+        true,
+      );
+    } else {
+      const deg = (Math.atan2(e.clientY - d.cy, e.clientX - d.cx) * 180) / Math.PI + 90;
+      onChange({ rotation: clampRot(deg) }, true);
+    }
+  };
+
+  const end = () => {
+    drag.current = null;
+  };
+
+  return (
+    <div
+      style={{
+        left: `${zone.x}%`,
+        top: `${zone.y}%`,
+        width: `${zone.width}%`,
+        height: `${zone.height}%`,
+        transform: zone.rotation ? `rotate(${zone.rotation}deg)` : undefined,
+      }}
+      className="pointer-events-none absolute"
+    >
+      <div
+        onPointerDown={(e) => begin(e, "move")}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerCancel={end}
+        style={{ touchAction: "none" }}
+        title="Drag to move"
+        className="pointer-events-auto absolute inset-0 cursor-move rounded-sm border-2 border-dashed border-brand-500 bg-brand-500/5"
+      />
+      <div
+        onPointerDown={(e) => begin(e, "rotate")}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerCancel={end}
+        style={{ touchAction: "none" }}
+        title="Drag to rotate"
+        className="pointer-events-auto absolute -top-7 left-1/2 h-4 w-4 -translate-x-1/2 cursor-grab rounded-full border-2 border-white bg-brand-600 shadow"
+      />
+    </div>
+  );
+}
+
+/** A plain-language recap of everything the customer has set, each row linking
+ *  back to the area it describes. */
+function CustomizationSummary({
+  config,
+  design,
+  onEdit,
+}: {
+  config: CustomizerConfig;
+  design: CustomerDesign;
+  onEdit: (zoneId: string) => void;
+}) {
+  const items = config.zones
+    .map((z) => {
+      const v = design.zones[z.id];
+      if (!v) return null;
+      if (z.kind === "TEXT" && v.kind === "TEXT" && v.text.value.trim()) {
+        const style = resolveTextStyle(config, z, design);
+        return {
+          id: z.id,
+          label: z.label,
+          kind: "TEXT" as const,
+          value: v.text.value,
+          color: v.text.color ?? style.color,
+          font: v.text.fontFamily ?? style.fontFamily,
+          size: Math.round(v.text.fontSizePct ?? style.fontSizePct),
+          moved: Boolean(v.text.offsetX || v.text.offsetY || v.text.rotation),
+        };
+      }
+      if (z.kind === "PHOTO" && v.kind === "PHOTO" && v.photo.uploadId) {
+        return { id: z.id, label: z.label, kind: "PHOTO" as const };
+      }
+      return null;
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="mt-4 rounded-card border border-line bg-paper p-3">
+      <p className="text-xs font-semibold text-ink">Your customisation</p>
+      <dl className="mt-2 grid gap-2">
+        {items.map((it) => (
+          <div key={it.id} className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <dt className="text-[11px] font-semibold text-ink-soft">{it.label}</dt>
+              {it.kind === "TEXT" ? (
+                <dd className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
+                  <span
+                    className="max-w-[14rem] truncate font-medium text-ink"
+                    style={{ fontFamily: fontStack(it.font) }}
+                  >
+                    “{it.value}”
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span
+                      className="inline-block h-3 w-3 rounded-full border border-line-strong"
+                      style={{ background: it.color }}
+                    />
+                    {it.font}
+                  </span>
+                  <span>· size {it.size}</span>
+                  {it.moved ? <span>· moved</span> : null}
+                </dd>
+              ) : (
+                <dd className="mt-0.5 text-[11px] text-muted">Photo added</dd>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => onEdit(it.id)}
+              className="shrink-0 rounded-lg border border-line-strong px-2.5 py-1 text-[11px] font-semibold text-ink-soft transition hover:border-brand-400"
+            >
+              Edit
+            </button>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 

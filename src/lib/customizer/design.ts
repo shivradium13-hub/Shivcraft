@@ -43,6 +43,17 @@ export const textPlacementSchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   align: z.enum(["left", "center", "right"]).optional(),
   fontSizePct: z.number().min(1).max(100).optional(),
+  /** The customer's own position for the wording inside its area, as a
+   *  percentage of the area measured from centre — the same reproducible,
+   *  resolution-independent scheme a photo uses. Absent means centred. The area
+   *  clips anything pushed past its edge, so text can be nudged but not moved
+   *  off the product (§ layout stays the admin's). */
+  offsetX: z.number().min(-100).max(100).optional(),
+  offsetY: z.number().min(-100).max(100).optional(),
+  rotation: z.number().min(-180).max(180).optional(),
+  bold: z.boolean().optional(),
+  italic: z.boolean().optional(),
+  underline: z.boolean().optional(),
 });
 export type TextPlacement = z.infer<typeof textPlacementSchema>;
 
@@ -113,7 +124,7 @@ export function designFingerprint(design: CustomerDesign | null): string {
         return `${key}:P:${p.uploadId}:${p.offsetX.toFixed(2)}:${p.offsetY.toFixed(2)}:${p.scale.toFixed(3)}:${p.rotation}:${p.flipH ? 1 : 0}${p.flipV ? 1 : 0}`;
       }
       const t = value.text;
-      return `${key}:T:${t.value}:${t.fontFamily ?? ""}:${t.color ?? ""}:${t.align ?? ""}:${t.fontSizePct ?? ""}`;
+      return `${key}:T:${t.value}:${t.fontFamily ?? ""}:${t.color ?? ""}:${t.align ?? ""}:${t.fontSizePct ?? ""}:${t.offsetX ?? ""}:${t.offsetY ?? ""}:${t.rotation ?? ""}:${t.bold ? 1 : 0}${t.italic ? 1 : 0}${t.underline ? 1 : 0}`;
     })
     .join("|");
   const options = Object.keys(design.options)

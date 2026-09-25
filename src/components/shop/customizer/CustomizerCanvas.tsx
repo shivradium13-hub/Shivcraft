@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 
 import type { CustomerDesign } from "@/lib/customizer/design";
 import {
@@ -263,12 +263,25 @@ function ZoneLayer({
       ) : null}
 
       {value?.kind === "TEXT" && value.text.value.trim() && text ? (
-        <span
-          style={{
+        <FitText
+          text={value.text.value}
+          align={value.text.align ?? zone.align}
+          /* The customer's own placement inside the area: move from centre,
+             then turn. Percentages are of the area, so the same numbers
+             reproduce the layout at preview and print size. */
+          containerStyle={{
+            transform:
+              value.text.offsetX || value.text.offsetY || value.text.rotation
+                ? `translate(${value.text.offsetX ?? 0}%, ${value.text.offsetY ?? 0}%) rotate(${value.text.rotation ?? 0}deg)`
+                : undefined,
+          }}
+          textStyle={{
             fontFamily: fontStack(value.text.fontFamily ?? text.fontFamily),
-            textAlign: value.text.align ?? zone.align,
             fontSize: `${value.text.fontSizePct ?? text.fontSizePct}cqh`,
             lineHeight: 1.15,
+            fontWeight: value.text.bold ? 700 : undefined,
+            fontStyle: value.text.italic ? "italic" : undefined,
+            textDecoration: value.text.underline ? "underline" : undefined,
             ...(gradient
               ? {
                   backgroundImage: `linear-gradient(${gradient.direction}deg, ${gradient.color1}, ${gradient.color2})`,
@@ -285,10 +298,7 @@ function ZoneLayer({
                 }
               : null),
           }}
-          className="absolute inset-0 flex items-center justify-center overflow-hidden px-[2%] break-words whitespace-pre-wrap"
-        >
-          {value.text.value}
-        </span>
+        />
       ) : null}
 
       {/* Guides — the safe-area margin and the empty-slot hint — show only for
@@ -306,5 +316,106 @@ function ZoneLayer({
         </span>
       ) : null}
     </div>
+  );
+}
+
+/* useLayoutEffect on the client, useEffect on the server — the measurement can
+   only run in the browser, and this keeps the fit from writing before hydration
+   while avoiding React's SSR warning. */
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+/**
+ * Text that shrinks to fit its area.
+ *
+ * The wording is laid out at the size the admin/customer chose and then scaled
+ * down — never up — until it fits the area's width and height, so a long name or
+ * a long house number stays on the plate instead of spilling past its edge or
+ * being clipped (the behaviour customers expect from a name-plate preview).
+ *
+ * The fit is measured as a ratio of the (unscaled) text box to the area, both of
+ * which scale together with the preview, so the resulting size is a proportion
+ * of the area — the same at a 320px phone preview and a 4000px print render, and
+ * reproducible rather than pixel-dependent. `scrollWidth`/`scrollHeight` are the
+ * pre-transform layout size, so applying the scale never feeds back into the
+ * measurement.
+ */
+function FitText({
+  text,
+  align,
+  containerStyle,
+  textStyle,
+}: {
+  text: string;
+  align: "left" | "center" | "right";
+  containerStyle?: CSSProperties;
+  textStyle?: CSSProperties;
+}) {
+  const outerRef = useRef<HTMLSpanElement>(null);
+  const innerRef = useRef<HTMLSpanElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useIsoLayoutEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+
+    let raf = 0;
+    let cancelled = false;
+    const fit = () => {
+      const ow = outer.clientWidth;
+      const oh = outer.clientHeight;
+      const iw = inner.scrollWidth;
+      const ih = inner.scrollHeight;
+      if (!ow || !oh || !iw || !ih) return;
+      const next = Math.min(1, ow / iw, oh / ih);
+      // A threshold stops a sub-pixel measurement wobble from re-rendering forever.
+      setScale((prev) => (Math.abs(prev - next) > 0.004 ? next : prev));
+    };
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(fit);
+    };
+
+    schedule();
+    const ro = new ResizeObserver(schedule);
+    ro.observe(outer);
+    // A web font can arrive after first paint and change the text width, so
+    // re-fit once fonts are ready.
+    if (typeof document !== "undefined" && document.fonts?.ready) {
+      document.fonts.ready.then(() => !cancelled && schedule()).catch(() => {});
+    }
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [text, textStyle?.fontFamily, textStyle?.fontSize, textStyle?.fontWeight, textStyle?.fontStyle]);
+
+  const justify = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
+
+  return (
+    <span
+      ref={outerRef}
+      style={{ justifyContent: justify, ...containerStyle }}
+      className="pointer-events-none absolute inset-0 flex items-center overflow-hidden px-[2%]"
+    >
+      <span
+        ref={innerRef}
+        style={{
+          ...textStyle,
+          display: "inline-block",
+          // Preserve deliberate line breaks but never auto-wrap: a long line
+          // shrinks to fit rather than breaking onto another line.
+          whiteSpace: "pre",
+          textAlign: align,
+          transform: `scale(${scale})`,
+          transformOrigin:
+            justify === "flex-start" ? "left center" : justify === "flex-end" ? "right center" : "center",
+        }}
+      >
+        {text}
+      </span>
+    </span>
   );
 }
