@@ -12,6 +12,7 @@ import {
   resolveGradient,
   resolveTextStyle,
   fontStack,
+  zoneAcrylicText,
   zoneBoxShadow,
   zoneGradientCss,
   zoneTextShadow,
@@ -223,6 +224,7 @@ function ZoneLayer({
             src={zone.imageUrl}
             alt=""
             draggable={false}
+            style={maskStyle(zone.maskUrl)}
             className="absolute inset-0 h-full w-full object-contain"
           />
         ) : null}
@@ -257,6 +259,8 @@ function ZoneLayer({
   const textGradient =
     zoneGrad ??
     (gradient ? `linear-gradient(${gradient.direction}deg, ${gradient.color1}, ${gradient.color2})` : null);
+  /* An acrylic-mirror finish, when set, overrides the colour/gradient entirely. */
+  const acrylic = zoneAcrylicText(zone);
 
   return (
     <div
@@ -290,6 +294,8 @@ function ZoneLayer({
               ].join(" "),
               transformOrigin: "center",
               filter: `brightness(${value.photo.brightness}%) contrast(${value.photo.contrast}%) saturate(${value.photo.saturation}%)`,
+              // The admin's custom shape / clipping mask clips the customer photo.
+              ...maskStyle(zone.maskUrl),
             }}
             className="absolute top-1/2 left-1/2 h-full w-full max-w-none object-cover"
           />
@@ -339,24 +345,36 @@ function ZoneLayer({
             fontWeight: value.text.bold ? 700 : undefined,
             fontStyle: value.text.italic ? "italic" : undefined,
             textDecoration: value.text.underline ? "underline" : undefined,
-            ...(textGradient
+            // Colour precedence: acrylic-mirror finish → element gradient →
+            // global gradient → plain colour.
+            ...(acrylic
               ? {
-                  backgroundImage: textGradient,
+                  backgroundImage: acrylic.backgroundImage,
                   WebkitBackgroundClip: "text",
                   backgroundClip: "text",
                   color: "transparent",
                   WebkitTextFillColor: "transparent",
                 }
-              : { color: value.text.color ?? text.color }),
-            // This element's own shadow wins; else the acrylic-mirror treatment.
-            ...(zoneTextShadow(zone)
-              ? { textShadow: zoneTextShadow(zone)! }
-              : acrylicMirrorOn(config)
+              : textGradient
                 ? {
-                    textShadow:
-                      "0 1px 0 rgba(255,255,255,0.65), 0 -1px 0 rgba(0,0,0,0.25), 0 2px 3px rgba(0,0,0,0.35)",
+                    backgroundImage: textGradient,
+                    WebkitBackgroundClip: "text",
+                    backgroundClip: "text",
+                    color: "transparent",
+                    WebkitTextFillColor: "transparent",
                   }
-                : null),
+                : { color: value.text.color ?? text.color }),
+            // Shadow precedence: acrylic emboss → element shadow → global acrylic.
+            ...(acrylic
+              ? { textShadow: acrylic.textShadow }
+              : zoneTextShadow(zone)
+                ? { textShadow: zoneTextShadow(zone)! }
+                : acrylicMirrorOn(config)
+                  ? {
+                      textShadow:
+                        "0 1px 0 rgba(255,255,255,0.65), 0 -1px 0 rgba(0,0,0,0.25), 0 2px 3px rgba(0,0,0,0.35)",
+                    }
+                  : null),
           }}
         />
       ) : null}
@@ -394,6 +412,23 @@ function ZoneLayer({
       ) : null}
     </div>
   );
+}
+
+/** CSS to clip an image to a mask PNG's shape (the admin's custom shape). The
+ *  mask is fit inside the area, centred, so the shape is not distorted. */
+function maskStyle(url: string): CSSProperties | undefined {
+  if (!url) return undefined;
+  const u = `url("${url}")`;
+  return {
+    WebkitMaskImage: u,
+    maskImage: u,
+    WebkitMaskRepeat: "no-repeat",
+    maskRepeat: "no-repeat",
+    WebkitMaskPosition: "center",
+    maskPosition: "center",
+    WebkitMaskSize: "contain",
+    maskSize: "contain",
+  };
 }
 
 /* useLayoutEffect on the client, useEffect on the server — the measurement can

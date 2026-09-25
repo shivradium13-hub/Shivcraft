@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { emptyDesign, type CustomerDesign } from "@/lib/customizer/design";
 import {
+  ACRYLIC_FINISHES,
   EMPTY_CONFIG,
   type CustomizerConfig,
   type CustomizerOptionGroup,
@@ -36,6 +37,7 @@ const input =
    zone from an older draft that predates these fields. */
 const SHADOW_DEFAULT = { enabled: false, inset: false, color: "#000000", opacity: 45, blur: 6, offsetX: 0, offsetY: 4 };
 const GRADIENT_DEFAULT = { enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 };
+const ACRYLIC_DEFAULT = { enabled: false, finish: "gold" as const };
 
 type Tab = "views" | "zones" | "options" | "customer" | "templates" | "tools";
 
@@ -543,6 +545,8 @@ export function CustomizerBuilder({
                   align: "center",
                   shadow: { enabled: false, inset: false, color: "#000000", opacity: 45, blur: 6, offsetX: 0, offsetY: 4 },
                   gradient: { enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 },
+                  maskUrl: "",
+                  acrylicMirror: { enabled: false, finish: "gold" },
                 };
                 setConfig((prev) => ({
                   ...prev,
@@ -1077,6 +1081,15 @@ function ZonesTab({
                   onChange={(e) => onPatch(selected.id, { minDpi: Number(e.target.value) || 150 })}
                 />
               </Field>
+              <div className="sm:col-span-2">
+                <MediaUploadField
+                  label="Custom shape / clipping mask (PNG)"
+                  hint="The customer's photo is clipped to this shape's alpha. Leave empty to use the Rectangle/Circle shape above."
+                  value={selected.maskUrl}
+                  onChange={(url) => onPatch(selected.id, { maskUrl: url })}
+                  accept="image/png,image/webp"
+                />
+              </div>
             </>
           ) : selected.kind === "TEXT" ? (
             <>
@@ -1101,6 +1114,43 @@ function ZonesTab({
                   onChange={(e) => onPatch(selected.id, { color: e.target.value })}
                 />
               </Field>
+              <div className="grid gap-2 rounded-lg border border-sr-line p-2.5 sm:col-span-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
+                  <input
+                    type="checkbox"
+                    checked={selected.acrylicMirror?.enabled ?? false}
+                    onChange={(e) =>
+                      onPatch(selected.id, {
+                        acrylicMirror: { ...ACRYLIC_DEFAULT, ...selected.acrylicMirror, enabled: e.target.checked },
+                      })
+                    }
+                  />
+                  Acrylic mirror text (3D metallic finish)
+                </label>
+                {selected.acrylicMirror?.enabled ? (
+                  <Field label="Finish">
+                    <select
+                      className={input}
+                      value={selected.acrylicMirror?.finish ?? "gold"}
+                      onChange={(e) =>
+                        onPatch(selected.id, {
+                          acrylicMirror: {
+                            ...ACRYLIC_DEFAULT,
+                            ...selected.acrylicMirror,
+                            finish: e.target.value as CustomizerZone["acrylicMirror"]["finish"],
+                          },
+                        })
+                      }
+                    >
+                      {ACRYLIC_FINISHES.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : null}
+              </div>
             </>
           ) : (
             /* FRAME: a decorative shape or PNG the customer never edits. */
@@ -1139,7 +1189,24 @@ function ZonesTab({
                 value={selected.cornerRadius}
                 onChange={(v) => onPatch(selected.id, { cornerRadius: v })}
               />
-              <Field label="Frame PNG (optional)" hint="A transparent PNG overrides the fill." >
+              <div className="sm:col-span-2">
+                <MediaUploadField
+                  label="Frame image (JPG / PNG)"
+                  hint="A transparent PNG overrides the fill and sits over the customer's content."
+                  value={selected.imageUrl}
+                  onChange={(url) => onPatch(selected.id, { imageUrl: url })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <MediaUploadField
+                  label="Mockup clipping mask (PNG)"
+                  hint="Clips the frame image to this shape's alpha — leave empty for none."
+                  value={selected.maskUrl}
+                  onChange={(url) => onPatch(selected.id, { maskUrl: url })}
+                  accept="image/png,image/webp"
+                />
+              </div>
+              <Field label="Frame image URL (optional)" hint="Or paste a URL instead of uploading.">
                 <input
                   className={input}
                   placeholder="Image URL"
@@ -2387,6 +2454,83 @@ function Field({
       {children}
       {hint ? <span className="text-xs text-sr-muted">{hint}</span> : null}
     </label>
+  );
+}
+
+/** Admin-only image upload (JPG/PNG) with a preview and replace/remove, used for
+ *  frame images and clipping masks. Posts to the shared /api/admin/media route. */
+function MediaUploadField({
+  label,
+  hint,
+  value,
+  onChange,
+  accept = "image/jpeg,image/png,image/webp",
+}: {
+  label: string;
+  hint?: string;
+  value: string;
+  onChange: (url: string) => void;
+  accept?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const ref = useRef<HTMLInputElement>(null);
+
+  async function upload(file: File) {
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.data?.url) onChange(json.data.url);
+      else setError(json?.error?.message ?? "That file could not be uploaded.");
+    } catch {
+      setError("Network problem — try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="grid gap-1">
+      <span className="text-xs font-semibold text-sr-ink">{label}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        {value ? (
+          <span className="h-10 w-10 shrink-0 overflow-hidden rounded border border-sr-line-strong bg-sr-canvas">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={value} alt="" className="h-full w-full object-contain" />
+          </span>
+        ) : null}
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => ref.current?.click()}
+          className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400 disabled:opacity-60"
+        >
+          {uploading ? "Uploading…" : value ? "Replace" : "Upload"}
+        </button>
+        {value ? (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="text-xs font-semibold text-danger hover:underline"
+          >
+            Remove
+          </button>
+        ) : null}
+        <input
+          ref={ref}
+          type="file"
+          accept={accept}
+          className="sr-only"
+          onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+        />
+      </div>
+      {hint ? <span className="text-xs text-sr-muted">{hint}</span> : null}
+      {error ? <span className="text-xs font-medium text-danger">{error}</span> : null}
+    </div>
   );
 }
 

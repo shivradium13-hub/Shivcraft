@@ -139,6 +139,22 @@ export const zoneSchema = z.object({
       opacity: z.number().min(0).max(100).default(60),
     })
     .default({ enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 }),
+
+  /** A clipping-mask PNG (its alpha is the shape). On a photo area the customer's
+   *  photo is clipped to it; on a frame the frame image is. This is how the admin
+   *  gives an area a custom / mockup shape beyond rectangle and circle. */
+  maskUrl: z.string().trim().max(500).default(""),
+
+  /** TEXT areas only: an acrylic-mirror finish (a metallic look with a raised
+   *  3D emboss). When on, it colours the letters instead of the plain colour. */
+  acrylicMirror: z
+    .object({
+      enabled: z.boolean().default(false),
+      finish: z
+        .enum(["gold", "copperGold", "roseGold", "pinkGold", "metallicGold", "silver"])
+        .default("gold"),
+    })
+    .default({ enabled: false, finish: "gold" }),
 });
 export type CustomizerZone = z.infer<typeof zoneSchema>;
 
@@ -633,6 +649,37 @@ export function zoneGradientCss(zone: CustomizerZone): string | null {
   const g = zone.gradient;
   if (!g?.enabled) return null;
   return `linear-gradient(${g.angle}deg, ${g.color1}, ${g.color2})`;
+}
+
+/* ------------------------------------------------ acrylic-mirror finishes ---
+ * Each finish is a metallic band (light → mid → dark → light) that reads as a
+ * polished acrylic-mirror surface once clipped to the letters, plus an emboss
+ * shadow for the raised 3D look. Admin picks the finish per text area.
+ */
+export type AcrylicFinish = CustomizerZone["acrylicMirror"]["finish"];
+
+export const ACRYLIC_FINISHES: { id: AcrylicFinish; label: string; stops: string }[] = [
+  { id: "gold", label: "Normal gold", stops: "#fff3c4, #e6b422, #9a6a00, #e6b422, #fff3c4" },
+  { id: "copperGold", label: "Copper gold", stops: "#ffd9a8, #c8791f, #7a3d05, #c8791f, #ffd9a8" },
+  { id: "roseGold", label: "Rose gold", stops: "#ffe4d6, #d98a6a, #a45336, #d98a6a, #ffe4d6" },
+  { id: "pinkGold", label: "Pink gold", stops: "#ffe1ec, #e59ab6, #b45c7c, #e59ab6, #ffe1ec" },
+  { id: "metallicGold", label: "Metallic gold", stops: "#fffbe6, #f2cf4a, #b8860b, #f2cf4a, #fffbe6" },
+  { id: "silver", label: "Silver mirror", stops: "#ffffff, #cfd4da, #8a9099, #cfd4da, #ffffff" },
+];
+
+/** The CSS for an acrylic-mirror text area (gradient fill + emboss), or null. */
+export function zoneAcrylicText(zone: CustomizerZone): {
+  backgroundImage: string;
+  textShadow: string;
+} | null {
+  if (zone.kind !== "TEXT" || !zone.acrylicMirror?.enabled) return null;
+  const finish = ACRYLIC_FINISHES.find((f) => f.id === zone.acrylicMirror.finish) ?? ACRYLIC_FINISHES[0];
+  return {
+    backgroundImage: `linear-gradient(135deg, ${finish.stops})`,
+    // A light top highlight + a dark lower edge = a raised, mirror-polished look.
+    textShadow:
+      "0 1px 0 rgba(255,255,255,0.75), 0 -1px 0 rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.45)",
+  };
 }
 
 /** The fonts a configuration needs loaded for its allowed set. */
