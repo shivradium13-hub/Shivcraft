@@ -268,7 +268,7 @@ export function CartClient({ initial }: { initial: CartView }) {
         <button
           type="button"
           disabled={!canCheckout}
-          onClick={() => setError("Checkout is the next milestone — it is not built yet.")}
+          onClick={() => router.push("/checkout")}
           className="mt-4 w-full rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-45"
         >
           Proceed to Checkout
