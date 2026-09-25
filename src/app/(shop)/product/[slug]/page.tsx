@@ -16,6 +16,7 @@ import { designSchema, type CustomerDesign } from "@/lib/customizer/design";
 import { readConfig } from "@/lib/customizer/schema";
 import { optionalUser } from "@/server/auth/guards";
 import { describeOffer, getLiveOffers } from "@/server/catalog/offers";
+import { getStorefrontSettings } from "@/server/settings/storefront";
 import { db } from "@/server/db";
 import { savedDesigns } from "@/server/db/schema";
 import { getProductBySlug, getRelatedProducts } from "@/server/catalog/product";
@@ -50,6 +51,9 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
   const related = await getRelatedProducts(product.categoryId, product.id);
   // Real coupons from the table, so nothing is advertised that would be refused.
   const offers = await getLiveOffers(product.categoryId);
+
+  /* Which product-page blocks the admin has switched on (Storefront settings). */
+  const feat = (await getStorefrontSettings()).product;
 
   /* Whether this visitor may review, decided on the server so the page never
      renders a form that the API would refuse. Their own review is fetched
@@ -215,7 +219,7 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
           </div>
           <p className="mt-1 text-xs text-muted">Inclusive of all taxes</p>
 
-          {offers.length > 0 ? (
+          {feat.offers && offers.length > 0 ? (
             <div className="mt-5 rounded-card border border-marigold-200 bg-marigold-50 p-3">
               <p className="text-xs font-semibold tracking-wide text-brand-800">Available offers</p>
               <ul className="mt-1.5 space-y-1 text-xs text-ink-soft">
@@ -237,11 +241,13 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
             />
           </div>
 
-          <div className="mt-6">
-            <PincodeCheck />
-          </div>
+          {feat.delivery ? (
+            <div className="mt-6">
+              <PincodeCheck />
+            </div>
+          ) : null}
 
-          {product.description ? (
+          {feat.description && product.description ? (
             <section className="mt-8">
               <h2 className="mb-2 font-display text-lg font-semibold text-ink">
                 About this product
@@ -254,7 +260,7 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
             </section>
           ) : null}
 
-          {specs.length > 0 ? (
+          {feat.specs && specs.length > 0 ? (
             <section className="mt-6">
               <h2 className="mb-2 font-display text-lg font-semibold text-ink">Specifications</h2>
               <dl className="overflow-hidden rounded-card border border-line">
@@ -275,6 +281,7 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
 
       {/* Anchor target for "Write a review" links from the account area. The
           scroll margin keeps it clear of the sticky header. */}
+      {feat.reviews ? (
       <section id="write-review" className="mt-12 scroll-mt-28">
         <SectionHeading eyebrow="Ratings & reviews" title="What buyers say about this" />
 
@@ -326,8 +333,9 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
           </p>
         )}
       </section>
+      ) : null}
 
-      {related.length > 0 ? (
+      {feat.related && related.length > 0 ? (
         <section className="mt-12">
           <SectionHeading eyebrow="You may also like" title={`More from ${product.category.name}`} />
           <ProductRail products={related} />
