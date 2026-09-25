@@ -32,6 +32,11 @@ import { ProductCustomizer } from "@/components/shop/customizer/ProductCustomize
 const input =
   "w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
 
+/* Fallbacks so a partial edit always writes a complete effect object, even for a
+   zone from an older draft that predates these fields. */
+const SHADOW_DEFAULT = { enabled: false, inset: false, color: "#000000", opacity: 45, blur: 6, offsetX: 0, offsetY: 4 };
+const GRADIENT_DEFAULT = { enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 };
+
 type Tab = "views" | "zones" | "options" | "customer" | "templates" | "tools";
 
 export function CustomizerBuilder({
@@ -536,6 +541,8 @@ export function CustomizerBuilder({
                   fontSizePct: 55,
                   color: "#0f121f",
                   align: "center",
+                  shadow: { enabled: false, inset: false, color: "#000000", opacity: 45, blur: 6, offsetX: 0, offsetY: 4 },
+                  gradient: { enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 },
                 };
                 setConfig((prev) => ({
                   ...prev,
@@ -1171,6 +1178,120 @@ function ZonesTab({
               ) : null}
             </>
           )}
+
+          {/* -------- Shadow: this element's own, independent of every other. */}
+          <div className="grid gap-2 rounded-lg border border-sr-line p-2.5 sm:col-span-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
+              <input
+                type="checkbox"
+                checked={selected.shadow?.enabled ?? false}
+                onChange={(e) =>
+                  onPatch(selected.id, { shadow: { ...SHADOW_DEFAULT, ...selected.shadow, enabled: e.target.checked } })
+                }
+              />
+              Shadow
+            </label>
+            {selected.shadow?.enabled ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field label="Type" hint={selected.kind === "TEXT" ? "Inner = engraved look." : undefined}>
+                  <select
+                    className={input}
+                    value={selected.shadow?.inset ? "inner" : "outer"}
+                    onChange={(e) =>
+                      onPatch(selected.id, {
+                        shadow: { ...SHADOW_DEFAULT, ...selected.shadow, inset: e.target.value === "inner" },
+                      })
+                    }
+                  >
+                    <option value="outer">Outer</option>
+                    <option value="inner">Inner</option>
+                  </select>
+                </Field>
+                <Field label="Colour">
+                  <input
+                    type="color"
+                    className="h-10 w-full rounded-lg border border-field bg-field-bg"
+                    value={selected.shadow?.color ?? "#000000"}
+                    onChange={(e) =>
+                      onPatch(selected.id, { shadow: { ...SHADOW_DEFAULT, ...selected.shadow, color: e.target.value } })
+                    }
+                  />
+                </Field>
+                <Num
+                  label="Opacity %"
+                  value={selected.shadow?.opacity ?? 45}
+                  onChange={(v) => onPatch(selected.id, { shadow: { ...SHADOW_DEFAULT, ...selected.shadow, opacity: v } })}
+                />
+                <Num
+                  label="Blur (px)"
+                  value={selected.shadow?.blur ?? 6}
+                  onChange={(v) => onPatch(selected.id, { shadow: { ...SHADOW_DEFAULT, ...selected.shadow, blur: v } })}
+                />
+                <Num
+                  label="Offset X (px)"
+                  value={selected.shadow?.offsetX ?? 0}
+                  onChange={(v) => onPatch(selected.id, { shadow: { ...SHADOW_DEFAULT, ...selected.shadow, offsetX: v } })}
+                />
+                <Num
+                  label="Offset Y (px)"
+                  value={selected.shadow?.offsetY ?? 4}
+                  onChange={(v) => onPatch(selected.id, { shadow: { ...SHADOW_DEFAULT, ...selected.shadow, offsetY: v } })}
+                />
+              </div>
+            ) : null}
+          </div>
+
+          {/* ------ Gradient: this element's own, independent of every other. */}
+          <div className="grid gap-2 rounded-lg border border-sr-line p-2.5 sm:col-span-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
+              <input
+                type="checkbox"
+                checked={selected.gradient?.enabled ?? false}
+                onChange={(e) =>
+                  onPatch(selected.id, {
+                    gradient: { ...GRADIENT_DEFAULT, ...selected.gradient, enabled: e.target.checked },
+                  })
+                }
+              />
+              Gradient {selected.kind === "TEXT" ? "(colours the letters)" : "(washes over the area)"}
+            </label>
+            {selected.gradient?.enabled ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field label="Colour 1">
+                  <input
+                    type="color"
+                    className="h-10 w-full rounded-lg border border-field bg-field-bg"
+                    value={selected.gradient?.color1 ?? "#ff6b2c"}
+                    onChange={(e) =>
+                      onPatch(selected.id, { gradient: { ...GRADIENT_DEFAULT, ...selected.gradient, color1: e.target.value } })
+                    }
+                  />
+                </Field>
+                <Field label="Colour 2">
+                  <input
+                    type="color"
+                    className="h-10 w-full rounded-lg border border-field bg-field-bg"
+                    value={selected.gradient?.color2 ?? "#151b39"}
+                    onChange={(e) =>
+                      onPatch(selected.id, { gradient: { ...GRADIENT_DEFAULT, ...selected.gradient, color2: e.target.value } })
+                    }
+                  />
+                </Field>
+                <Num
+                  label="Angle °"
+                  value={selected.gradient?.angle ?? 135}
+                  onChange={(v) => onPatch(selected.id, { gradient: { ...GRADIENT_DEFAULT, ...selected.gradient, angle: v } })}
+                />
+                {selected.kind !== "TEXT" ? (
+                  <Num
+                    label="Intensity %"
+                    value={selected.gradient?.opacity ?? 60}
+                    onChange={(v) => onPatch(selected.id, { gradient: { ...GRADIENT_DEFAULT, ...selected.gradient, opacity: v } })}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+          </div>
 
           {selected.kind !== "FRAME" ? (
             <label className="flex items-center gap-2 text-sm text-sr-body">

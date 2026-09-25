@@ -12,6 +12,9 @@ import {
   resolveGradient,
   resolveTextStyle,
   fontStack,
+  zoneBoxShadow,
+  zoneGradientCss,
+  zoneTextShadow,
   zonesForView,
   type CustomizerConfig,
   type CustomizerZone,
@@ -193,15 +196,21 @@ function ZoneLayer({
   /* ------------------------------------------------------------- FRAME */
   if (zone.kind === "FRAME") {
     const fill = resolveFrameFill(config, zone, design);
+    const grad = zoneGradientCss(zone);
+    const shadow = zoneBoxShadow(zone);
+    const outerShadow = shadow && !zone.shadow.inset ? shadow : undefined;
+    const innerShadow = shadow && zone.shadow.inset ? shadow : undefined;
     return (
       <div
         style={{
           ...box,
-          background: !zone.imageUrl && fill ? fill : undefined,
+          // A gradient fills the shape; otherwise the solid fill, as before.
+          background: !zone.imageUrl ? (grad ?? fill ?? undefined) : undefined,
           border:
             !zone.imageUrl && zone.strokeWidth > 0 && zone.stroke
               ? `${zone.strokeWidth}px solid ${zone.stroke}`
               : undefined,
+          boxShadow: outerShadow,
         }}
         onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
         className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
@@ -217,6 +226,21 @@ function ZoneLayer({
             className="absolute inset-0 h-full w-full object-contain"
           />
         ) : null}
+        {/* Over an image frame, the gradient washes on top rather than replacing it. */}
+        {grad && zone.imageUrl ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{ background: grad, opacity: zone.gradient.opacity / 100, mixBlendMode: "overlay" }}
+          />
+        ) : null}
+        {innerShadow ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{ boxShadow: innerShadow, borderRadius: "inherit" }}
+          />
+        ) : null}
       </div>
     );
   }
@@ -224,9 +248,19 @@ function ZoneLayer({
   /* --------------------------------------------------------- PHOTO / TEXT */
   const text = value?.kind === "TEXT" ? resolveTextStyle(config, zone, design) : null;
 
+  /* Per-element effects, read from this zone alone so they never leak to another. */
+  const zoneGrad = zoneGradientCss(zone);
+  const boxShadowVal = zone.kind === "PHOTO" ? zoneBoxShadow(zone) : null;
+  const photoOuterShadow = boxShadowVal && !zone.shadow.inset ? boxShadowVal : undefined;
+  const photoInnerShadow = boxShadowVal && zone.shadow.inset ? boxShadowVal : undefined;
+  /* Text is coloured by this element's own gradient first, then any global one. */
+  const textGradient =
+    zoneGrad ??
+    (gradient ? `linear-gradient(${gradient.direction}deg, ${gradient.color1}, ${gradient.color2})` : null);
+
   return (
     <div
-      style={box}
+      style={{ ...box, boxShadow: photoOuterShadow }}
       onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
       className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
         // Admin builder guides: full dashed outline on the selected photo area.
@@ -259,9 +293,19 @@ function ZoneLayer({
             }}
             className="absolute top-1/2 left-1/2 h-full w-full max-w-none object-cover"
           />
-          {/* A gradient wash over photos, when the admin extended the gradient
-              to photos and the customer turned it on. */}
-          {gradient?.applyToPhotos ? (
+          {/* This element's own gradient wash wins; otherwise the global one the
+              admin extended to photos and the customer turned on. */}
+          {zoneGrad ? (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background: zoneGrad,
+                mixBlendMode: "overlay",
+                opacity: zone.gradient.opacity / 100,
+              }}
+            />
+          ) : gradient?.applyToPhotos ? (
             <span
               aria-hidden="true"
               className="pointer-events-none absolute inset-0"
@@ -295,22 +339,34 @@ function ZoneLayer({
             fontWeight: value.text.bold ? 700 : undefined,
             fontStyle: value.text.italic ? "italic" : undefined,
             textDecoration: value.text.underline ? "underline" : undefined,
-            ...(gradient
+            ...(textGradient
               ? {
-                  backgroundImage: `linear-gradient(${gradient.direction}deg, ${gradient.color1}, ${gradient.color2})`,
+                  backgroundImage: textGradient,
                   WebkitBackgroundClip: "text",
                   backgroundClip: "text",
                   color: "transparent",
                   WebkitTextFillColor: "transparent",
                 }
               : { color: value.text.color ?? text.color }),
-            ...(acrylicMirrorOn(config)
-              ? {
-                  textShadow:
-                    "0 1px 0 rgba(255,255,255,0.65), 0 -1px 0 rgba(0,0,0,0.25), 0 2px 3px rgba(0,0,0,0.35)",
-                }
-              : null),
+            // This element's own shadow wins; else the acrylic-mirror treatment.
+            ...(zoneTextShadow(zone)
+              ? { textShadow: zoneTextShadow(zone)! }
+              : acrylicMirrorOn(config)
+                ? {
+                    textShadow:
+                      "0 1px 0 rgba(255,255,255,0.65), 0 -1px 0 rgba(0,0,0,0.25), 0 2px 3px rgba(0,0,0,0.35)",
+                  }
+                : null),
           }}
+        />
+      ) : null}
+
+      {/* Inner shadow sits above the photo so it reads as recessed. */}
+      {photoInnerShadow ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{ boxShadow: photoInnerShadow, borderRadius: "inherit" }}
         />
       ) : null}
 

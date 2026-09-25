@@ -111,6 +111,34 @@ export const zoneSchema = z.object({
   fontSizePct: z.number().min(1).max(100).default(12),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#0f121f"),
   align: z.enum(["left", "center", "right"]).default("center"),
+
+  /** Per-element shadow (admin styling), independent of every other element.
+   *  `inset` is an inner shadow; text areas render it as an engraved look since
+   *  CSS text has no true inset. Offsets/blur are in px of the on-screen box. */
+  shadow: z
+    .object({
+      enabled: z.boolean().default(false),
+      inset: z.boolean().default(false),
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#000000"),
+      opacity: z.number().min(0).max(100).default(45),
+      blur: z.number().min(0).max(80).default(6),
+      offsetX: z.number().min(-80).max(80).default(0),
+      offsetY: z.number().min(-80).max(80).default(4),
+    })
+    .default({ enabled: false, inset: false, color: "#000000", opacity: 45, blur: 6, offsetX: 0, offsetY: 4 }),
+
+  /** Per-element gradient (admin styling), independent of every other element.
+   *  For text it colours the letters; for a photo or frame it washes over the
+   *  area at `opacity`. */
+  gradient: z
+    .object({
+      enabled: z.boolean().default(false),
+      color1: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#ff6b2c"),
+      color2: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#151b39"),
+      angle: z.number().min(0).max(360).default(135),
+      opacity: z.number().min(0).max(100).default(60),
+    })
+    .default({ enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 }),
 });
 export type CustomizerZone = z.infer<typeof zoneSchema>;
 
@@ -559,6 +587,52 @@ export function ledGlowOn(config: CustomizerConfig, design: CustomerDesign): boo
 /** Whether text should use the acrylic-mirror / 3D raised treatment. */
 export function acrylicMirrorOn(config: CustomizerConfig): boolean {
   return config.customerOptions.acrylicMirror.enabled;
+}
+
+/* -------------------------------------------- per-element shadow & gradient ---
+ * These read a single zone's own `shadow`/`gradient`, so one element's effect
+ * never touches another's. They return ready-to-use CSS, or null when the
+ * effect is off, and the same values drive the admin preview and the customer
+ * preview (the one CustomizerCanvas renders both).
+ */
+
+function hexToRgba(hex: string, opacityPct: number): string {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex);
+  const n = m ? parseInt(m[1], 16) : 0;
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  const a = Math.max(0, Math.min(100, opacityPct)) / 100;
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+/** A `box-shadow` value for a photo or frame area (includes the `inset` keyword
+ *  for an inner shadow), or null when the area has no shadow. */
+export function zoneBoxShadow(zone: CustomizerZone): string | null {
+  const s = zone.shadow;
+  if (!s?.enabled) return null;
+  const rgba = hexToRgba(s.color, s.opacity);
+  return `${s.inset ? "inset " : ""}${s.offsetX}px ${s.offsetY}px ${s.blur}px ${rgba}`;
+}
+
+/** A `text-shadow` value for a text area. An inner shadow becomes an engraved
+ *  look, since CSS text cannot inset a shadow. Null when the area has none. */
+export function zoneTextShadow(zone: CustomizerZone): string | null {
+  const s = zone.shadow;
+  if (!s?.enabled) return null;
+  const rgba = hexToRgba(s.color, s.opacity);
+  if (s.inset) {
+    const b = Math.max(1, Math.round(s.blur / 2));
+    return `0 1px ${b}px rgba(255,255,255,0.55), 0 -1px ${b}px ${rgba}`;
+  }
+  return `${s.offsetX}px ${s.offsetY}px ${s.blur}px ${rgba}`;
+}
+
+/** A `linear-gradient(...)` for a zone whose gradient is on, else null. */
+export function zoneGradientCss(zone: CustomizerZone): string | null {
+  const g = zone.gradient;
+  if (!g?.enabled) return null;
+  return `linear-gradient(${g.angle}deg, ${g.color1}, ${g.color2})`;
 }
 
 /** The fonts a configuration needs loaded for its allowed set. */
