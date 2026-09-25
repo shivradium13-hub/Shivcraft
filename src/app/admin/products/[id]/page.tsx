@@ -76,6 +76,15 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
       maxLength: field.maxLength,
       options: field.options,
     })),
+    variants: product.variants.map((variant) => ({
+      id: variant.id,
+      name: variant.name,
+      value: variant.value,
+      sku: variant.sku ?? "",
+      priceDelta: String(variant.priceDeltaP / 100),
+      stock: String(variant.stock),
+      isActive: variant.isActive,
+    })),
   };
 
   return (

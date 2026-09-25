@@ -27,6 +27,25 @@ export const productImageSchema = z.object({
   isPrimary: z.boolean().default(false),
 });
 
+/** One choice on a product option axis, e.g. Size → "12 × 18 in". */
+export const productVariantSchema = z.object({
+  id: z.string().uuid().optional(),
+  /** The axis, e.g. "Size" or "Frame finish". */
+  name: z.string().trim().min(1, "Name the option group (e.g. Size).").max(60),
+  /** The choice on that axis, e.g. "Large". */
+  value: z.string().trim().min(1, "Give the choice a label.").max(80),
+  sku: optionalText(64),
+  /** Rupees added to (or, negative, taken off) the price for this choice.
+   *  Stored as paise. */
+  priceDelta: z
+    .number({ message: "Enter a number." })
+    .min(-10_000_000, "That looks too large.")
+    .max(10_000_000, "That looks too large.")
+    .default(0),
+  stock: z.number().int().min(0, "Cannot be negative.").max(1_000_000).default(0),
+  isActive: z.boolean().default(true),
+});
+
 export const productSchema = z
   .object({
     name: z.string().trim().min(2, "Give the product a name.").max(200),
@@ -60,6 +79,7 @@ export const productSchema = z
 
     images: z.array(productImageSchema).max(10).default([]),
     customizationFields: z.array(customizationFieldSchema).max(12).default([]),
+    variants: z.array(productVariantSchema).max(50).default([]),
   })
   .superRefine((value, ctx) => {
     // A "discount" that is not below the price would show a nonsense saving.
@@ -84,6 +104,21 @@ export const productSchema = z
           path: ["customizationFields", index, "options"],
           message: `"${field.label}" needs at least one choice.`,
         });
+      }
+    }
+    // The DB enforces one row per (name, value); catch a repeat here so the
+    // admin gets a field-level message instead of a database error.
+    const seenChoice = new Map<string, number>();
+    for (const [index, variant] of value.variants.entries()) {
+      const key = `${variant.name.trim().toLowerCase()}|${variant.value.trim().toLowerCase()}`;
+      if (seenChoice.has(key)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["variants", index, "value"],
+          message: `"${variant.name}: ${variant.value}" is listed twice.`,
+        });
+      } else {
+        seenChoice.set(key, index);
       }
     }
   });

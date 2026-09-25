@@ -1,10 +1,16 @@
-import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 
 import type { ProductInput } from "@/lib/adminValidation";
 import { ApiError } from "@/server/api/http";
 import { uniqueProductSlug } from "@/server/admin/catalog";
 import { db, type Db } from "@/server/db";
-import { categories, customizationFields, productImages, products } from "@/server/db/schema";
+import {
+  categories,
+  customizationFields,
+  productImages,
+  productVariants,
+  products,
+} from "@/server/db/schema";
 
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
@@ -68,7 +74,7 @@ export async function getAdminProduct(id: string) {
   const product = rows[0];
   if (!product) return null;
 
-  const [images, fields] = await Promise.all([
+  const [images, fields, variants] = await Promise.all([
     db
       .select()
       .from(productImages)
@@ -79,9 +85,14 @@ export async function getAdminProduct(id: string) {
       .from(customizationFields)
       .where(eq(customizationFields.productId, id))
       .orderBy(asc(customizationFields.position)),
+    db
+      .select()
+      .from(productVariants)
+      .where(eq(productVariants.productId, id))
+      .orderBy(asc(productVariants.position), asc(productVariants.name)),
   ]);
 
-  return { ...product, images, customizationFields: fields };
+  return { ...product, images, customizationFields: fields, variants };
 }
 
 /** Shared by create and update: the child rows are replaced wholesale, which
@@ -119,6 +130,53 @@ async function writeChildren(tx: Tx, productId: string, input: ProductInput) {
         position: index,
       })),
     );
+  }
+
+  await writeVariants(tx, productId, input);
+}
+
+/**
+ * Variants are merged by id rather than replaced wholesale.
+ *
+ * A variant id is what a cart line and the storefront selector reference; if a
+ * routine edit (renaming, a price tweak, restocking) regenerated ids, a
+ * customer's chosen option would silently drop to base price at checkout. So a
+ * row the admin kept keeps its id and its stock history, rows they removed are
+ * deleted, and only genuinely new choices get a fresh id.
+ */
+async function writeVariants(tx: Tx, productId: string, input: ProductInput) {
+  const existing = await tx
+    .select({ id: productVariants.id })
+    .from(productVariants)
+    .where(eq(productVariants.productId, productId));
+  const existingIds = new Set(existing.map((v) => v.id));
+
+  const keptIds = new Set(
+    input.variants.map((v) => v.id).filter((id): id is string => Boolean(id) && existingIds.has(id!)),
+  );
+
+  // Remove variants the admin deleted first, so a value freed up here does not
+  // clash with the unique (product, name, value) constraint on the inserts.
+  const toDelete = [...existingIds].filter((id) => !keptIds.has(id));
+  if (toDelete.length > 0) {
+    await tx.delete(productVariants).where(inArray(productVariants.id, toDelete));
+  }
+
+  for (const [index, variant] of input.variants.entries()) {
+    const row = {
+      name: variant.name,
+      value: variant.value,
+      sku: variant.sku || null,
+      priceDeltaP: Math.round(variant.priceDelta * 100),
+      stock: variant.stock,
+      position: index,
+      isActive: variant.isActive,
+    };
+    if (variant.id && existingIds.has(variant.id)) {
+      await tx.update(productVariants).set(row).where(eq(productVariants.id, variant.id));
+    } else {
+      await tx.insert(productVariants).values({ productId, ...row });
+    }
   }
 }
 

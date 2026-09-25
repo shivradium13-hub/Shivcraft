@@ -16,6 +16,15 @@ type FieldRow = {
   maxLength: number | null;
   options: string[];
 };
+type VariantRow = {
+  id?: string;
+  name: string;
+  value: string;
+  sku: string;
+  priceDelta: string;
+  stock: string;
+  isActive: boolean;
+};
 
 export type ProductFormValues = {
   name: string;
@@ -43,6 +52,7 @@ export type ProductFormValues = {
   metaDescription: string;
   images: ImageRow[];
   customizationFields: FieldRow[];
+  variants: VariantRow[];
 };
 
 export const EMPTY_PRODUCT: ProductFormValues = {
@@ -52,7 +62,7 @@ export const EMPTY_PRODUCT: ProductFormValues = {
   tags: "", videoUrl: "",
   isPersonalizable: false, isActive: true, isBestSeller: false, isTrending: false,
   metaTitle: "", metaDescription: "",
-  images: [], customizationFields: [],
+  images: [], customizationFields: [], variants: [],
 };
 
 const input =
@@ -186,6 +196,18 @@ export function ProductForm({
       metaDescription: values.metaDescription,
       images: values.images,
       customizationFields: thenDesign ? [] : values.customizationFields,
+      variants: values.variants
+        // Drop wholly-blank rows so an empty row left behind is not an error.
+        .filter((v) => v.name.trim() || v.value.trim())
+        .map((v) => ({
+          ...(v.id ? { id: v.id } : {}),
+          name: v.name.trim(),
+          value: v.value.trim(),
+          sku: v.sku.trim(),
+          priceDelta: Number(v.priceDelta || 0),
+          stock: Number(v.stock || 0),
+          isActive: v.isActive,
+        })),
     };
 
     try {
@@ -315,6 +337,119 @@ export function ProductForm({
               <input type="number" min="0" className={input} value={values.lowStockThreshold} onChange={(e) => set("lowStockThreshold", e.target.value)} />
             </Field>
           </Row>
+        </Card>
+
+        {/* ------------------------------------------------------ variants */}
+        <Card
+          title="Options / variants"
+          subtitle="Choices like Size or Frame finish. Each can add to (or take off) the price and carry its own stock. Leave empty for a single-version product."
+        >
+          {values.variants.length > 0 ? (
+            <div className="space-y-3">
+              {values.variants.map((variant, i) => (
+                <div key={i} className="rounded-xl border border-sr-line bg-sr-canvas p-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="text-xs font-semibold text-sr-600">OPTION {i + 1}</span>
+                    <label className="ml-auto flex items-center gap-1.5 text-xs font-medium text-sr-body">
+                      <input
+                        type="checkbox"
+                        checked={variant.isActive}
+                        onChange={(e) => patchVariant(setValues, i, { isActive: e.target.checked })}
+                        className="h-4 w-4 accent-sr-500"
+                      />
+                      {variant.isActive ? "Available" : "Hidden"}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setValues((prev) => ({
+                          ...prev,
+                          variants: prev.variants.filter((_, j) => j !== i),
+                        }))
+                      }
+                      className="text-xs font-semibold text-danger hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <Row>
+                    <Field label="Group" hint='The axis, e.g. "Size".' error={err(`variants.${i}.name`)}>
+                      <input
+                        className={input}
+                        value={variant.name}
+                        placeholder="Size"
+                        onChange={(e) => patchVariant(setValues, i, { name: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Choice" hint='e.g. "12 × 18 in".' error={err(`variants.${i}.value`)}>
+                      <input
+                        className={input}
+                        value={variant.value}
+                        placeholder="Large"
+                        onChange={(e) => patchVariant(setValues, i, { value: e.target.value })}
+                      />
+                    </Field>
+                  </Row>
+                  <Row>
+                    <Field
+                      label="Price change (₹)"
+                      hint="Added to the price. Use a minus for less."
+                      error={err(`variants.${i}.priceDelta`)}
+                    >
+                      <input
+                        type="number"
+                        step="1"
+                        className={input}
+                        value={variant.priceDelta}
+                        onChange={(e) => patchVariant(setValues, i, { priceDelta: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Stock" error={err(`variants.${i}.stock`)}>
+                      <input
+                        type="number"
+                        min="0"
+                        className={input}
+                        value={variant.stock}
+                        onChange={(e) => patchVariant(setValues, i, { stock: e.target.value })}
+                      />
+                    </Field>
+                  </Row>
+                  <Field label="Variant SKU" hint="Optional.">
+                    <input
+                      className={input}
+                      value={variant.sku}
+                      onChange={(e) => patchVariant(setValues, i, { sku: e.target.value })}
+                    />
+                  </Field>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-lg border border-dashed border-sr-line-strong px-4 py-6 text-center text-sm text-sr-muted">
+              No options. The product sells as a single version at the price above.
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() =>
+              setValues((prev) => ({
+                ...prev,
+                variants: [
+                  ...prev.variants,
+                  { name: "", value: "", sku: "", priceDelta: "0", stock: "0", isActive: true },
+                ],
+              }))
+            }
+            className="w-full rounded-lg border border-dashed border-sr-line-strong px-4 py-2.5 text-sm font-medium text-sr-body hover:border-sr-400 hover:text-sr-700"
+          >
+            + Add an option
+          </button>
+          <p className="text-xs text-sr-muted">
+            Stock here caps at the overall stock above; a choice sells until either runs out. The
+            customer picks on the product page and the price updates live.
+          </p>
         </Card>
 
         {/* ------------------------------------------------------- images */}
@@ -695,6 +830,17 @@ function patchField(
   setValues((prev) => ({
     ...prev,
     customizationFields: prev.customizationFields.map((f, i) => (i === index ? { ...f, ...patch } : f)),
+  }));
+}
+
+function patchVariant(
+  setValues: React.Dispatch<React.SetStateAction<ProductFormValues>>,
+  index: number,
+  patch: Partial<VariantRow>,
+) {
+  setValues((prev) => ({
+    ...prev,
+    variants: prev.variants.map((v, i) => (i === index ? { ...v, ...patch } : v)),
   }));
 }
 
