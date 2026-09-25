@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
-import { emptyDesign, type TextPlacement } from "@/lib/customizer/design";
+import { emptyDesign, type CustomerDesign, type TextPlacement } from "@/lib/customizer/design";
 import type { CustomizerConfig } from "@/lib/customizer/schema";
 
 import { CustomizerCanvas } from "./customizer/CustomizerCanvas";
@@ -42,6 +42,24 @@ export function ProductLivePreview({
   const overlayRef = useRef<HTMLDivElement>(null);
   /* "live" shows the editable design; a number shows that uploaded photo. */
   const [selected, setSelected] = useState<"live" | number>("live");
+
+  /* If the customer is looking at one of the uploaded photos and then starts
+     customising — selects a field (activeZoneId changes) or edits the design
+     (design reference changes) — snap the main image back to the live "Design"
+     so they see their change immediately. These only change on an actual
+     selection/edit, not on idle re-publishes, so a photo the customer chose
+     stays put until they customise. Adjusted during render (React's recommended
+     alternative to an effect) so the switch happens before paint. */
+  const activeZoneId = snap?.activeZoneId ?? null;
+  const design = snap?.design ?? null;
+  const [seen, setSeen] = useState<{ az: string | null; d: CustomerDesign | null }>({
+    az: activeZoneId,
+    d: design,
+  });
+  if (seen.az !== activeZoneId || seen.d !== design) {
+    setSeen({ az: activeZoneId, d: design });
+    if (design) setSelected("live");
+  }
 
   /* Feature 2 — a very light hover zoom, pointer devices only.
      - `canHover` gates it to mouse/pointer (never touch), so mobile is unchanged.
