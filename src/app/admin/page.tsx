@@ -99,14 +99,29 @@ export default async function AdminDashboard() {
         )}
       </section>
 
-      {/* Honest about what is not built yet, rather than showing dead links. */}
-      <section className="mt-8 rounded-2xl border border-dashed border-field bg-field-bg p-5">
-        <h2 className="font-display text-base font-semibold text-sr-ink">Not built yet</h2>
-        <p className="mt-1 max-w-2xl text-sm text-sr-muted">
-          Coupon, banner, review and customer management are still to come. They are
-          deliberately absent rather than shown as buttons that do nothing. The data model and the
-          protected API layer they will use are already in place.
-        </p>
+      <section className="mt-8">
+        <h2 className="font-display text-lg font-semibold text-sr-ink">Quick actions</h2>
+        <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {[
+            { href: "/admin/products/new", label: "Add product", hint: "New listing or Frame Designer" },
+            { href: "/admin/orders", label: "Orders", hint: "Track and update" },
+            { href: "/admin/payments", label: "Payments", hint: "Gateway & attempts" },
+            { href: "/admin/storefront", label: "Storefront", hint: "Show / hide / reorder" },
+            { href: "/admin/coupons", label: "Coupons", hint: "Discount codes" },
+            { href: "/admin/categories", label: "Categories", hint: "Menu & homepage" },
+            { href: "/admin/banners", label: "Banners", hint: "Hero & offers" },
+            { href: "/admin/settings", label: "Settings", hint: "Shipping, tax, business" },
+          ].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="rounded-2xl border border-sr-line bg-sr-surface p-4 transition hover:border-sr-400 hover:shadow-sr-card"
+            >
+              <p className="text-sm font-semibold text-sr-ink">{link.label}</p>
+              <p className="mt-0.5 text-[11px] text-sr-muted">{link.hint}</p>
+            </Link>
+          ))}
+        </div>
       </section>
     </div>
   );
