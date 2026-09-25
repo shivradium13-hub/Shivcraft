@@ -81,6 +81,12 @@ export const designStyleSchema = z.object({
   textSizePx: z.number().int().min(6).max(200).optional(),
   /** Customer's gradient on/off, only meaningful when the admin enabled it. */
   gradientOn: z.boolean().optional(),
+  /** Customer's own gradient colours (override the admin's), e.g. generated from
+   *  their uploaded photo. Absent = use the admin's gradient colours. */
+  gradientColor1: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  gradientColor2: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  /** Customer chose to wash the gradient over every inserted photo, in one tap. */
+  gradientAllPhotos: z.boolean().optional(),
   /** Customer's LED glow on/off, only meaningful when the admin enabled it. */
   ledOn: z.boolean().optional(),
 });

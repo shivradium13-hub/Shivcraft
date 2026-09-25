@@ -588,8 +588,17 @@ export function resolveGradient(
 ): ResolvedGradient | null {
   const g = config.customerOptions.gradient;
   if (!g.enabled) return null;
-  if (!(styleOf(design).gradientOn ?? false)) return null;
-  return { color1: g.color1, color2: g.color2, direction: g.direction, applyToPhotos: g.applyToPhotos };
+  const style = styleOf(design);
+  if (!(style.gradientOn ?? false)) return null;
+  return {
+    // The customer's own colours (e.g. generated from their photo) win over the
+    // admin's defaults; the admin's are used when the customer hasn't picked any.
+    color1: style.gradientColor1 ?? g.color1,
+    color2: style.gradientColor2 ?? g.color2,
+    direction: g.direction,
+    // The admin's "apply to photos", OR the customer's one-tap "apply to all images".
+    applyToPhotos: g.applyToPhotos || (style.gradientAllPhotos ?? false),
+  };
 }
 
 /** Whether the glow layer should show. Unmanaged (feature off) keeps the old

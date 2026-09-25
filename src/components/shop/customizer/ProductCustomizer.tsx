@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatPaise } from "@/lib/money";
+import { dominantGradient } from "@/lib/customizer/colours";
 import {
   emptyDesign,
   type CustomerDesign,
@@ -1353,6 +1354,26 @@ function StyleControls({
   const showGradient = co.gradient.enabled;
   const showLed = co.ledGlow.enabled;
 
+  /* The first photo the customer has placed, used to generate gradient colours
+     from it. Served same-origin so the colour reader can sample its pixels. */
+  const photoValue = Object.values(design.zones).find(
+    (v): v is Extract<typeof v, { kind: "PHOTO" }> => v.kind === "PHOTO" && Boolean(v.photo.uploadId),
+  );
+  const photoUrl = photoValue ? `/api/uploads/${photoValue.photo.uploadId}` : null;
+
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  async function generateFromPhoto() {
+    if (!photoUrl) return;
+    setGenerating(true);
+    setGenError(null);
+    const pair = await dominantGradient(photoUrl);
+    if (pair) setStyle({ gradientColor1: pair[0], gradientColor2: pair[1], gradientOn: true });
+    else setGenError("Couldn’t read colours from that photo — pick colours below instead.");
+    setGenerating(false);
+  }
+
   if (!showFrame && !showText && !showFont && !showSize && !showGradient && !showLed) return null;
 
   return (
@@ -1429,11 +1450,68 @@ function StyleControls({
       ) : null}
 
       {showGradient ? (
-        <Toggle
-          label="Gradient"
-          on={s.gradientOn ?? false}
-          onToggle={(on) => setStyle({ gradientOn: on })}
-        />
+        <div className="grid gap-2">
+          <Toggle
+            label="Gradient"
+            on={s.gradientOn ?? false}
+            onToggle={(on) => setStyle({ gradientOn: on })}
+          />
+          {s.gradientOn ? (
+            <div className="grid gap-2.5 rounded-lg border border-line bg-paper p-3">
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2 text-xs font-medium text-ink-soft">
+                  Colour 1
+                  <input
+                    type="color"
+                    aria-label="Gradient colour 1"
+                    value={s.gradientColor1 ?? co.gradient.color1}
+                    onChange={(e) => setStyle({ gradientColor1: e.target.value })}
+                    className="h-7 w-10 cursor-pointer rounded border border-line-strong bg-transparent"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-xs font-medium text-ink-soft">
+                  Colour 2
+                  <input
+                    type="color"
+                    aria-label="Gradient colour 2"
+                    value={s.gradientColor2 ?? co.gradient.color2}
+                    onChange={(e) => setStyle({ gradientColor2: e.target.value })}
+                    className="h-7 w-10 cursor-pointer rounded border border-line-strong bg-transparent"
+                  />
+                </label>
+                {s.gradientColor1 || s.gradientColor2 ? (
+                  <button
+                    type="button"
+                    onClick={() => setStyle({ gradientColor1: undefined, gradientColor2: undefined })}
+                    className="text-xs font-semibold text-brand-700 hover:underline"
+                  >
+                    Reset colours
+                  </button>
+                ) : null}
+              </div>
+
+              {photoUrl ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={generateFromPhoto}
+                    disabled={generating}
+                    className="rounded-lg border border-line-strong bg-paper px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:border-brand-400 hover:text-brand-700 disabled:opacity-60"
+                  >
+                    {generating ? "Reading colours…" : "✨ Generate colours from my photo"}
+                  </button>
+                  {genError ? <p className="mt-1 text-[11px] font-medium text-danger">{genError}</p> : null}
+                </div>
+              ) : null}
+
+              <Toggle
+                label="Apply gradient to all photos"
+                on={s.gradientAllPhotos ?? false}
+                onToggle={(on) => setStyle({ gradientAllPhotos: on })}
+              />
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {showLed ? (
