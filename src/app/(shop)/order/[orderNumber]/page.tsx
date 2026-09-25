@@ -228,6 +228,12 @@ export default async function OrderPage(props: PageProps<"/order/[orderNumber]">
         >
           Continue shopping
         </Link>
+        <Link
+          href={`/invoice/${order.orderNumber}`}
+          className="rounded-full border border-line-strong px-5 py-2.5 text-sm font-semibold text-ink-soft transition hover:border-brand-300"
+        >
+          Download invoice
+        </Link>
       </div>
     </div>
   );

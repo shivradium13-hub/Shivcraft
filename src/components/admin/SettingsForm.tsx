@@ -20,6 +20,18 @@ export type SettingsValues = {
     whatsapp: string;
     hours: string;
   };
+  business: {
+    legalName: string;
+    gstin: string;
+    pan: string;
+    line1: string;
+    line2: string;
+    city: string;
+    state: string;
+    pincode: string;
+    email: string;
+    phone: string;
+  };
 };
 
 const input =
@@ -67,6 +79,7 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
             pricesIncludeTax: values.tax.pricesIncludeTax,
           },
           support: values.support,
+          business: values.business,
         }),
       });
       const json = await res.json();
@@ -184,6 +197,97 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
             </span>
           </span>
         </label>
+      </Section>
+
+      <Section
+        title="Business details (for invoices)"
+        note="Printed at the top of every invoice. Add your GSTIN to turn invoices into GST tax invoices with a CGST/SGST breakdown; leave it blank and invoices stay plain. Nothing here changes prices."
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Registered business name" error={err("business.legalName")}>
+            <input
+              className={input}
+              value={values.business.legalName}
+              onChange={(e) => set("business", "legalName", e.target.value)}
+              placeholder="Shiv Radium"
+            />
+          </Field>
+          <Field
+            label="GSTIN"
+            hint="15 characters. Leave blank if you are not GST-registered."
+            error={err("business.gstin")}
+          >
+            <input
+              className={`${input} font-mono uppercase`}
+              value={values.business.gstin}
+              onChange={(e) => set("business", "gstin", e.target.value.toUpperCase())}
+              placeholder="22AAAAA0000A1Z5"
+              maxLength={20}
+            />
+          </Field>
+          <Field label="PAN" error={err("business.pan")}>
+            <input
+              className={`${input} font-mono uppercase`}
+              value={values.business.pan}
+              onChange={(e) => set("business", "pan", e.target.value.toUpperCase())}
+              placeholder="AAAAA0000A"
+              maxLength={15}
+            />
+          </Field>
+          <Field label="State" hint="Your place of supply — sets CGST/SGST vs IGST." error={err("business.state")}>
+            <input
+              className={input}
+              value={values.business.state}
+              onChange={(e) => set("business", "state", e.target.value)}
+              placeholder="Gujarat"
+            />
+          </Field>
+          <Field label="Address line 1" error={err("business.line1")}>
+            <input
+              className={input}
+              value={values.business.line1}
+              onChange={(e) => set("business", "line1", e.target.value)}
+            />
+          </Field>
+          <Field label="Address line 2" error={err("business.line2")}>
+            <input
+              className={input}
+              value={values.business.line2}
+              onChange={(e) => set("business", "line2", e.target.value)}
+            />
+          </Field>
+          <Field label="City" error={err("business.city")}>
+            <input
+              className={input}
+              value={values.business.city}
+              onChange={(e) => set("business", "city", e.target.value)}
+            />
+          </Field>
+          <Field label="PIN code" error={err("business.pincode")}>
+            <input
+              className={input}
+              value={values.business.pincode}
+              onChange={(e) => set("business", "pincode", e.target.value)}
+            />
+          </Field>
+          <Field label="Invoice email" error={err("business.email")}>
+            <input
+              type="email"
+              className={input}
+              value={values.business.email}
+              onChange={(e) => set("business", "email", e.target.value)}
+              placeholder="billing@yourshop.in"
+            />
+          </Field>
+          <Field label="Invoice phone" error={err("business.phone")}>
+            <input
+              className={input}
+              value={values.business.phone}
+              onChange={(e) => set("business", "phone", e.target.value)}
+              placeholder="+91 98765 43210"
+            />
+          </Field>
+        </div>
       </Section>
 
       <Section

@@ -43,6 +43,40 @@ export async function getOrderForUser(orderNumber: string, userId: string) {
   return { ...order, items, events, payment: paymentRows[0] ?? null };
 }
 
+/**
+ * An order for its invoice, readable by the customer who placed it OR any admin.
+ *
+ * The access rule lives here, not in the page, so the invoice route cannot
+ * accidentally leak one customer's order to another: a non-admin only ever sees
+ * an order whose `userId` is their own.
+ */
+export async function getOrderForInvoice(
+  orderNumber: string,
+  viewer: { id: string; role: "USER" | "ADMIN" },
+) {
+  const rows = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.orderNumber, orderNumber))
+    .limit(1);
+
+  const order = rows[0];
+  if (!order) return null;
+  if (viewer.role !== "ADMIN" && order.userId !== viewer.id) return null;
+
+  const [items, paymentRows] = await Promise.all([
+    db.select().from(orderItems).where(eq(orderItems.orderId, order.id)),
+    db
+      .select()
+      .from(payments)
+      .where(eq(payments.orderId, order.id))
+      .orderBy(desc(payments.createdAt))
+      .limit(1),
+  ]);
+
+  return { ...order, items, payment: paymentRows[0] ?? null };
+}
+
 export async function listOrdersForUser(userId: string) {
   return db
     .select({

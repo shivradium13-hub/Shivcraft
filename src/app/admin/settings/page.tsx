@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Settings", robots: { index: false, f
 
 export default async function AdminSettingsPage() {
   await requireAdmin();
-  const { shipping, tax, support } = await getAllSettings();
+  const { shipping, tax, support, business } = await getAllSettings();
   // Read on the server; only booleans and a test/live label reach the page.
   const payments = razorpayStatus();
 
@@ -40,6 +40,7 @@ export default async function AdminSettingsPage() {
             pricesIncludeTax: tax.pricesIncludeTax,
           },
           support,
+          business,
         }}
       />
     </div>

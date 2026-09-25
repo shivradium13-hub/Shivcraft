@@ -34,6 +34,20 @@ export const PUT = route(async (request: Request) => {
     hours: input.support.hours || "",
   });
 
+  const b = input.business ?? {};
+  await writeSetting("business", {
+    legalName: b.legalName || "",
+    gstin: b.gstin || "",
+    pan: b.pan || "",
+    line1: b.line1 || "",
+    line2: b.line2 || "",
+    city: b.city || "",
+    state: b.state || "",
+    pincode: b.pincode || "",
+    email: b.email || "",
+    phone: b.phone || "",
+  });
+
   // Read back rather than echo the input, so the response is what is stored.
   return ok(await getAllSettings());
 });

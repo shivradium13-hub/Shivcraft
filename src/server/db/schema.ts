@@ -439,6 +439,12 @@ export const orders = pgTable(
     couponId: uuid("coupon_id").references(() => coupons.id, { onDelete: "set null" }),
     couponCode: varchar("coupon_code", { length: 40 }),
 
+    /** Optional B2B details the customer gives at checkout so the invoice can be
+     *  raised to their business. Purely informational — they never change the
+     *  amount charged. GSTIN format is validated before it is stored. */
+    customerGstin: varchar("customer_gstin", { length: 20 }),
+    customerBusinessName: varchar("customer_business_name", { length: 160 }),
+
     cancelReason: varchar("cancel_reason", { length: 300 }),
     placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

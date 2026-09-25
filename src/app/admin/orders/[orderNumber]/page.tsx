@@ -30,9 +30,17 @@ export default async function AdminOrderPage(props: PageProps<"/admin/orders/[or
 
   return (
     <div>
-      <Link href="/admin/orders" className="text-sm font-semibold text-sr-600 hover:underline">
-        ← All orders
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href="/admin/orders" className="text-sm font-semibold text-sr-600 hover:underline">
+          ← All orders
+        </Link>
+        <Link
+          href={`/invoice/${order.orderNumber}`}
+          className="rounded-full border border-sr-line-strong px-4 py-1.5 text-sm font-semibold text-sr-body transition hover:border-sr-400"
+        >
+          Invoice
+        </Link>
+      </div>
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div>

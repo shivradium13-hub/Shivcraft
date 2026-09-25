@@ -45,6 +45,10 @@ export async function placeOrder(input: {
   user: SessionUser;
   addressId: string;
   method: PaymentMethod;
+  /** Optional B2B invoice details. Validated and normalised by the caller;
+   *  stored as-is and never used to change what is charged. */
+  gstin?: string | null;
+  businessName?: string | null;
 }): Promise<PlacedOrder> {
   const shopper = { user: input.user, guestToken: null };
 
@@ -153,6 +157,8 @@ export async function placeOrder(input: {
         totalP: totals.totalP,
         couponId,
         couponCode,
+        customerGstin: input.gstin || null,
+        customerBusinessName: input.businessName || null,
       })
       .returning({ id: orders.id, orderNumber: orders.orderNumber });
 

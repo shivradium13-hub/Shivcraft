@@ -84,6 +84,9 @@ export function CheckoutClient({
   const [method, setMethod] = useState<Method>(onlineEnabled ? "UPI" : "COD");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [wantGst, setWantGst] = useState(false);
+  const [gstin, setGstin] = useState("");
+  const [businessName, setBusinessName] = useState("");
 
   const selected = addresses.find((a) => a.id === addressId) ?? null;
 
@@ -124,7 +127,12 @@ export function CheckoutClient({
       const res = await fetch("/api/checkout/order", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ addressId, method }),
+        body: JSON.stringify({
+          addressId,
+          method,
+          gstin: wantGst ? gstin.trim() : "",
+          businessName: wantGst ? businessName.trim() : "",
+        }),
       });
       const json = await res.json();
 
@@ -369,6 +377,51 @@ export function CheckoutClient({
                 </li>
               ))}
             </ul>
+
+            {/* Optional business invoice. Hidden behind a checkbox so it never
+                clutters a normal personal order, and never changes the total. */}
+            <div className="mt-4 rounded-lg border border-line bg-surface-2/40 p-3">
+              <label className="flex cursor-pointer items-start gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={wantGst}
+                  onChange={(e) => setWantGst(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-brand-700"
+                />
+                <span>
+                  This is a business purchase — add GST details to the invoice
+                  <span className="mt-0.5 block text-xs text-muted">
+                    Optional. Adds your GSTIN to the invoice; it does not change the amount you pay.
+                  </span>
+                </span>
+              </label>
+
+              {wantGst ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1.5">
+                    <span className="text-xs font-semibold text-ink">GSTIN</span>
+                    <input
+                      value={gstin}
+                      onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                      placeholder="22AAAAA0000A1Z5"
+                      maxLength={20}
+                      autoCapitalize="characters"
+                      className={`${input} font-mono uppercase`}
+                    />
+                  </label>
+                  <label className="grid gap-1.5">
+                    <span className="text-xs font-semibold text-ink">Business name</span>
+                    <input
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      placeholder="Registered business name"
+                      maxLength={160}
+                      className={input}
+                    />
+                  </label>
+                </div>
+              ) : null}
+            </div>
 
             <button
               type="button"

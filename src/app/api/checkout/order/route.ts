@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
+import { isValidGstin, normaliseGstin } from "@/lib/gst";
 import { ApiError, created, readJson, route } from "@/server/api/http";
 import { requireUser } from "@/server/auth/guards";
 import { placeOrder } from "@/server/orders/place";
@@ -20,6 +21,9 @@ const schema = z.object({
   method: z.enum(["UPI", "CARD", "NETBANKING", "WALLET", "COD"], {
     message: "Choose how you would like to pay.",
   }),
+  /** Optional business-invoice details. Empty strings are treated as absent. */
+  gstin: z.string().trim().max(20).optional().or(z.literal("")),
+  businessName: z.string().trim().max(160).optional().or(z.literal("")),
 });
 
 /**
@@ -41,7 +45,23 @@ export const POST = route(async (request: Request) => {
     );
   }
 
-  const order = await placeOrder({ user, addressId: input.addressId, method: input.method });
+  // A GSTIN is optional, but if one is given it must be well-formed — a wrong
+  // number on an invoice is worse than none.
+  let gstin: string | null = null;
+  if (input.gstin) {
+    if (!isValidGstin(input.gstin)) {
+      throw new ApiError("BAD_REQUEST", "That GSTIN does not look valid. Check it or leave it blank.");
+    }
+    gstin = normaliseGstin(input.gstin);
+  }
+
+  const order = await placeOrder({
+    user,
+    addressId: input.addressId,
+    method: input.method,
+    gstin,
+    businessName: input.businessName || null,
+  });
 
   if (input.method === "COD") {
     return created({

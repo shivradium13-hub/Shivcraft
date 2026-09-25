@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidGstin } from "@/lib/gst";
+
 /** Money arrives from the form in rupees and is stored in paise. */
 const rupees = z
   .number({ message: "Enter an amount." })
@@ -219,6 +221,34 @@ export const settingsSchema = z.object({
     whatsapp: optionalText(30),
     hours: optionalText(120),
   }),
+  /** Seller details for invoices. Everything optional; a GSTIN, if given, must
+   *  be well-formed so the invoice never prints a malformed registration. */
+  business: z
+    .object({
+      legalName: optionalText(160),
+      gstin: z
+        .string()
+        .trim()
+        .max(20)
+        .refine((v) => v === "" || isValidGstin(v), "Enter a valid 15-character GSTIN, or leave it blank.")
+        .optional()
+        .or(z.literal("")),
+      pan: optionalText(15),
+      line1: optionalText(200),
+      line2: optionalText(200),
+      city: optionalText(120),
+      state: optionalText(120),
+      pincode: optionalText(10),
+      email: z
+        .string()
+        .trim()
+        .max(160)
+        .email("Enter a valid email address.")
+        .optional()
+        .or(z.literal("")),
+      phone: optionalText(30),
+    })
+    .default({}),
 });
 
 export type SettingsInput = z.infer<typeof settingsSchema>;

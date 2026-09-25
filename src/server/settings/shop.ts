@@ -44,6 +44,28 @@ export type SupportSettings = {
   whatsapp: string;
 };
 
+/**
+ * The seller's own details, printed at the top of every invoice.
+ *
+ * All optional: an invoice still renders with whatever is filled in. The GSTIN
+ * is what upgrades a plain "Invoice" into a "Tax Invoice" with a CGST/SGST (or
+ * IGST) breakdown — without it, nothing here invents a registration the shop
+ * does not have. `state` is the place of supply origin, compared with the
+ * delivery state to decide intra- vs inter-state GST.
+ */
+export type BusinessSettings = {
+  legalName: string;
+  gstin: string;
+  pan: string;
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  pincode: string;
+  email: string;
+  phone: string;
+};
+
 export type ShopSettings = ShippingSettings & TaxSettings;
 
 export const DEFAULT_SHIPPING: ShippingSettings = {
@@ -67,6 +89,22 @@ export const DEFAULT_SUPPORT: SupportSettings = {
   whatsapp: "",
 };
 
+/* Empty by default. An invoice shows the shop name as a fallback and omits any
+   line the admin has not filled in, rather than printing a placeholder GSTIN or
+   address that would be wrong on a legal document. */
+export const DEFAULT_BUSINESS: BusinessSettings = {
+  legalName: "",
+  gstin: "",
+  pan: "",
+  line1: "",
+  line2: "",
+  city: "",
+  state: "",
+  pincode: "",
+  email: "",
+  phone: "",
+};
+
 type Row = Record<string, unknown>;
 
 function num(value: unknown, fallback: number): number {
@@ -82,16 +120,18 @@ export async function getAllSettings(): Promise<{
   shipping: ShippingSettings;
   tax: TaxSettings;
   support: SupportSettings;
+  business: BusinessSettings;
 }> {
   const rows = await db
     .select()
     .from(settings)
-    .where(inArray(settings.key, ["shipping", "tax", "support"]));
+    .where(inArray(settings.key, ["shipping", "tax", "support", "business"]));
 
   const byKey = new Map(rows.map((row) => [row.key, (row.value ?? {}) as Row]));
   const shipping = byKey.get("shipping") ?? {};
   const tax = byKey.get("tax") ?? {};
   const support = byKey.get("support") ?? {};
+  const business = byKey.get("business") ?? {};
 
   return {
     shipping: {
@@ -110,6 +150,18 @@ export async function getAllSettings(): Promise<{
       hours: str(support.hours, DEFAULT_SUPPORT.hours),
       whatsapp: str(support.whatsapp, DEFAULT_SUPPORT.whatsapp),
     },
+    business: {
+      legalName: str(business.legalName, DEFAULT_BUSINESS.legalName),
+      gstin: str(business.gstin, DEFAULT_BUSINESS.gstin),
+      pan: str(business.pan, DEFAULT_BUSINESS.pan),
+      line1: str(business.line1, DEFAULT_BUSINESS.line1),
+      line2: str(business.line2, DEFAULT_BUSINESS.line2),
+      city: str(business.city, DEFAULT_BUSINESS.city),
+      state: str(business.state, DEFAULT_BUSINESS.state),
+      pincode: str(business.pincode, DEFAULT_BUSINESS.pincode),
+      email: str(business.email, DEFAULT_BUSINESS.email),
+      phone: str(business.phone, DEFAULT_BUSINESS.phone),
+    },
   };
 }
 
@@ -121,6 +173,10 @@ export async function getShopSettings(): Promise<ShopSettings> {
 
 export async function getSupportSettings(): Promise<SupportSettings> {
   return (await getAllSettings()).support;
+}
+
+export async function getBusinessSettings(): Promise<BusinessSettings> {
+  return (await getAllSettings()).business;
 }
 
 /** Upserts one settings key. The row is the whole value, not a merge. */
