@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { discountPercent, effectivePriceP, formatPaise } from "@/lib/money";
 import { PincodeCheck } from "@/components/shop/PincodeCheck";
 import { ProductGallery } from "@/components/shop/ProductGallery";
+import { ProductLivePreview } from "@/components/shop/ProductLivePreview";
 import { ProductPurchase } from "@/components/shop/ProductPurchase";
 import { ProductRail } from "@/components/shop/ProductCard";
 import { ReviewForm, type ReviewEligibility } from "@/components/shop/ReviewForm";
@@ -12,6 +13,7 @@ import { SectionHeading, Stars } from "@/components/ui/primitives";
 import { and, eq } from "drizzle-orm";
 
 import { designSchema, type CustomerDesign } from "@/lib/customizer/design";
+import { readConfig } from "@/lib/customizer/schema";
 import { optionalUser } from "@/server/auth/guards";
 import { describeOffer, getLiveOffers } from "@/server/catalog/offers";
 import { db } from "@/server/db";
@@ -97,6 +99,10 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
   const price = effectivePriceP(product);
   const off = discountPercent(product);
 
+  /* A Frame-Designer product shows the live personalization preview as the
+     product image itself; every other product keeps the normal photo gallery. */
+  const customizerConfig = readConfig(product.customizer);
+
   const specs = [
     ["Material", product.material],
     ["Colour", product.color],
@@ -160,7 +166,11 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-[88px] lg:self-start">
-          <ProductGallery images={product.images} name={product.name} />
+          {customizerConfig.enabled ? (
+            <ProductLivePreview productId={product.id} config={customizerConfig} name={product.name} />
+          ) : (
+            <ProductGallery images={product.images} name={product.name} />
+          )}
         </div>
 
         <div>

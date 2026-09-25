@@ -211,6 +211,11 @@ export function ProductPurchase({
           signedIn={signedIn}
           initialDesign={savedDesign}
           initialDesignName={savedDesignName}
+          /* The live preview is the product image itself (ProductLivePreview),
+             fed via the bridge under this product's id — so this panel renders
+             only the controls, not a second canvas. */
+          integrated
+          bridgeId={product.id}
         />
       ) : null}
 

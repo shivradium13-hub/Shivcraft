@@ -24,6 +24,8 @@ import {
 } from "@/lib/customizer/schema";
 
 import { CustomizerCanvas } from "./CustomizerCanvas";
+import { publishCustomizer } from "./customizerBridge";
+import { RepositionBox } from "./RepositionBox";
 import { usePhotoGestures } from "./usePhotoGestures";
 
 /**
@@ -52,6 +54,11 @@ type Props = {
    *  in place of any local draft. */
   initialDesign?: CustomerDesign | null;
   initialDesignName?: string | null;
+  /** When true, the live preview is rendered elsewhere (the product image, via
+   *  the bridge) rather than inside this panel, so this panel shows only the
+   *  controls and publishes its state under `bridgeId`. */
+  integrated?: boolean;
+  bridgeId?: string;
 };
 
 const MAX_HISTORY = 40;
@@ -65,6 +72,8 @@ export function ProductCustomizer({
   signedIn = false,
   initialDesign = null,
   initialDesignName = null,
+  integrated = false,
+  bridgeId,
 }: Props) {
   const storageKey = `sr:design:${productId}:v${config.version}`;
   const firstView = config.views[0]?.id ?? "";
@@ -262,6 +271,12 @@ export function ProductCustomizer({
     });
   }, []);
 
+  /** Switches the visible product view (front/back/…). A stable callback so the
+   *  view tabs work whether they are rendered here or on the product image. */
+  const setViewId = useCallback((viewId: string) => {
+    setDesign((prev) => ({ ...prev, viewId }));
+  }, []);
+
   /**
    * Applies a starting template: its option choices, its wording and the view
    * it opens on. Photos are deliberately preserved — a template carries none,
@@ -430,6 +445,40 @@ export function ProductCustomizer({
      done once nothing is left, and the last two are what remains. */
   const stepIndex = remaining > 0 ? 1 : 2;
 
+  /* When the preview lives on the product image (integrated), publish the live
+     state so that preview can render it. A separate unmount-only effect clears
+     it, so an ordinary update never blanks the preview between publishes. */
+  useEffect(() => {
+    if (!integrated || !bridgeId) return;
+    publishCustomizer(bridgeId, {
+      config,
+      design,
+      activeZoneId: activeZone?.id ?? null,
+      reposition,
+      repositionZone,
+      onZoneSelect: setActiveZoneId,
+      setViewId,
+      setTextProps,
+      gestureHandlers: gestures.handlers,
+    });
+  }, [
+    integrated,
+    bridgeId,
+    config,
+    design,
+    activeZone,
+    reposition,
+    repositionZone,
+    setViewId,
+    setTextProps,
+    gestures.handlers,
+  ]);
+
+  useEffect(() => {
+    if (!integrated || !bridgeId) return;
+    return () => publishCustomizer(bridgeId, null);
+  }, [integrated, bridgeId]);
+
   /* ----------------------------------------------------------------- view */
 
   return (
@@ -497,41 +546,47 @@ export function ProductCustomizer({
 
       <ProgressSteps current={stepIndex} />
 
-      {/* ----------------------------------------------------------- canvas */}
-      <div
-        className="relative mt-3 rounded-card border border-line bg-paper p-2"
-        {...gestures.handlers}
-      >
-        {/* No guides for the customer — the preview stays clean, exactly like
-            the finished product. They pick areas from the chips/buttons below,
-            and their photo or text appears in place. */}
-        <CustomizerCanvas
-          config={config}
-          design={design}
-          viewId={design.viewId}
-          activeZoneId={activeZone?.id ?? null}
-          interactive
-          onZoneSelect={setActiveZoneId}
-        />
+      {/* --------------------------------------------------------- canvas ---
+          Rendered here only when NOT integrated. When integrated, the live
+          preview is the product image itself (rendered by ProductLivePreview
+          from the published bridge state), so this panel would only duplicate
+          it — the spec requires a single preview. */}
+      {!integrated ? (
+        <div
+          className="relative mt-3 rounded-card border border-line bg-paper p-2"
+          {...gestures.handlers}
+        >
+          {/* No guides for the customer — the preview stays clean, exactly like
+              the finished product. They pick areas from the chips/buttons below,
+              and their photo or text appears in place. */}
+          <CustomizerCanvas
+            config={config}
+            design={design}
+            viewId={design.viewId}
+            activeZoneId={activeZone?.id ?? null}
+            interactive
+            onZoneSelect={setActiveZoneId}
+          />
 
-        {/* The reposition handle box sits exactly over the area being moved.
-            It only exists while the customer is repositioning, so text carries
-            no box the rest of the time. */}
-        {reposition && repositionZone ? (
-          <div ref={overlayRef} className="pointer-events-none absolute inset-2">
-            <RepositionBox
-              zone={repositionZone}
-              placement={
-                design.zones[reposition]?.kind === "TEXT"
-                  ? (design.zones[reposition] as { kind: "TEXT"; text: TextPlacement }).text
-                  : null
-              }
-              overlayRef={overlayRef}
-              onChange={(patch, live) => setTextProps(reposition, patch, live)}
-            />
-          </div>
-        ) : null}
-      </div>
+          {/* The reposition handle box sits exactly over the area being moved.
+              It only exists while the customer is repositioning, so text carries
+              no box the rest of the time. */}
+          {reposition && repositionZone ? (
+            <div ref={overlayRef} className="pointer-events-none absolute inset-2">
+              <RepositionBox
+                zone={repositionZone}
+                placement={
+                  design.zones[reposition]?.kind === "TEXT"
+                    ? (design.zones[reposition] as { kind: "TEXT"; text: TextPlacement }).text
+                    : null
+                }
+                overlayRef={overlayRef}
+                onChange={(patch, live) => setTextProps(reposition, patch, live)}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {reposition ? (
         <div className="mt-2 rounded-card border border-brand-300 bg-brand-50/60 p-3">
@@ -571,13 +626,14 @@ export function ProductCustomizer({
         </div>
       ) : null}
 
-      {config.views.length > 1 ? (
+      {/* View tabs live under the product image when integrated. */}
+      {!integrated && config.views.length > 1 ? (
         <div className="gc-hide-scrollbar mt-2 flex gap-2 overflow-x-auto">
           {config.views.map((view) => (
             <button
               key={view.id}
               type="button"
-              onClick={() => setDesign((prev) => ({ ...prev, viewId: view.id }))}
+              onClick={() => setViewId(view.id)}
               aria-pressed={design.viewId === view.id}
               className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                 design.viewId === view.id
@@ -1501,15 +1557,6 @@ function clampSize(n: number) {
   return Math.min(80, Math.max(4, Math.round(n)));
 }
 
-function clampOffset(n: number) {
-  return Math.min(50, Math.max(-50, Math.round(n)));
-}
-
-function clampRot(n: number) {
-  const wrapped = (((n + 180) % 360) + 360) % 360 - 180;
-  return Math.round(wrapped);
-}
-
 /** A four-step, honest indicator of where the customer is in the flow. */
 function ProgressSteps({ current }: { current: number }) {
   const labels = ["Product", "Personalise", "Preview", "Add to cart"];
@@ -1603,121 +1650,6 @@ function StyleToggle({
     >
       {children}
     </button>
-  );
-}
-
-/**
- * The handle box the customer drags to place text inside its area.
- *
- * It is drawn exactly over the area (same percentage coordinates the canvas
- * uses), and only exists while repositioning — so text carries no box the rest
- * of the time. A drag moves the wording within the area (offset is a percentage
- * of the area, clamped so it stays on the product); the round handle turns it.
- * Moves are live, with a single history entry taken at the start of the gesture.
- */
-function RepositionBox({
-  zone,
-  placement,
-  overlayRef,
-  onChange,
-}: {
-  zone: CustomizerZone;
-  placement: TextPlacement | null;
-  overlayRef: { current: HTMLDivElement | null };
-  onChange: (patch: Partial<TextPlacement>, live?: boolean) => void;
-}) {
-  const drag = useRef<{
-    mode: "move" | "rotate";
-    startX: number;
-    startY: number;
-    ox: number;
-    oy: number;
-    rectW: number;
-    rectH: number;
-    cx: number;
-    cy: number;
-  } | null>(null);
-
-  const begin = (e: React.PointerEvent<HTMLDivElement>, mode: "move" | "rotate") => {
-    e.preventDefault();
-    e.stopPropagation();
-    const rect = overlayRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    // Snapshot one history step before the gesture, so a single undo takes the
-    // whole move or turn back.
-    onChange(
-      mode === "move"
-        ? { offsetX: placement?.offsetX ?? 0, offsetY: placement?.offsetY ?? 0 }
-        : { rotation: placement?.rotation ?? 0 },
-      false,
-    );
-    drag.current = {
-      mode,
-      startX: e.clientX,
-      startY: e.clientY,
-      ox: placement?.offsetX ?? 0,
-      oy: placement?.offsetY ?? 0,
-      rectW: rect.width,
-      rectH: rect.height,
-      cx: rect.left + ((zone.x + zone.width / 2) / 100) * rect.width,
-      cy: rect.top + ((zone.y + zone.height / 2) / 100) * rect.height,
-    };
-  };
-
-  const move = (e: React.PointerEvent<HTMLDivElement>) => {
-    const d = drag.current;
-    if (!d) return;
-    if (d.mode === "move") {
-      const zw = (d.rectW * zone.width) / 100 || 1;
-      const zh = (d.rectH * zone.height) / 100 || 1;
-      onChange(
-        {
-          offsetX: clampOffset(d.ox + ((e.clientX - d.startX) / zw) * 100),
-          offsetY: clampOffset(d.oy + ((e.clientY - d.startY) / zh) * 100),
-        },
-        true,
-      );
-    } else {
-      const deg = (Math.atan2(e.clientY - d.cy, e.clientX - d.cx) * 180) / Math.PI + 90;
-      onChange({ rotation: clampRot(deg) }, true);
-    }
-  };
-
-  const end = () => {
-    drag.current = null;
-  };
-
-  return (
-    <div
-      style={{
-        left: `${zone.x}%`,
-        top: `${zone.y}%`,
-        width: `${zone.width}%`,
-        height: `${zone.height}%`,
-        transform: zone.rotation ? `rotate(${zone.rotation}deg)` : undefined,
-      }}
-      className="pointer-events-none absolute"
-    >
-      <div
-        onPointerDown={(e) => begin(e, "move")}
-        onPointerMove={move}
-        onPointerUp={end}
-        onPointerCancel={end}
-        style={{ touchAction: "none" }}
-        title="Drag to move"
-        className="pointer-events-auto absolute inset-0 cursor-move rounded-sm border-2 border-dashed border-brand-500 bg-brand-500/5"
-      />
-      <div
-        onPointerDown={(e) => begin(e, "rotate")}
-        onPointerMove={move}
-        onPointerUp={end}
-        onPointerCancel={end}
-        style={{ touchAction: "none" }}
-        title="Drag to rotate"
-        className="pointer-events-auto absolute -top-7 left-1/2 h-4 w-4 -translate-x-1/2 cursor-grab rounded-full border-2 border-white bg-brand-600 shadow"
-      />
-    </div>
   );
 }
 
