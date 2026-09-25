@@ -10,6 +10,7 @@ export type AdminCategory = {
   slug: string;
   icon: string | null;
   imageUrl: string | null;
+  videoUrl: string | null;
   position: number;
   isActive: boolean;
   showOnHome: boolean;
@@ -204,19 +205,40 @@ function CategoryRow({
   const [name, setName] = useState(category.name);
   const [icon, setIcon] = useState(category.icon ?? "");
   const [imageUrl, setImageUrl] = useState(category.imageUrl ?? "");
+  const [videoUrl, setVideoUrl] = useState(category.videoUrl ?? "");
   const [uploading, setUploading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
 
   async function uploadImage(file: File) {
     setUploading(true);
+    setUploadError(null);
     try {
       const body = new FormData();
       body.append("file", file);
       const res = await fetch("/api/admin/media", { method: "POST", body });
       const json = await res.json();
       if (res.ok) setImageUrl(json.data.url);
+      else setUploadError(json?.error?.message ?? "That image could not be uploaded.");
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function uploadVideo(file: File) {
+    setUploadingVideo(true);
+    setUploadError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const json = await res.json();
+      if (res.ok) setVideoUrl(json.data.url);
+      else setUploadError(json?.error?.message ?? "That video could not be uploaded.");
+    } finally {
+      setUploadingVideo(false);
     }
   }
 
@@ -320,6 +342,51 @@ function CategoryRow({
             </div>
           </div>
 
+          <div className="grid gap-1.5 sm:col-span-2">
+            <span className="text-xs font-semibold text-sr-ink">
+              Video <span className="font-normal text-sr-muted">(optional — plays on the homepage instead of the image)</span>
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={uploadingVideo}
+                onClick={() => videoRef.current?.click()}
+                className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400 disabled:opacity-60"
+              >
+                {uploadingVideo ? "Uploading…" : videoUrl ? "Replace video" : "Upload video"}
+              </button>
+              {videoUrl ? (
+                <>
+                  <a
+                    href={videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-sr-600 hover:underline"
+                  >
+                    Preview
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setVideoUrl("")}
+                    className="text-xs font-semibold text-danger hover:underline"
+                  >
+                    Remove
+                  </button>
+                </>
+              ) : null}
+              <input
+                ref={videoRef}
+                type="file"
+                accept="video/mp4,video/webm"
+                className="sr-only"
+                onChange={(e) => e.target.files?.[0] && uploadVideo(e.target.files[0])}
+              />
+            </div>
+            {uploadError ? (
+              <p className="text-xs font-medium text-danger">{uploadError}</p>
+            ) : null}
+          </div>
+
           {isTop ? (
             <label className="flex items-center gap-2 text-sm sm:col-span-2">
               <input
@@ -335,7 +402,7 @@ function CategoryRow({
           <div className="flex flex-wrap gap-2 sm:col-span-2">
             <button
               type="button"
-              onClick={() => onPatch({ name, icon, imageUrl })}
+              onClick={() => onPatch({ name, icon, imageUrl, videoUrl })}
               className="rounded-full bg-sr-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sr-700"
             >
               Save

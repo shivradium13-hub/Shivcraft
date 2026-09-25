@@ -59,6 +59,7 @@ export async function adminCategoryTree() {
       slug: categories.slug,
       icon: categories.icon,
       imageUrl: categories.imageUrl,
+      videoUrl: categories.videoUrl,
       position: categories.position,
       isActive: categories.isActive,
       showOnHome: categories.showOnHome,

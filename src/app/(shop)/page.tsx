@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CategorySlider } from "@/components/shop/CategorySlider";
 import { ProductGrid, ProductRail } from "@/components/shop/ProductCard";
 import { EmptyState, ProductImage, SectionHeading, Stars } from "@/components/ui/primitives";
 import { getHomepage } from "@/server/catalog/home";
@@ -77,28 +78,7 @@ export default async function HomePage() {
       {categories.length > 0 ? (
         <section>
           <SectionHeading eyebrow="Browse" title="Shop by category" />
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-8">
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/category/${cat.slug}`}
-                className="group rounded-card border border-line bg-paper p-2.5 text-center transition hover:border-brand-300 hover:shadow-card"
-              >
-                <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-lg bg-brand-50">
-                  <ProductImage
-                    src={cat.imageUrl}
-                    alt=""
-                    sizes="(min-width: 1280px) 140px, (min-width: 640px) 18vw, 28vw"
-                    className="transition duration-300 group-hover:scale-105"
-                  />
-                </div>
-                <p className="mt-2 line-clamp-2 text-xs leading-snug font-medium text-ink">
-                  {cat.icon ? <span aria-hidden="true">{cat.icon} </span> : null}
-                  {cat.name}
-                </p>
-              </Link>
-            ))}
-          </div>
+          <CategorySlider categories={categories} />
         </section>
       ) : null}
 

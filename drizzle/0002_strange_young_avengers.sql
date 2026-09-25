@@ -1,0 +1,1 @@
+ALTER TABLE "categories" ADD COLUMN "video_url" text;

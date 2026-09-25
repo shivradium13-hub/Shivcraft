@@ -181,6 +181,9 @@ export const categories = pgTable(
     /** Emoji or short icon token rendered in the sidebar. */
     icon: varchar("icon", { length: 16 }),
     imageUrl: text("image_url"),
+    /** Optional short clip shown in place of the image on the homepage card
+     *  (autoplayed, muted, looped). A public blob URL. */
+    videoUrl: text("video_url"),
     description: text("description"),
     position: integer("position").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),

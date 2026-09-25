@@ -14,6 +14,7 @@ const patchSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   icon: z.string().trim().max(16).nullable().optional(),
   imageUrl: z.string().trim().max(500).nullable().optional(),
+  videoUrl: z.string().trim().max(1000).nullable().optional(),
   description: z.string().trim().max(1000).nullable().optional(),
   isActive: z.boolean().optional(),
   showOnHome: z.boolean().optional(),
@@ -39,6 +40,7 @@ export const PATCH = route(
     if (input.name !== undefined) patch.name = input.name;
     if (input.icon !== undefined) patch.icon = input.icon || null;
     if (input.imageUrl !== undefined) patch.imageUrl = input.imageUrl || null;
+    if (input.videoUrl !== undefined) patch.videoUrl = input.videoUrl || null;
     if (input.description !== undefined) patch.description = input.description || null;
     if (input.isActive !== undefined) patch.isActive = input.isActive;
     if (input.showOnHome !== undefined) patch.showOnHome = input.showOnHome;

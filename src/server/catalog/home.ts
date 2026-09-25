@@ -100,11 +100,12 @@ export async function getHomepage() {
           slug: categories.slug,
           icon: categories.icon,
           imageUrl: categories.imageUrl,
+          videoUrl: categories.videoUrl,
         })
         .from(categories)
         .where(and(eq(categories.isActive, true), eq(categories.showOnHome, true)))
         .orderBy(categories.position)
-        .limit(8),
+        .limit(20),
       shelf(eq(products.isTrending, true), 10),
       shelf(eq(products.isBestSeller, true), 10),
       shelf(eq(products.isPersonalizable, true), 10),
