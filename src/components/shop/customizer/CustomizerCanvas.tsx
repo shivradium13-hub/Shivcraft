@@ -359,8 +359,10 @@ function FitText({
     const inner = innerRef.current;
     if (!outer || !inner) return;
 
-    let raf = 0;
-    let cancelled = false;
+    // Measured synchronously (before paint) so the size is right on the first
+    // frame — no flash of oversized text — and so it never depends on a rAF that
+    // a later render might cancel. `scrollWidth`/`scrollHeight` are the natural,
+    // pre-transform layout size, so applying the scale never feeds back in.
     const fit = () => {
       const ow = outer.clientWidth;
       const oh = outer.clientHeight;
@@ -371,23 +373,25 @@ function FitText({
       // A threshold stops a sub-pixel measurement wobble from re-rendering forever.
       setScale((prev) => (Math.abs(prev - next) > 0.004 ? next : prev));
     };
-    const schedule = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(fit);
-    };
 
-    schedule();
-    const ro = new ResizeObserver(schedule);
+    fit();
+
+    // Re-fit whenever the area resizes (preview scaling) or the text box's own
+    // natural size changes (new wording, or a web font arriving); the text box
+    // keeps its natural size via flex-shrink:0, so this fires on content change
+    // rather than being pinned to the area's width.
+    let done = false;
+    const ro = new ResizeObserver(() => {
+      if (!done) fit();
+    });
     ro.observe(outer);
-    // A web font can arrive after first paint and change the text width, so
-    // re-fit once fonts are ready.
+    ro.observe(inner);
     if (typeof document !== "undefined" && document.fonts?.ready) {
-      document.fonts.ready.then(() => !cancelled && schedule()).catch(() => {});
+      document.fonts.ready.then(() => !done && fit()).catch(() => {});
     }
 
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
+      done = true;
       ro.disconnect();
     };
   }, [text, textStyle?.fontFamily, textStyle?.fontSize, textStyle?.fontWeight, textStyle?.fontStyle]);
@@ -405,6 +409,10 @@ function FitText({
         style={{
           ...textStyle,
           display: "inline-block",
+          // Keep the text box at its natural size (never shrunk by the flex
+          // parent) so the measurement reflects the real text width.
+          flexShrink: 0,
+          flexGrow: 0,
           // Preserve deliberate line breaks but never auto-wrap: a long line
           // shrinks to fit rather than breaking onto another line.
           whiteSpace: "pre",
