@@ -353,7 +353,7 @@ export function ProductPurchase({
           {previewField ? (
             <div className="mt-4">
               <p className="mb-1.5 text-xs font-semibold text-ink">Preview</p>
-              <div className="relative flex min-h-28 items-center justify-center overflow-hidden rounded-lg border border-line bg-paper p-4">
+              <div className="relative flex min-h-28 items-center justify-center overflow-hidden rounded-lg border border-line p-4">
                 {imageField && photos[imageField.id] ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img

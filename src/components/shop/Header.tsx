@@ -3,7 +3,6 @@
 import Link from "next/link";
 
 import { CartBadge } from "./CartBadge";
-import { CategoryMenu } from "./CategoryMenu";
 import { SearchBar } from "./SearchBar";
 
 function Logo() {
@@ -94,9 +93,9 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-line bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
       <div className="mx-auto w-full max-w-[1400px] px-4">
         <div className="flex h-16 items-center gap-3">
-          {/* Categories live behind the three-dot menu, at every width. */}
-          <CategoryMenu />
-
+          {/* Categories live in the desktop sidebar and the mobile bottom-nav
+              drawer, so the header keeps only the logo, search and account icons
+              — no duplicate category menu beside the search. */}
           <Logo />
 
           <div className="hidden min-w-0 flex-1 md:block">

@@ -84,10 +84,12 @@ export function usePhotoGestures({
         offsetY: clamp(base.offsetY + ((cy - base.cy) / base.width) * 100, -200, 200),
       };
 
-      // Pinch is the change in distance between the first two fingers.
+      // Pinch is the change in distance between the first two fingers. The floor
+      // is 1 (exactly covering the area) so the photo can never be shrunk small
+      // enough to leave gaps around it in the frame.
       if (all.length >= 2 && base.distance > 0) {
         const distance = Math.hypot(all[0].x - all[1].x, all[0].y - all[1].y);
-        next.scale = clamp(base.scale * (distance / base.distance), 0.2, 8);
+        next.scale = clamp(base.scale * (distance / base.distance), 1, 8);
       }
 
       onChange(next);
@@ -106,7 +108,7 @@ export function usePhotoGestures({
     (event: React.WheelEvent<HTMLDivElement>) => {
       if (!enabled || !placement) return;
       if (!event.ctrlKey && !event.metaKey) return;
-      onChange({ scale: clamp(placement.scale * (event.deltaY < 0 ? 1.06 : 0.94), 0.2, 8) });
+      onChange({ scale: clamp(placement.scale * (event.deltaY < 0 ? 1.06 : 0.94), 1, 8) });
     },
     [enabled, placement, onChange],
   );

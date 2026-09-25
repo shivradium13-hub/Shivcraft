@@ -816,7 +816,11 @@ export function ProductCustomizer({
                         <Small onClick={() => setPhoto(activeZone.id, { scale: activePhoto.scale * 1.1 })}>
                           Zoom in
                         </Small>
-                        <Small onClick={() => setPhoto(activeZone.id, { scale: activePhoto.scale / 1.1 })}>
+                        <Small
+                          onClick={() =>
+                            setPhoto(activeZone.id, { scale: Math.max(1, activePhoto.scale / 1.1) })
+                          }
+                        >
                           Zoom out
                         </Small>
                       </>
