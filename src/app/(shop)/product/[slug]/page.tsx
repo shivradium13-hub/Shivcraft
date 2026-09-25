@@ -167,7 +167,12 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-[88px] lg:self-start">
           {customizerConfig.enabled ? (
-            <ProductLivePreview productId={product.id} config={customizerConfig} name={product.name} />
+            <ProductLivePreview
+              productId={product.id}
+              config={customizerConfig}
+              name={product.name}
+              images={product.images}
+            />
           ) : (
             <ProductGallery images={product.images} name={product.name} />
           )}
