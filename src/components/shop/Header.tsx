@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 
+import type { CategoryNode } from "@/server/catalog/categories";
+
 import { CartBadge } from "./CartBadge";
+import { CategoryNav } from "./CategoryNav";
 import { SearchBar } from "./SearchBar";
 
 function Logo() {
@@ -88,14 +91,11 @@ const UserIcon = () => (
   </svg>
 );
 
-export function Header() {
+export function Header({ categories = [] }: { categories?: CategoryNode[] }) {
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
       <div className="mx-auto w-full max-w-[1400px] px-4">
         <div className="flex h-16 items-center gap-3">
-          {/* Categories live in the desktop sidebar and the mobile bottom-nav
-              drawer, so the header keeps only the logo, search and account icons
-              — no duplicate category menu beside the search. */}
           <Logo />
 
           <div className="hidden min-w-0 flex-1 md:block">
@@ -135,6 +135,9 @@ export function Header() {
           <SearchBar />
         </div>
       </div>
+
+      {/* Desktop category navigation + wide mega-menu (real category data). */}
+      <CategoryNav categories={categories} />
     </header>
   );
 }

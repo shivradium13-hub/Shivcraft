@@ -172,6 +172,27 @@
     box-shadow: none;
   }
 
+  /* Mega-menu open: a soft fade + slight drop, per the Figma-style nav. */
+  .gc-mega {
+    animation: gc-mega-in 180ms ease-out both;
+    transform-origin: top center;
+  }
+  @keyframes gc-mega-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gc-mega {
+      animation: none;
+    }
+  }
+
   /* Round crop box for circular frames (Cropper.js). */
   .gc-crop-round .cropper-view-box,
   .gc-crop-round .cropper-face {
