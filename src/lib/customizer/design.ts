@@ -24,6 +24,10 @@ export const photoPlacementSchema = z.object({
   rotation: z.number().min(-180).max(180).default(0),
   flipH: z.boolean().default(false),
   flipV: z.boolean().default(false),
+  /** How the photo sits in its area. "cover" fills and crops to the shape (the
+   *  default); "contain" shows the whole photo inside the shape with the
+   *  background around it — the crop editor's Fit / Fill choice. */
+  fit: z.enum(["cover", "contain"]).default("cover"),
   /** Natural pixel size, recorded at upload so print quality can be judged
    *  server-side rather than trusting a number from the browser. */
   naturalWidth: z.number().int().positive().max(20000).nullable().default(null),
@@ -131,7 +135,7 @@ export function designFingerprint(design: CustomerDesign | null): string {
       const value = design.zones[key];
       if (value.kind === "PHOTO") {
         const p = value.photo;
-        return `${key}:P:${p.uploadId}:${p.offsetX.toFixed(2)}:${p.offsetY.toFixed(2)}:${p.scale.toFixed(3)}:${p.rotation}:${p.flipH ? 1 : 0}${p.flipV ? 1 : 0}`;
+        return `${key}:P:${p.uploadId}:${p.offsetX.toFixed(2)}:${p.offsetY.toFixed(2)}:${p.scale.toFixed(3)}:${p.rotation}:${p.flipH ? 1 : 0}${p.flipV ? 1 : 0}:${p.fit ?? "cover"}`;
       }
       const t = value.text;
       return `${key}:T:${t.value}:${t.fontFamily ?? ""}:${t.color ?? ""}:${t.align ?? ""}:${t.fontSizePct ?? ""}:${t.offsetX ?? ""}:${t.offsetY ?? ""}:${t.rotation ?? ""}:${t.bold ? 1 : 0}${t.italic ? 1 : 0}${t.underline ? 1 : 0}:${t.mirrorH ? 1 : 0}${t.mirrorV ? 1 : 0}`;

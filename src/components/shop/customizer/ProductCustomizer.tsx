@@ -28,7 +28,7 @@ import { CustomizerCanvas } from "./CustomizerCanvas";
 import { publishCustomizer } from "./customizerBridge";
 import { RepositionBox } from "./RepositionBox";
 import { usePhotoGestures } from "./usePhotoGestures";
-import { ImageCropModal } from "../ImageCropModal";
+import { PhotoCropModal } from "./PhotoCropModal";
 
 /**
  * The customer's customiser.
@@ -127,8 +127,9 @@ export function ProductCustomizer({
   const [history, setHistory] = useState<CustomerDesign[]>([]);
   const [future, setFuture] = useState<CustomerDesign[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  /* A photo waiting to be cropped before it is uploaded into its zone. */
-  const [cropState, setCropState] = useState<{ file: File; zone: CustomizerZone } | null>(null);
+  /* The zone whose photo is open in the crop / adjust editor. `isNew` means a
+   *  fresh upload, so cancelling discards it. */
+  const [cropCtx, setCropCtx] = useState<{ zoneId: string; isNew: boolean } | null>(null);
 
   /* Zones on the current view that the customer's option choices reveal. A
      zone hidden by a conditional rule is not shown as a tab, a step or a
@@ -393,10 +394,13 @@ export function ProductCustomizer({
               brightness: 100,
               contrast: 100,
               saturation: 100,
+              fit: "cover",
             },
           },
         },
       });
+      // Open the crop / adjust editor over the freshly uploaded photo.
+      setCropCtx({ zoneId: zone.id, isNew: true });
     } catch {
       setNotice("The upload did not finish — check your connection and try again.");
     } finally {
@@ -792,8 +796,9 @@ export function ProductCustomizer({
                     className="sr-only"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      // Crop first, then upload the cropped result into the zone.
-                      if (file) setCropState({ file, zone: activeZone });
+                      // Upload the full-resolution photo, then open the crop /
+                      // adjust editor (non-destructive) over it.
+                      if (file) void upload(file, activeZone);
                       if (fileRef.current) fileRef.current.value = "";
                     }}
                   />
@@ -814,6 +819,13 @@ export function ProductCustomizer({
 
               {activePhoto ? (
                 <>
+                  <button
+                    type="button"
+                    onClick={() => setCropCtx({ zoneId: activeZone.id, isNew: false })}
+                    className="mt-2 w-full rounded-full border border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
+                  >
+                    Crop / adjust photo
+                  </button>
                   <p className="mt-2 text-center text-[11px] text-muted">
                     Drag the photo to move it. Pinch, or hold ⌘/Ctrl and scroll, to zoom.
                   </p>
@@ -1244,18 +1256,35 @@ export function ProductCustomizer({
       ) : null}
     </section>
 
-    {cropState ? (
-      <ImageCropModal
-        file={cropState.file}
-        aspect={cropState.zone.height > 0 ? cropState.zone.width / cropState.zone.height : null}
-        onCancel={() => setCropState(null)}
-        onApply={(cropped) => {
-          const { zone } = cropState;
-          setCropState(null);
-          void upload(cropped, zone);
-        }}
-      />
-    ) : null}
+    {cropCtx ? (() => {
+      const z = config.zones.find((zz) => zz.id === cropCtx.zoneId);
+      const v = design.zones[cropCtx.zoneId];
+      if (!z || v?.kind !== "PHOTO") return null;
+      const p = v.photo;
+      return (
+        <PhotoCropModal
+          imageUrl={`/api/uploads/${p.uploadId}`}
+          aspect={z.height > 0 ? z.width / z.height : 1}
+          initial={{ offsetX: p.offsetX, offsetY: p.offsetY, scale: p.scale, fit: p.fit ?? "cover" }}
+          onCancel={() => {
+            // A fresh upload cancelled → discard it. A re-edit → leave as it was.
+            if (cropCtx.isNew) {
+              commit({
+                ...design,
+                zones: Object.fromEntries(
+                  Object.entries(design.zones).filter(([k]) => k !== cropCtx.zoneId),
+                ),
+              });
+            }
+            setCropCtx(null);
+          }}
+          onApply={(r) => {
+            setPhoto(cropCtx.zoneId, r);
+            setCropCtx(null);
+          }}
+        />
+      );
+    })() : null}
     </>
   );
 }

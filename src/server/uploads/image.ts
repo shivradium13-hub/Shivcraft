@@ -1,4 +1,4 @@
-export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
 export type ImageType = "image/jpeg" | "image/png" | "image/webp";
 
@@ -37,5 +37,5 @@ export const IMAGE_REJECTION =
   "That file is not a JPG, PNG or WebP image. Screenshots and photos from your phone both work.";
 
 export function oversizeMessage(size: number): string {
-  return `That image is ${(size / 1024 / 1024).toFixed(1)} MB. The limit is 8 MB — try a smaller version.`;
+  return `That image is ${(size / 1024 / 1024).toFixed(1)} MB. The limit is 20 MB — try a smaller version.`;
 }

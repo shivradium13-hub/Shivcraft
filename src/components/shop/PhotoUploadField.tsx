@@ -11,7 +11,7 @@ type Status =
   | { phase: "uploading"; name: string }
   | { phase: "error"; message: string };
 
-const MAX_BYTES = 8 * 1024 * 1024;
+const MAX_BYTES = 20 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 
 export function PhotoUploadField({
@@ -43,7 +43,7 @@ export function PhotoUploadField({
     if (file.size > MAX_BYTES) {
       setStatus({
         phase: "error",
-        message: `That photo is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 8 MB.`,
+        message: `That photo is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 20 MB.`,
       });
       return;
     }
@@ -149,7 +149,7 @@ export function PhotoUploadField({
             {busy ? "Uploading…" : "Upload Image"}
           </button>
           <p className="mt-2 text-xs text-muted">
-            {busy ? status.name : "or drag a photo here · JPG, PNG, WebP up to 8 MB"}
+            {busy ? status.name : "or drag a photo here · JPG, PNG, WebP up to 20 MB"}
           </p>
         </div>
       )}

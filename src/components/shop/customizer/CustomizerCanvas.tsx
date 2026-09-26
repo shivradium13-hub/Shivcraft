@@ -304,10 +304,13 @@ function ZoneLayer({
               ].join(" "),
               transformOrigin: "center",
               filter: `brightness(${value.photo.brightness}%) contrast(${value.photo.contrast}%) saturate(${value.photo.saturation}%)`,
+              // Fit / Fill: "contain" shows the whole photo inside the shape,
+              // "cover" (default) fills and crops it to the shape.
+              objectFit: value.photo.fit === "contain" ? "contain" : "cover",
               // The admin's custom shape / clipping mask clips the customer photo.
               ...maskStyle(zone.maskUrl),
             }}
-            className="absolute top-1/2 left-1/2 h-full w-full max-w-none object-cover"
+            className="absolute top-1/2 left-1/2 h-full w-full max-w-none"
           />
           {/* This element's own gradient wash wins; otherwise the global one the
               admin extended to photos and the customer turned on. */}
