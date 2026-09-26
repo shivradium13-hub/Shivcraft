@@ -1,109 +1,109 @@
 @import "tailwindcss";
 
 /**
- * Shiv Radium design tokens.
+ * Shiv Radium design tokens — official brand palette.
  *
- * Bright and white-dominant: #FAFAFA page, white cards, #E7E7E9 dividers,
- * orange reserved for what the customer is meant to act on — primary actions,
- * active navigation, CTAs, highlights, badges, location icons, View all links.
- * No blue, green or purple anywhere except the red that marks a failure.
+ *   Primary Orange  #FF6B2C   (brand-500: CTAs, active nav, highlights)
+ *   Warm Amber      #F59E0B   (secondary accent: offers, gold badges)
+ *   White           #FFFFFF   (cards / surfaces)
+ *   Dark Gray       #111827   (headings, footer/admin bar)
+ *   Light Gray      #F9FAFB   (page background)
  *
- * Text runs in four weights, not two: headings #0F121F, body #2B303A,
- * secondary text and inactive icons #70747E, placeholders #ACAFB6.
+ * Orange is reserved for what the customer is meant to act on. White on the
+ * brand orange (#FF6B2C) is under the 3:1 floor, so anything carrying a white
+ * label uses 600 (white ≈ 3.7:1) and orange text on white uses 700 (≈5:1).
  *
  * `brand-*` and the neutrals dress the storefront; the `sr-*` set below dresses
  * the Categories browser and the admin under the names those screens already
  * use. Both resolve to identical values, so one change moves the whole site.
  */
 @theme {
-  /* Shiv Radium orange. 500 is the brand colour and is used where contrast is
-     not a text question — borders, focus rings, the shadow glow. White on it
-     measures 2.97:1, under the 3.0 floor, so anything carrying a white label
-     uses 600 (3.87) and orange text on white uses 700 (5.47). */
-  --color-brand-50: #fef9f3;
-  --color-brand-100: #fde7d5;
-  --color-brand-200: #facba8;
-  --color-brand-300: #f6a672;
-  --color-brand-400: #f28a4c;
-  --color-brand-500: #ee722e;
-  --color-brand-600: #d45e1f;
-  --color-brand-700: #b04a17;
-  --color-brand-800: #8a3a12;
-  --color-brand-900: #5c260c;
+  /* Shiv Radium orange, anchored at 500 = #FF6B2C (the brand colour). */
+  --color-brand-50: #fff4ee;
+  --color-brand-100: #ffe3d4;
+  --color-brand-200: #ffc3a3;
+  --color-brand-300: #ff9d6b;
+  --color-brand-400: #ff8146;
+  --color-brand-500: #ff6b2c;
+  --color-brand-600: #e5541a;
+  --color-brand-700: #c0430f;
+  --color-brand-800: #97350c;
+  --color-brand-900: #5f2107;
 
-  /* An alias of the same ramp, so components still asking for `marigold`
-     stay on brand rather than introducing a second hue. */
-  --color-marigold-50: #fef9f3;
-  --color-marigold-100: #fde7d5;
-  --color-marigold-200: #facba8;
-  --color-marigold-300: #f6a672;
-  --color-marigold-400: #f28a4c;
-  --color-marigold-500: #ee722e;
-  --color-marigold-600: #d45e1f;
-  --color-marigold-700: #b04a17;
+  /* Warm amber (#F59E0B) — the secondary accent used for offers and gold
+     badges, distinct from the primary orange. */
+  --color-marigold-50: #fffbeb;
+  --color-marigold-100: #fef3c7;
+  --color-marigold-200: #fde68a;
+  --color-marigold-300: #fcd34d;
+  --color-marigold-400: #fbbf24;
+  --color-marigold-500: #f59e0b;
+  --color-marigold-600: #d97706;
+  --color-marigold-700: #b45309;
 
-  /* Text. `ink` is a heading, `ink-soft` is body copy, `muted` is secondary
-     text and an inactive icon, `faint` is a placeholder. */
-  --color-ink: #0f121f;
-  --color-ink-soft: #2b303a;
-  --color-muted: #70747e;
-  --color-faint: #acafb6;
+  /* Text, on the brand's dark-gray family. `ink` is a heading, `ink-soft` is
+     body copy, `muted` is secondary text and inactive icons, `faint` a
+     placeholder. */
+  --color-ink: #111827;
+  --color-ink-soft: #374151;
+  --color-muted: #6b7280;
+  --color-faint: #9ca3af;
 
   /* One divider colour, under both names the components already use. */
-  --color-line: #e7e7e9;
-  --color-line-strong: #e7e7e9;
+  --color-line: #e5e7eb;
+  --color-line-strong: #e5e7eb;
 
   /* Ground. */
   --color-paper: #ffffff;
-  --color-canvas: #fafafa;
-  --color-soft: #fef9f3;
+  --color-canvas: #f9fafb;
+  --color-soft: #fff4ee;
 
-  /* Dark promotional surfaces: the footer and the admin bar. */
-  --color-night: #151b39;
-  --color-night-soft: #232a4d;
-  --color-night-line: #2b3358;
-  --color-night-muted: #acafb6;
+  /* Dark surfaces: the footer and the admin bar — the brand's dark gray. */
+  --color-night: #111827;
+  --color-night-soft: #1f2937;
+  --color-night-line: #374151;
+  --color-night-muted: #9ca3af;
 
   /* Inputs sit on their own grey so a field reads as a field on a white card. */
   --color-field-bg: #f3f4f6;
-  --color-field: #e7e7e9;
-  --color-field-placeholder: #acafb6;
+  --color-field: #e5e7eb;
+  --color-field-placeholder: #9ca3af;
 
   /* Status. Green and blue are out of the palette, so states are told apart
      by weight and ground: done is deep orange on a deeper tint, the stage
      needing attention is darker on a lighter tint, work in progress is
      neutral. Red stays — a cancelled order has to be separable at a glance,
      and an orange failure would read as an offer. */
-  --color-success: #b04a17;
-  --color-success-soft: #fde7d5;
+  --color-success: #c0430f;
+  --color-success-soft: #ffe3d4;
   --color-danger: #b3261e;
   --color-danger-soft: #fceae9;
-  --color-warn: #8a3a12;
-  --color-info: #70747e;
+  --color-warn: #97350c;
+  --color-info: #6b7280;
   --color-info-soft: #f3f4f6;
 
   /* --------------------------------------- SHIV RADIUM (sr-*) ----------
      The same palette under the names the admin already uses.            */
-  --color-sr-50: #fef9f3;
-  --color-sr-100: #fde7d5;
-  --color-sr-200: #facba8;
-  --color-sr-300: #f6a672;
-  --color-sr-400: #f28a4c;
-  --color-sr-500: #ee722e;
-  --color-sr-600: #d45e1f;
-  --color-sr-700: #b04a17;
+  --color-sr-50: #fff4ee;
+  --color-sr-100: #ffe3d4;
+  --color-sr-200: #ffc3a3;
+  --color-sr-300: #ff9d6b;
+  --color-sr-400: #ff8146;
+  --color-sr-500: #ff6b2c;
+  --color-sr-600: #e5541a;
+  --color-sr-700: #c0430f;
 
-  --color-sr-gold: #d45e1f;
-  --color-sr-gold-soft: #fef9f3;
+  --color-sr-gold: #f59e0b;
+  --color-sr-gold-soft: #fffbeb;
 
-  --color-sr-ink: #0f121f;
-  --color-sr-body: #2b303a;
-  --color-sr-muted: #70747e;
-  --color-sr-line: #e7e7e9;
-  --color-sr-line-strong: #e7e7e9;
+  --color-sr-ink: #111827;
+  --color-sr-body: #374151;
+  --color-sr-muted: #6b7280;
+  --color-sr-line: #e5e7eb;
+  --color-sr-line-strong: #e5e7eb;
   --color-sr-surface: #ffffff;
-  --color-sr-canvas: #fafafa;
-  --color-sr-soft: #fef9f3;
+  --color-sr-canvas: #f9fafb;
+  --color-sr-soft: #fff4ee;
 
   --shadow-sr-card: 0 1px 2px rgba(15, 18, 31, 0.04), 0 4px 16px -8px rgba(15, 18, 31, 0.1);
   --shadow-sr-lift: 0 2px 6px rgba(15, 18, 31, 0.06), 0 12px 28px -12px rgba(15, 18, 31, 0.16);
@@ -116,7 +116,7 @@
   --shadow-card: 0 1px 2px rgba(15, 18, 31, 0.04), 0 4px 16px -8px rgba(15, 18, 31, 0.1);
   --shadow-lift: 0 2px 6px rgba(15, 18, 31, 0.06), 0 12px 28px -12px rgba(15, 18, 31, 0.16);
   --shadow-bar: 0 -1px 0 var(--color-line), 0 -8px 24px -18px rgba(15, 18, 31, 0.3);
-  --shadow-orange: 0 8px 25px rgba(238, 114, 46, 0.22);
+  --shadow-orange: 0 8px 25px rgba(255, 107, 44, 0.28);
 }
 
 @layer base {
@@ -161,12 +161,12 @@
      action. The ramp sits in the darker half so white label text clears
      contrast across the whole sweep, not just at the dark end. */
   .gc-cta {
-    background: linear-gradient(135deg, #d45e1f 0%, #c4551a 45%, #b04a17 100%);
+    background: linear-gradient(135deg, #ff6b2c 0%, #f2571c 45%, #e5541a 100%);
     color: #ffffff;
     box-shadow: var(--shadow-orange);
   }
   .gc-cta:hover {
-    background: linear-gradient(135deg, #b04a17 0%, #9d4114 55%, #8a3a12 100%);
+    background: linear-gradient(135deg, #e5541a 0%, #d24a13 55%, #c0430f 100%);
   }
   .gc-cta:disabled {
     box-shadow: none;

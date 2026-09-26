@@ -169,7 +169,7 @@ export function CheckoutClient({
           email: customer.email,
           contact: customer.phone ?? "",
         },
-        theme: { color: "#ee722e" },
+        theme: { color: "#ff6b2c" },
         modal: {
           ondismiss: () => {
             setBusy(false);
