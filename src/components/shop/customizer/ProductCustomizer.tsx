@@ -29,6 +29,7 @@ import { publishCustomizer } from "./customizerBridge";
 import { RepositionBox } from "./RepositionBox";
 import { usePhotoGestures } from "./usePhotoGestures";
 import { PhotoCropModal } from "./PhotoCropModal";
+import { SelectPhotoModal } from "./SelectPhotoModal";
 
 /**
  * The customer's customiser.
@@ -130,6 +131,8 @@ export function ProductCustomizer({
   /* The zone whose photo is open in the crop / adjust editor. `isNew` means a
    *  fresh upload, so cancelling discards it. */
   const [cropCtx, setCropCtx] = useState<{ zoneId: string; isNew: boolean } | null>(null);
+  /* The zone the "Select Photo" source sheet is open for. */
+  const [selectZoneId, setSelectZoneId] = useState<string | null>(null);
 
   /* Zones on the current view that the customer's option choices reveal. A
      zone hidden by a conditional rule is not shown as a tab, a step or a
@@ -407,6 +410,36 @@ export function ProductCustomizer({
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
     }
+  }
+
+  /** Reuse a previously uploaded photo (from the "Recent" strip) without
+   *  uploading it again, then open the crop editor over it. */
+  function placeRecent(zone: CustomizerZone, uploadId: string) {
+    commit({
+      ...design,
+      zones: {
+        ...design.zones,
+        [zone.id]: {
+          kind: "PHOTO",
+          photo: {
+            uploadId,
+            offsetX: 0,
+            offsetY: 0,
+            scale: 1,
+            rotation: 0,
+            flipH: false,
+            flipV: false,
+            naturalWidth: null,
+            naturalHeight: null,
+            brightness: 100,
+            contrast: 100,
+            saturation: 100,
+            fit: "cover",
+          },
+        },
+      },
+    });
+    setCropCtx({ zoneId: zone.id, isNew: true });
   }
 
   /* ---------------------------------------------------------------- price */
@@ -788,33 +821,18 @@ export function ProductCustomizer({
           {activeZone.kind === "PHOTO" ? (
             <>
               {config.tools.photoUpload ? (
-                <>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      // Upload the full-resolution photo, then open the crop /
-                      // adjust editor (non-destructive) over it.
-                      if (file) void upload(file, activeZone);
-                      if (fileRef.current) fileRef.current.value = "";
-                    }}
-                  />
-                  <button
-                    type="button"
-                    disabled={uploading}
-                    onClick={() => fileRef.current?.click()}
-                    className="w-full rounded-full bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
-                  >
-                    {uploading
-                      ? "Uploading photo…"
-                      : activePhoto
-                        ? `Replace photo in ${activeZone.label}`
-                        : `Upload photo for ${activeZone.label}`}
-                  </button>
-                </>
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => setSelectZoneId(activeZone.id)}
+                  className="w-full rounded-full bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+                >
+                  {uploading
+                    ? "Uploading photo…"
+                    : activePhoto
+                      ? `Replace photo in ${activeZone.label}`
+                      : `Upload photo for ${activeZone.label}`}
+                </button>
               ) : null}
 
               {activePhoto ? (
@@ -1255,6 +1273,24 @@ export function ProductCustomizer({
         </dl>
       ) : null}
     </section>
+
+    {selectZoneId ? (() => {
+      const zone = config.zones.find((z) => z.id === selectZoneId);
+      if (!zone) return null;
+      return (
+        <SelectPhotoModal
+          onCancel={() => setSelectZoneId(null)}
+          onPickFile={(file) => {
+            setSelectZoneId(null);
+            void upload(file, zone);
+          }}
+          onPickRecent={(id) => {
+            setSelectZoneId(null);
+            placeRecent(zone, id);
+          }}
+        />
+      );
+    })() : null}
 
     {cropCtx ? (() => {
       const z = config.zones.find((zz) => zz.id === cropCtx.zoneId);
