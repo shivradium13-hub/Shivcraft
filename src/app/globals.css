@@ -172,6 +172,12 @@
     box-shadow: none;
   }
 
+  /* Round crop box for circular frames (Cropper.js). */
+  .gc-crop-round .cropper-view-box,
+  .gc-crop-round .cropper-face {
+    border-radius: 50%;
+  }
+
   .gc-hide-scrollbar {
     scrollbar-width: none;
   }

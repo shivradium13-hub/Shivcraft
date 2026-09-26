@@ -16,7 +16,7 @@ import {
 import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas";
 import { CustomizerFonts } from "@/components/shop/customizer/CustomizerFonts";
 import { ProductCustomizer } from "@/components/shop/customizer/ProductCustomizer";
-import { ImageCropModal } from "@/components/shop/ImageCropModal";
+import { CropModal } from "@/components/shop/CropModal";
 
 /**
  * The admin's customizer builder.
@@ -1001,10 +1001,11 @@ function InsertRow({
       </div>
       {error ? <p className="w-full text-[11px] text-danger">{error}</p> : null}
       {cropFile ? (
-        <ImageCropModal
+        <CropModal
           file={cropFile}
+          title="Crop image"
           onCancel={() => setCropFile(null)}
-          onApply={(cropped) => {
+          onCropped={(cropped) => {
             setCropFile(null);
             void upload(cropped);
           }}
@@ -2884,10 +2885,11 @@ function MediaUploadField({
       {hint ? <span className="text-xs text-sr-muted">{hint}</span> : null}
       {error ? <span className="text-xs font-medium text-danger">{error}</span> : null}
       {cropFile ? (
-        <ImageCropModal
+        <CropModal
           file={cropFile}
+          title="Crop image"
           onCancel={() => setCropFile(null)}
-          onApply={(cropped) => {
+          onCropped={(cropped) => {
             setCropFile(null);
             void upload(cropped);
           }}

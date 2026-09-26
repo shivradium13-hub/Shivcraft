@@ -28,8 +28,7 @@ import { CustomizerCanvas } from "./CustomizerCanvas";
 import { publishCustomizer } from "./customizerBridge";
 import { RepositionBox } from "./RepositionBox";
 import { usePhotoGestures } from "./usePhotoGestures";
-import { PhotoCropModal } from "./PhotoCropModal";
-import { SelectPhotoModal } from "./SelectPhotoModal";
+import { CropModal } from "../CropModal";
 
 /**
  * The customer's customiser.
@@ -128,11 +127,9 @@ export function ProductCustomizer({
   const [history, setHistory] = useState<CustomerDesign[]>([]);
   const [future, setFuture] = useState<CustomerDesign[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  /* The zone whose photo is open in the crop / adjust editor. `isNew` means a
-   *  fresh upload, so cancelling discards it. */
-  const [cropCtx, setCropCtx] = useState<{ zoneId: string; isNew: boolean } | null>(null);
-  /* The zone the "Select Photo" source sheet is open for. */
-  const [selectZoneId, setSelectZoneId] = useState<string | null>(null);
+  /* What the crop editor is open on: a freshly picked file, or an existing
+   *  photo being re-cropped ("Edit"), plus its target zone. */
+  const [crop, setCrop] = useState<{ file?: File; imageUrl?: string; zone: CustomizerZone } | null>(null);
 
   /* Zones on the current view that the customer's option choices reveal. A
      zone hidden by a conditional rule is not shown as a tab, a step or a
@@ -402,44 +399,12 @@ export function ProductCustomizer({
           },
         },
       });
-      // Open the crop / adjust editor over the freshly uploaded photo.
-      setCropCtx({ zoneId: zone.id, isNew: true });
     } catch {
       setNotice("The upload did not finish — check your connection and try again.");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
     }
-  }
-
-  /** Reuse a previously uploaded photo (from the "Recent" strip) without
-   *  uploading it again, then open the crop editor over it. */
-  function placeRecent(zone: CustomizerZone, uploadId: string) {
-    commit({
-      ...design,
-      zones: {
-        ...design.zones,
-        [zone.id]: {
-          kind: "PHOTO",
-          photo: {
-            uploadId,
-            offsetX: 0,
-            offsetY: 0,
-            scale: 1,
-            rotation: 0,
-            flipH: false,
-            flipV: false,
-            naturalWidth: null,
-            naturalHeight: null,
-            brightness: 100,
-            contrast: 100,
-            saturation: 100,
-            fit: "cover",
-          },
-        },
-      },
-    });
-    setCropCtx({ zoneId: zone.id, isNew: true });
   }
 
   /* ---------------------------------------------------------------- price */
@@ -821,28 +786,42 @@ export function ProductCustomizer({
           {activeZone.kind === "PHOTO" ? (
             <>
               {config.tools.photoUpload ? (
-                <button
-                  type="button"
-                  disabled={uploading}
-                  onClick={() => setSelectZoneId(activeZone.id)}
-                  className="w-full rounded-full bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
-                >
-                  {uploading
-                    ? "Uploading photo…"
-                    : activePhoto
-                      ? `Replace photo in ${activeZone.label}`
-                      : `Upload photo for ${activeZone.label}`}
-                </button>
+                <>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      // Pick → crop editor → (on Select) upload + place.
+                      if (f) setCrop({ file: f, zone: activeZone });
+                      if (fileRef.current) fileRef.current.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => fileRef.current?.click()}
+                    className="w-full rounded-full bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+                  >
+                    {uploading
+                      ? "Uploading photo…"
+                      : activePhoto
+                        ? `Replace photo in ${activeZone.label}`
+                        : `Upload photo for ${activeZone.label}`}
+                  </button>
+                </>
               ) : null}
 
               {activePhoto ? (
                 <>
                   <button
                     type="button"
-                    onClick={() => setCropCtx({ zoneId: activeZone.id, isNew: false })}
+                    onClick={() => setCrop({ imageUrl: `/api/uploads/${activePhoto.uploadId}`, zone: activeZone })}
                     className="mt-2 w-full rounded-full border border-brand-500 px-5 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
                   >
-                    Crop / adjust photo
+                    Edit image (crop)
                   </button>
                   <p className="mt-2 text-center text-[11px] text-muted">
                     Drag the photo to move it. Pinch, or hold ⌘/Ctrl and scroll, to zoom.
@@ -1274,53 +1253,21 @@ export function ProductCustomizer({
       ) : null}
     </section>
 
-    {selectZoneId ? (() => {
-      const zone = config.zones.find((z) => z.id === selectZoneId);
-      if (!zone) return null;
-      return (
-        <SelectPhotoModal
-          onCancel={() => setSelectZoneId(null)}
-          onPickFile={(file) => {
-            setSelectZoneId(null);
-            void upload(file, zone);
-          }}
-          onPickRecent={(id) => {
-            setSelectZoneId(null);
-            placeRecent(zone, id);
-          }}
-        />
-      );
-    })() : null}
-
-    {cropCtx ? (() => {
-      const z = config.zones.find((zz) => zz.id === cropCtx.zoneId);
-      const v = design.zones[cropCtx.zoneId];
-      if (!z || v?.kind !== "PHOTO") return null;
-      const p = v.photo;
-      return (
-        <PhotoCropModal
-          imageUrl={`/api/uploads/${p.uploadId}`}
-          aspect={z.height > 0 ? z.width / z.height : 1}
-          initial={{ offsetX: p.offsetX, offsetY: p.offsetY, scale: p.scale, fit: p.fit ?? "cover" }}
-          onCancel={() => {
-            // A fresh upload cancelled → discard it. A re-edit → leave as it was.
-            if (cropCtx.isNew) {
-              commit({
-                ...design,
-                zones: Object.fromEntries(
-                  Object.entries(design.zones).filter(([k]) => k !== cropCtx.zoneId),
-                ),
-              });
-            }
-            setCropCtx(null);
-          }}
-          onApply={(r) => {
-            setPhoto(cropCtx.zoneId, r);
-            setCropCtx(null);
-          }}
-        />
-      );
-    })() : null}
+    {crop ? (
+      <CropModal
+        file={crop.file}
+        imageUrl={crop.imageUrl}
+        aspectRatio={crop.zone.height > 0 ? crop.zone.width / crop.zone.height : undefined}
+        round={crop.zone.shape === "CIRCLE"}
+        title="Crop photo"
+        onCancel={() => setCrop(null)}
+        onCropped={(cropped) => {
+          const { zone } = crop;
+          setCrop(null);
+          void upload(cropped, zone);
+        }}
+      />
+    ) : null}
     </>
   );
 }

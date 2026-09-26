@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 
-import { ImageCropModal } from "./ImageCropModal";
+import { CropModal } from "./CropModal";
 
 type Uploaded = { id: string; url: string; name: string };
 
@@ -166,13 +166,14 @@ export function PhotoUploadField({
       />
 
       {cropFile ? (
-        <ImageCropModal
+        <CropModal
           file={cropFile}
+          title="Crop image"
           onCancel={() => {
             setCropFile(null);
             if (inputRef.current) inputRef.current.value = "";
           }}
-          onApply={(cropped) => {
+          onCropped={(cropped) => {
             setCropFile(null);
             if (inputRef.current) inputRef.current.value = "";
             void send(cropped);
