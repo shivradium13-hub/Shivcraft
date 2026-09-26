@@ -81,6 +81,14 @@ export const zoneSchema = z.object({
 
   required: z.boolean().default(true),
 
+  /** Element opacity, 0–100. 100 is fully opaque (the default for every zone). */
+  opacity: z.number().min(0).max(100).default(100),
+
+  /** A custom clip shape as a CSS clip-path `polygon(...)` in percentages of the
+   *  box, drawn with the curve/shape tool. Empty means the RECT/CIRCLE/mask
+   *  shape applies instead. */
+  clipPath: z.string().trim().max(4000).default(""),
+
   /** Layers: hidden drops the element from the design entirely; locked keeps
    *  it from being moved or resized in the builder. Both are admin-side. */
   hidden: z.boolean().default(false),
@@ -92,7 +100,11 @@ export const zoneSchema = z.object({
   fill: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().default(null),
   stroke: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().default(null),
   strokeWidth: z.number().min(0).max(40).default(0),
+  /** FRAME: the PNG/JPG frame image. PHOTO: an optional default image the admin
+   *  places, shown until the customer uploads their own (they can change it). */
   imageUrl: z.string().trim().max(500).default(""),
+  /** PHOTO: how the default image (imageUrl) fills the box, as a percent zoom. */
+  imageZoom: z.number().min(10).max(400).default(100),
   tintByFrameColor: z.boolean().default(false),
 
   /** Shown only for certain option choices; null means always shown. */
@@ -109,8 +121,15 @@ export const zoneSchema = z.object({
   defaultText: z.string().max(500).default(""),
   fontFamily: z.string().max(80).default("Inter"),
   fontSizePct: z.number().min(1).max(100).default(12),
+  /** CSS font weight, 100–900. 400 is Regular; 600 Semi Bold; 700 Bold. */
+  fontWeight: z.number().int().min(100).max(900).default(400),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#0f121f"),
   align: z.enum(["left", "center", "right"]).default("center"),
+  /** Admin's default mirroring for the text: none, flipped horizontally, or
+   *  flipped vertically. */
+  textMirror: z.enum(["none", "h", "v"]).default("none"),
+  /** When true, the customer is given a control to mirror the text themselves. */
+  customerCanMirror: z.boolean().default(false),
 
   /** Per-element shadow (admin styling), independent of every other element.
    *  `inset` is an inner shadow; text areas render it as an engraved look since
@@ -658,6 +677,26 @@ export function zoneGradientCss(zone: CustomizerZone): string | null {
   const g = zone.gradient;
   if (!g?.enabled) return null;
   return `linear-gradient(${g.angle}deg, ${g.color1}, ${g.color2})`;
+}
+
+/**
+ * The `scale(...)` that mirrors a text area, combining the admin's default with
+ * the customer's own flip (when they are allowed one), or null when neither
+ * mirrors. `h` flips left↔right, `v` flips top↔bottom; a customer flip toggles
+ * the admin default rather than replacing it, so both compose.
+ */
+export function zoneTextMirror(
+  zone: CustomizerZone,
+  customer?: { mirrorH?: boolean; mirrorV?: boolean },
+): string | null {
+  let h = zone.textMirror === "h";
+  let v = zone.textMirror === "v";
+  if (zone.customerCanMirror && customer) {
+    if (customer.mirrorH) h = !h;
+    if (customer.mirrorV) v = !v;
+  }
+  if (!h && !v) return null;
+  return `scale(${h ? -1 : 1}, ${v ? -1 : 1})`;
 }
 
 /* ------------------------------------------------ acrylic-mirror finishes ---

@@ -15,6 +15,7 @@ import {
   zoneAcrylicText,
   zoneBoxShadow,
   zoneGradientCss,
+  zoneTextMirror,
   zoneTextShadow,
   zonesForView,
   type CustomizerConfig,
@@ -178,6 +179,7 @@ function ZoneLayer({
 }) {
   const value = design.zones[zone.id];
 
+  const opacity = zone.opacity ?? 100;
   const box: CSSProperties = {
     left: `${zone.x}%`,
     top: `${zone.y}%`,
@@ -185,6 +187,10 @@ function ZoneLayer({
     height: `${zone.height}%`,
     transform: zone.rotation ? `rotate(${zone.rotation}deg)` : undefined,
     borderRadius: zone.shape === "CIRCLE" ? "9999px" : `${zone.cornerRadius}%`,
+    // The element's own opacity; 100 leaves it untouched.
+    opacity: opacity < 100 ? opacity / 100 : undefined,
+    // A hand-drawn custom shape from the curve tool clips the whole element.
+    clipPath: zone.clipPath || undefined,
     /* Makes the zone a container, so the text below can be sized as a
        percentage of the ZONE's height rather than the viewport's. Without it
        `cqh` resolves against the small viewport and the text comes out the
@@ -262,9 +268,15 @@ function ZoneLayer({
   /* An acrylic-mirror finish, when set, overrides the colour/gradient entirely. */
   const acrylic = zoneAcrylicText(zone);
 
+  /* A photo box may carry a border, like a frame does. */
+  const photoBorder =
+    zone.kind === "PHOTO" && zone.strokeWidth > 0 && zone.stroke
+      ? `${zone.strokeWidth}px solid ${zone.stroke}`
+      : undefined;
+
   return (
     <div
-      style={{ ...box, boxShadow: photoOuterShadow }}
+      style={{ ...box, boxShadow: photoOuterShadow, border: photoBorder }}
       onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
       className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
         // Admin builder guides: full dashed outline on the selected photo area.
@@ -323,6 +335,21 @@ function ZoneLayer({
             />
           ) : null}
         </>
+      ) : zone.kind === "PHOTO" && zone.imageUrl ? (
+        /* The admin's default image: shown in an empty photo box until the
+           customer uploads their own. `imageZoom` scales how it fills the box. */
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={zone.imageUrl}
+          alt=""
+          draggable={false}
+          style={{
+            transform: `translate(-50%, -50%) scale(${(zone.imageZoom ?? 100) / 100})`,
+            transformOrigin: "center",
+            ...maskStyle(zone.maskUrl),
+          }}
+          className="absolute top-1/2 left-1/2 h-full w-full max-w-none object-cover"
+        />
       ) : null}
 
       {value?.kind === "TEXT" && value.text.value.trim() && text ? (
@@ -334,15 +361,22 @@ function ZoneLayer({
              reproduce the layout at preview and print size. */
           containerStyle={{
             transform:
-              value.text.offsetX || value.text.offsetY || value.text.rotation
-                ? `translate(${value.text.offsetX ?? 0}%, ${value.text.offsetY ?? 0}%) rotate(${value.text.rotation ?? 0}deg)`
-                : undefined,
+              [
+                value.text.offsetX || value.text.offsetY
+                  ? `translate(${value.text.offsetX ?? 0}%, ${value.text.offsetY ?? 0}%)`
+                  : "",
+                value.text.rotation ? `rotate(${value.text.rotation}deg)` : "",
+                // Admin's default mirror, optionally toggled by the customer.
+                zoneTextMirror(zone, { mirrorH: value.text.mirrorH, mirrorV: value.text.mirrorV }) ?? "",
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined,
           }}
           textStyle={{
             fontFamily: fontStack(value.text.fontFamily ?? text.fontFamily),
             fontSize: `${value.text.fontSizePct ?? text.fontSizePct}cqh`,
             lineHeight: 1.15,
-            fontWeight: value.text.bold ? 700 : undefined,
+            fontWeight: value.text.bold ? 700 : zone.fontWeight ?? undefined,
             fontStyle: value.text.italic ? "italic" : undefined,
             textDecoration: value.text.underline ? "underline" : undefined,
             // Colour precedence: acrylic-mirror finish → element gradient →

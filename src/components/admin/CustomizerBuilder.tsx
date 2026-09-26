@@ -508,22 +508,24 @@ export function CustomizerBuilder({
               selected={zone}
               onSelect={setSelectedZone}
               onPatch={patchZone}
-              onAdd={(kind) => {
+              onAdd={(kind, opts) => {
                 const id = `${kind.toLowerCase()}-${Math.random().toString(36).slice(2, 7)}`;
                 const created: CustomizerZone = {
                   id,
                   kind,
-                  label: kind === "PHOTO" ? "Photo" : kind === "TEXT" ? "Text" : "Frame",
-                  shape: "RECT",
+                  label: kind === "PHOTO" ? "Img box" : kind === "TEXT" ? "Text box" : "Frame",
+                  shape: opts?.shape ?? "RECT",
                   x: kind === "FRAME" ? 12 : 25,
                   y: kind === "FRAME" ? 12 : 25,
                   width: kind === "FRAME" ? 76 : 50,
                   height: kind === "PHOTO" ? 40 : kind === "TEXT" ? 10 : 76,
                   rotation: 0,
-                  cornerRadius: 0,
+                  cornerRadius: opts?.cornerRadius ?? 0,
                   safeInset: kind === "PHOTO" ? 4 : 0,
                   // A frame is decoration, not something the customer must fill.
                   required: kind !== "FRAME",
+                  opacity: 100,
+                  clipPath: "",
                   hidden: false,
                   locked: false,
                   // A new frame follows the customer's frame colour by default,
@@ -531,7 +533,8 @@ export function CustomizerBuilder({
                   fill: kind === "FRAME" ? "#151b39" : null,
                   stroke: null,
                   strokeWidth: 0,
-                  imageUrl: "",
+                  imageUrl: opts?.imageUrl ?? "",
+                  imageZoom: 100,
                   tintByFrameColor: kind === "FRAME",
                   visibleWhen: null,
                   printWidthMm: kind === "PHOTO" ? 150 : null,
@@ -541,8 +544,11 @@ export function CustomizerBuilder({
                   defaultText: "",
                   fontFamily: "Inter",
                   fontSizePct: 55,
+                  fontWeight: kind === "TEXT" ? 600 : 400,
                   color: "#0f121f",
                   align: "center",
+                  textMirror: "none",
+                  customerCanMirror: false,
                   shadow: { enabled: false, inset: false, color: "#000000", opacity: 45, blur: 6, offsetX: 0, offsetY: 4 },
                   gradient: { enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 },
                   maskUrl: "",
@@ -576,6 +582,30 @@ export function CustomizerBuilder({
                 }))
               }
               productImages={productImages}
+              onDuplicate={(id) =>
+                setConfig((prev) => {
+                  const src = prev.zones.find((z) => z.id === id);
+                  if (!src) return prev;
+                  const nid = `${src.kind.toLowerCase()}-${Math.random().toString(36).slice(2, 7)}`;
+                  // Offset the copy slightly so it does not sit exactly on top.
+                  const copy: CustomizerZone = {
+                    ...src,
+                    id: nid,
+                    label: `${src.label} copy`,
+                    x: clamp(src.x + 3, 0, Math.max(0, 100 - src.width)),
+                    y: clamp(src.y + 3, 0, Math.max(0, 100 - src.height)),
+                  };
+                  return {
+                    ...prev,
+                    zones: [...prev.zones, copy],
+                    views: prev.views.map((v) =>
+                      v.id === (view?.id ?? "")
+                        ? { ...v, zoneIds: [...v.zoneIds, nid] }
+                        : v,
+                    ),
+                  };
+                })
+              }
               onReorder={(id, dir) =>
                 setConfig((prev) => ({
                   ...prev,
@@ -891,6 +921,236 @@ function ViewsTab({
   );
 }
 
+/** Parses a stored `polygon(x% y%, …)` clip-path back into editable points. */
+function parsePolygon(clip: string): { x: number; y: number }[] {
+  const m = /polygon\(([^)]*)\)/.exec(clip);
+  if (!m) return [];
+  return m[1]
+    .split(",")
+    .map((pair) => {
+      const [x, y] = pair.trim().split(/\s+/).map((n) => parseFloat(n));
+      return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+    })
+    .filter((p): p is { x: number; y: number } => Boolean(p));
+}
+
+/**
+ * The "Create curve shape" clip tool: draw a custom shape by clicking points,
+ * stored as a CSS `clip-path: polygon(...)` the renderer applies to the element.
+ * Real and self-contained — no fake button; an empty result clears the shape.
+ */
+function CurveShapeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <p className="mb-1 text-xs font-semibold text-sr-ink">Clip mask (curve tool — draw a custom shape)</p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="rounded-lg bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:bg-night-soft"
+        >
+          ✎ {value ? "Edit curve shape" : "Create curve shape"}
+        </button>
+        {value ? (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="rounded-lg border border-sr-line-strong px-3 py-2 text-xs font-semibold text-sr-body"
+          >
+            Clear
+          </button>
+        ) : null}
+        <span className={`text-[11px] ${value ? "text-success" : "text-sr-muted"}`}>
+          {value ? "Custom shape set" : "No custom shape"}
+        </span>
+      </div>
+      {open ? (
+        <CurveShapeModal
+          initial={value}
+          onCancel={() => setOpen(false)}
+          onSave={(v) => {
+            onChange(v);
+            setOpen(false);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function CurveShapeModal({
+  initial,
+  onCancel,
+  onSave,
+}: {
+  initial: string;
+  onCancel: () => void;
+  onSave: (clipPath: string) => void;
+}) {
+  const [points, setPoints] = useState<{ x: number; y: number }[]>(() => parsePolygon(initial));
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  function addPoint(e: React.MouseEvent<HTMLDivElement>) {
+    const b = boxRef.current?.getBoundingClientRect();
+    if (!b) return;
+    const x = clamp(round(((e.clientX - b.left) / b.width) * 100), 0, 100);
+    const y = clamp(round(((e.clientY - b.top) / b.height) * 100), 0, 100);
+    setPoints((p) => [...p, { x, y }]);
+  }
+
+  const poly = points.map((p) => `${p.x}% ${p.y}%`).join(", ");
+  const svgPoints = points.map((p) => `${p.x},${p.y}`).join(" ");
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Curve shape editor"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/80 p-4"
+      onClick={onCancel}
+    >
+      <div className="w-full max-w-md rounded-card bg-canvas p-4" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-sm font-semibold text-ink">Draw a custom shape</p>
+          <button type="button" onClick={onCancel} className="text-xs font-semibold text-muted">
+            Close
+          </button>
+        </div>
+        <p className="mb-2 text-xs text-muted">
+          Click to drop points around the shape (at least 3). The element is clipped to this outline.
+        </p>
+        <div
+          ref={boxRef}
+          onClick={addPoint}
+          className="relative aspect-square w-full cursor-crosshair overflow-hidden rounded-lg border border-line-strong bg-[repeating-conic-gradient(#e7e7e9_0%_25%,#fff_0%_50%)] bg-[length:24px_24px]"
+        >
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+            {points.length >= 2 ? (
+              <polygon
+                points={svgPoints}
+                fill="rgba(238,114,46,0.25)"
+                stroke="#ee722e"
+                strokeWidth={0.6}
+              />
+            ) : null}
+            {points.map((p, i) => (
+              <circle key={i} cx={p.x} cy={p.y} r={1.4} fill="#ee722e" />
+            ))}
+          </svg>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setPoints((p) => p.slice(0, -1))}
+            disabled={points.length === 0}
+            className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft disabled:opacity-40"
+          >
+            Undo point
+          </button>
+          <button
+            type="button"
+            onClick={() => setPoints([])}
+            className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            disabled={points.length < 3}
+            onClick={() => onSave(`polygon(${poly})`)}
+            className="ml-auto rounded-lg bg-sr-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+          >
+            Save shape
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One "Insert …" row in the Create panel: quick shape presets plus a direct
+ * JPG/PNG upload, so a frame or image box can be dropped in already carrying its
+ * artwork. The upload goes through the same admin media route as everywhere else.
+ */
+function InsertRow({
+  title,
+  hint,
+  onCreate,
+}: {
+  title: string;
+  hint: string;
+  onCreate: (opts: { shape?: "RECT" | "CIRCLE"; cornerRadius?: number; imageUrl?: string }) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function upload(file: File) {
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.data?.url) {
+        setError(json?.error?.message ?? "That file did not upload.");
+        return;
+      }
+      onCreate({ imageUrl: json.data.url });
+    } catch {
+      setError("Upload failed — check your connection.");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  const shapeBtn = "flex h-9 w-10 items-center justify-center rounded-lg border border-sr-line-strong text-sr-body transition hover:border-sr-400";
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-sr-ink">{title}</p>
+        <p className="text-[11px] text-sr-muted">{hint}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <button type="button" title="Rectangle" aria-label="Rectangle" className={shapeBtn} onClick={() => onCreate({ shape: "RECT" })}>
+          <span className="h-4 w-5 rounded-[2px] border-2 border-current" />
+        </button>
+        <button type="button" title="Rounded" aria-label="Rounded" className={shapeBtn} onClick={() => onCreate({ shape: "RECT", cornerRadius: 18 })}>
+          <span className="h-4 w-5 rounded-[6px] border-2 border-current" />
+        </button>
+        <button type="button" title="Circle" aria-label="Circle" className={shapeBtn} onClick={() => onCreate({ shape: "CIRCLE" })}>
+          <span className="h-4 w-4 rounded-full border-2 border-current" />
+        </button>
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="rounded-lg bg-sr-600 px-2.5 py-2 text-[11px] font-semibold text-white transition hover:bg-sr-700 disabled:opacity-60"
+          title="Upload a JPG or PNG"
+        >
+          {uploading ? "…" : "JPG/PNG"}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void upload(f);
+          }}
+        />
+      </div>
+      {error ? <p className="w-full text-[11px] text-danger">{error}</p> : null}
+    </div>
+  );
+}
+
 function ZonesTab({
   config,
   view,
@@ -899,6 +1159,7 @@ function ZonesTab({
   onPatch,
   onAdd,
   onRemove,
+  onDuplicate,
   onReorder,
   productImages,
 }: {
@@ -907,8 +1168,12 @@ function ZonesTab({
   selected: CustomizerZone | null;
   onSelect: (id: string) => void;
   onPatch: (id: string, patch: Partial<CustomizerZone>) => void;
-  onAdd: (kind: "PHOTO" | "TEXT" | "FRAME") => void;
+  onAdd: (
+    kind: "PHOTO" | "TEXT" | "FRAME",
+    opts?: { shape?: "RECT" | "CIRCLE"; imageUrl?: string; cornerRadius?: number },
+  ) => void;
   onRemove: (id: string) => void;
+  onDuplicate: (id: string) => void;
   onReorder: (id: string, dir: "up" | "down") => void;
   productImages: string[];
 }) {
@@ -931,40 +1196,48 @@ function ZonesTab({
         select to resize or rotate. The layers list on the right sets what sits in front.
       </p>
 
-      <div className="flex flex-wrap gap-1.5">
-        {inView.map((z) => (
+      {inView.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {inView.map((z) => (
+            <button
+              key={z.id}
+              type="button"
+              onClick={() => onSelect(z.id)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                selected?.id === z.id ? "border-sr-600 text-sr-700" : "border-sr-line-strong text-sr-body"
+              }`}
+            >
+              {z.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Create panel — shapes and direct JPG/PNG upload for each element type. */}
+      <div className="grid gap-2.5 rounded-lg border border-sr-line bg-sr-canvas p-3">
+        <InsertRow
+          title="Insert frame"
+          hint="A decorative border/shape the customer can't edit."
+          onCreate={(opts) => onAdd("FRAME", opts)}
+        />
+        <InsertRow
+          title="Insert img box"
+          hint="Where the customer's photo goes. Upload a default image or a PNG shape."
+          onCreate={(opts) => onAdd("PHOTO", opts)}
+        />
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-sr-ink">Insert text box</p>
+            <p className="text-[11px] text-sr-muted">A line of customer wording.</p>
+          </div>
           <button
-            key={z.id}
             type="button"
-            onClick={() => onSelect(z.id)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-              selected?.id === z.id ? "border-sr-600 text-sr-700" : "border-sr-line-strong text-sr-body"
-            }`}
+            onClick={() => onAdd("TEXT")}
+            className="shrink-0 rounded-lg border border-sr-line-strong px-4 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400"
           >
-            {z.label}
+            + Text box
           </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => onAdd("PHOTO")}
-          className="rounded-full border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
-        >
-          + Image box
-        </button>
-        <button
-          type="button"
-          onClick={() => onAdd("TEXT")}
-          className="rounded-full border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
-        >
-          + Text box
-        </button>
-        <button
-          type="button"
-          onClick={() => onAdd("FRAME")}
-          className="rounded-full border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
-        >
-          + Frame
-        </button>
+        </div>
       </div>
 
       {/* Layers: show/hide, lock, and stacking order, like a design tool. */}
@@ -1034,7 +1307,31 @@ function ZonesTab({
 
       {selected ? (
         <div className="grid gap-3 rounded-lg border border-sr-line p-3 sm:grid-cols-2">
-          <Field label="Label" hint="What the customer is asked for.">
+          <div className="flex items-center justify-between gap-2 sm:col-span-2">
+            <p className="text-sm font-semibold text-sr-ink">
+              {selected.kind === "PHOTO" ? "Image" : selected.kind === "TEXT" ? "Text" : "Frame"} properties
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => onDuplicate(selected.id)}
+                title="Duplicate this element"
+                className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-xs font-semibold text-sr-body hover:border-sr-400"
+              >
+                ⧉ Duplicate
+              </button>
+              <button
+                type="button"
+                onClick={() => onRemove(selected.id)}
+                title="Delete this element"
+                className="rounded-lg border border-danger px-2.5 py-1 text-xs font-semibold text-danger hover:bg-danger-soft"
+              >
+                🗑 Delete
+              </button>
+            </div>
+          </div>
+
+          <Field label="Label name" hint="What the customer is asked for.">
             <input
               className={input}
               value={selected.label}
@@ -1060,6 +1357,70 @@ function ZonesTab({
           <Num label="Top %" value={selected.y} onChange={(v) => onPatch(selected.id, { y: v })} />
           <Num label="Width %" value={selected.width} onChange={(v) => onPatch(selected.id, { width: v })} />
           <Num label="Height %" value={selected.height} onChange={(v) => onPatch(selected.id, { height: v })} />
+          <Num label="Rotation °" value={selected.rotation} onChange={(v) => onPatch(selected.id, { rotation: clamp(v, -180, 180) })} />
+
+          {/* Align within the canvas — sets position; no new stored field. */}
+          <div className="sm:col-span-2">
+            <p className="mb-1 text-xs font-semibold text-sr-ink">Align in canvas</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  ["Left", () => ({ x: 0 })],
+                  ["Center", () => ({ x: round((100 - selected.width) / 2) })],
+                  ["Right", () => ({ x: round(100 - selected.width) })],
+                  ["Top", () => ({ y: 0 })],
+                  ["Middle", () => ({ y: round((100 - selected.height) / 2) })],
+                  ["Bottom", () => ({ y: round(100 - selected.height) })],
+                ] as [string, () => Partial<CustomizerZone>][]
+              ).map(([label, patch]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => onPatch(selected.id, patch())}
+                  className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-[11px] font-semibold text-sr-body hover:border-sr-400"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Layer order + visibility + lock, mirrored from the layers list. */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:col-span-2">
+            <span className="text-xs font-semibold text-sr-ink">Layer</span>
+            <button type="button" onClick={() => onReorder(selected.id, "up")} className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-[11px] font-semibold text-sr-body hover:border-sr-400">↑ Bring forward</button>
+            <button type="button" onClick={() => onReorder(selected.id, "down")} className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-[11px] font-semibold text-sr-body hover:border-sr-400">↓ Send back</button>
+            <button
+              type="button"
+              onClick={() => onPatch(selected.id, { hidden: !selected.hidden })}
+              className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${selected.hidden ? "border-sr-line-strong text-sr-muted" : "border-sr-line-strong text-sr-body"}`}
+            >
+              {selected.hidden ? "🚫 Hidden" : "👁 Visible"}
+            </button>
+            <button
+              type="button"
+              onClick={() => onPatch(selected.id, { locked: !selected.locked })}
+              className="rounded-lg border border-sr-line-strong px-2.5 py-1 text-[11px] font-semibold text-sr-body"
+            >
+              {selected.locked ? "🔒 Locked" : "🔓 Unlocked"}
+            </button>
+          </div>
+
+          {/* Opacity — every element. */}
+          <div className="sm:col-span-2">
+            <label className="flex items-center justify-between text-xs font-semibold text-sr-ink">
+              <span>Opacity</span>
+              <span className="text-sr-muted tabular-nums">{selected.opacity ?? 100}%</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={selected.opacity ?? 100}
+              onChange={(e) => onPatch(selected.id, { opacity: Number(e.target.value) })}
+              className="mt-1 w-full accent-sr-600"
+            />
+          </div>
 
           {selected.kind === "PHOTO" ? (
             <>
@@ -1083,16 +1444,108 @@ function ZonesTab({
               </Field>
               <div className="sm:col-span-2">
                 <MediaUploadField
+                  label="Default image (JPG / PNG) — the customer can change it"
+                  hint="Shown in the box until the customer uploads their own photo. Leave empty for an empty photo slot."
+                  value={selected.imageUrl}
+                  onChange={(url) => onPatch(selected.id, { imageUrl: url })}
+                />
+              </div>
+              {selected.imageUrl ? (
+                <div className="sm:col-span-2">
+                  <label className="flex items-center justify-between text-xs font-semibold text-sr-ink">
+                    <span>Default image zoom</span>
+                    <span className="text-sr-muted tabular-nums">{selected.imageZoom ?? 100}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={10}
+                    max={400}
+                    value={selected.imageZoom ?? 100}
+                    onChange={(e) => onPatch(selected.id, { imageZoom: Number(e.target.value) })}
+                    className="mt-1 w-full accent-sr-600"
+                  />
+                </div>
+              ) : null}
+              <div className="sm:col-span-2">
+                <MediaUploadField
                   label="Custom shape / clipping mask (PNG)"
-                  hint="The customer's photo is clipped to this shape's alpha. Leave empty to use the Rectangle/Circle shape above."
+                  hint="The customer's photo is clipped to this shape's alpha. Leave empty to use the Rectangle/Circle shape above, or draw one below."
                   value={selected.maskUrl}
                   onChange={(url) => onPatch(selected.id, { maskUrl: url })}
                   accept="image/png,image/webp"
                 />
               </div>
+              <div className="sm:col-span-2">
+                <CurveShapeField
+                  value={selected.clipPath}
+                  onChange={(clipPath) => onPatch(selected.id, { clipPath })}
+                />
+              </div>
+              <Field label="Border colour">
+                <input
+                  type="color"
+                  className="h-10 w-full rounded-lg border border-field bg-field-bg"
+                  value={selected.stroke ?? "#000000"}
+                  onChange={(e) => onPatch(selected.id, { stroke: e.target.value })}
+                />
+              </Field>
+              <Num
+                label="Border width (px)"
+                value={selected.strokeWidth}
+                onChange={(v) => onPatch(selected.id, { strokeWidth: v })}
+              />
             </>
           ) : selected.kind === "TEXT" ? (
             <>
+              <div className="sm:col-span-2">
+                <Field label="Default text" hint="Pre-filled for the customer; they can change it.">
+                  <input
+                    className={input}
+                    value={selected.defaultText}
+                    placeholder="Your Text"
+                    onChange={(e) => onPatch(selected.id, { defaultText: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <Field label="Font family" hint="Default font. Customer fonts are set under Customer options.">
+                <select
+                  className={input}
+                  value={selected.fontFamily}
+                  onChange={(e) => onPatch(selected.id, { fontFamily: e.target.value })}
+                >
+                  {(() => {
+                    const base = ["Inter", "Arial", "Georgia", "Times New Roman", "Courier New", "Verdana", "Trebuchet MS", "Poppins", "Roboto", "Montserrat", "Oswald", "Playfair Display", "Lobster", "Great Vibes", "Pacifico"];
+                    const extra = config.customerOptions.font.families.map((f) => f.name);
+                    const all = Array.from(new Set([...base, ...extra, selected.fontFamily].filter(Boolean)));
+                    return all.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ));
+                  })()}
+                </select>
+              </Field>
+              <Field label="Font weight">
+                <select
+                  className={input}
+                  value={selected.fontWeight ?? 400}
+                  onChange={(e) => onPatch(selected.id, { fontWeight: Number(e.target.value) })}
+                >
+                  {[
+                    [300, "Light"],
+                    [400, "Regular"],
+                    [500, "Medium"],
+                    [600, "Semi Bold"],
+                    [700, "Bold"],
+                    [800, "Extra Bold"],
+                    [900, "Black"],
+                  ].map(([w, label]) => (
+                    <option key={w} value={w}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <Field label="Maximum characters">
                 <input
                   type="number"
@@ -1106,6 +1559,54 @@ function ZonesTab({
                 value={selected.fontSizePct}
                 onChange={(v) => onPatch(selected.id, { fontSizePct: v })}
               />
+              <div className="sm:col-span-2">
+                <p className="mb-1 text-xs font-semibold text-sr-ink">Text alignment</p>
+                <div className="flex gap-1.5">
+                  {(["left", "center", "right"] as const).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => onPatch(selected.id, { align: a })}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold capitalize ${
+                        selected.align === a ? "border-sr-600 bg-sr-600 text-white" : "border-sr-line-strong text-sr-body"
+                      }`}
+                    >
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="mb-1 text-xs font-semibold text-sr-ink">Mirror text</p>
+                <div className="flex gap-1.5">
+                  {(
+                    [
+                      ["none", "Normal"],
+                      ["h", "↔ Horizontal"],
+                      ["v", "↕ Vertical"],
+                    ] as [CustomizerZone["textMirror"], string][]
+                  ).map(([m, label]) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => onPatch(selected.id, { textMirror: m })}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold ${
+                        (selected.textMirror ?? "none") === m ? "border-sr-600 bg-sr-600 text-white" : "border-sr-line-strong text-sr-body"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <label className="mt-2 flex items-center gap-2 text-sm text-sr-body">
+                  <input
+                    type="checkbox"
+                    checked={selected.customerCanMirror ?? false}
+                    onChange={(e) => onPatch(selected.id, { customerCanMirror: e.target.checked })}
+                  />
+                  Let the customer mirror it themselves
+                </label>
+              </div>
               <Field label="Default text colour" hint="Used if you don't allow text colours.">
                 <input
                   type="color"
@@ -1378,16 +1879,6 @@ function ZonesTab({
               subject="area"
               onChange={(visibleWhen) => onPatch(selected.id, { visibleWhen })}
             />
-          </div>
-
-          <div className="sm:col-span-2">
-            <button
-              type="button"
-              onClick={() => onRemove(selected.id)}
-              className="rounded-lg border border-danger px-3 py-1.5 text-xs font-semibold text-danger"
-            >
-              Remove this area
-            </button>
           </div>
         </div>
       ) : (

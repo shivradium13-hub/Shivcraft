@@ -54,6 +54,10 @@ export const textPlacementSchema = z.object({
   bold: z.boolean().optional(),
   italic: z.boolean().optional(),
   underline: z.boolean().optional(),
+  /** The customer's own mirror choice, offered only when the admin allowed it.
+   *  Composes with the zone's admin default mirror. */
+  mirrorH: z.boolean().optional(),
+  mirrorV: z.boolean().optional(),
 });
 export type TextPlacement = z.infer<typeof textPlacementSchema>;
 
@@ -130,7 +134,7 @@ export function designFingerprint(design: CustomerDesign | null): string {
         return `${key}:P:${p.uploadId}:${p.offsetX.toFixed(2)}:${p.offsetY.toFixed(2)}:${p.scale.toFixed(3)}:${p.rotation}:${p.flipH ? 1 : 0}${p.flipV ? 1 : 0}`;
       }
       const t = value.text;
-      return `${key}:T:${t.value}:${t.fontFamily ?? ""}:${t.color ?? ""}:${t.align ?? ""}:${t.fontSizePct ?? ""}:${t.offsetX ?? ""}:${t.offsetY ?? ""}:${t.rotation ?? ""}:${t.bold ? 1 : 0}${t.italic ? 1 : 0}${t.underline ? 1 : 0}`;
+      return `${key}:T:${t.value}:${t.fontFamily ?? ""}:${t.color ?? ""}:${t.align ?? ""}:${t.fontSizePct ?? ""}:${t.offsetX ?? ""}:${t.offsetY ?? ""}:${t.rotation ?? ""}:${t.bold ? 1 : 0}${t.italic ? 1 : 0}${t.underline ? 1 : 0}:${t.mirrorH ? 1 : 0}${t.mirrorV ? 1 : 0}`;
     })
     .join("|");
   const options = Object.keys(design.options)

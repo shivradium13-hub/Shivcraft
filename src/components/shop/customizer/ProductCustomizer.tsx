@@ -995,6 +995,25 @@ export function ProductCustomizer({
                                 <span className="underline">U</span>
                               </StyleToggle>
                             </div>
+                            {/* Mirror, only when the admin allowed the customer to. */}
+                            {activeZone.customerCanMirror ? (
+                              <div className="flex gap-1" role="group" aria-label="Mirror text">
+                                <StyleToggle
+                                  on={!!tv.mirrorH}
+                                  label="Mirror horizontally"
+                                  onClick={() => setTextProps(activeZone.id, { mirrorH: !tv.mirrorH })}
+                                >
+                                  <span aria-hidden="true">↔</span>
+                                </StyleToggle>
+                                <StyleToggle
+                                  on={!!tv.mirrorV}
+                                  label="Mirror vertically"
+                                  onClick={() => setTextProps(activeZone.id, { mirrorV: !tv.mirrorV })}
+                                >
+                                  <span aria-hidden="true">↕</span>
+                                </StyleToggle>
+                              </div>
+                            ) : null}
                           </div>
 
                           <div className="flex items-center gap-2">
