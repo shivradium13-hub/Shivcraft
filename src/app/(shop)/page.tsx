@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 
-import { CategorySlider } from "@/components/shop/CategorySlider";
+import { CategoryGrid } from "@/components/shop/CategoryGrid";
 import { ProductGrid, ProductRail } from "@/components/shop/ProductCard";
 import { EmptyState, ProductImage, SectionHeading, Stars } from "@/components/ui/primitives";
 import type { HomeSectionId } from "@/lib/storefront";
@@ -34,7 +34,7 @@ export default async function HomePage() {
       categories.length > 0 ? (
         <section>
           <SectionHeading eyebrow="Browse" title="Shop by category" />
-          <CategorySlider categories={categories} />
+          <CategoryGrid categories={categories} />
         </section>
       ) : null,
 
