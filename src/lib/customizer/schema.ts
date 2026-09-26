@@ -84,11 +84,6 @@ export const zoneSchema = z.object({
   /** Element opacity, 0–100. 100 is fully opaque (the default for every zone). */
   opacity: z.number().min(0).max(100).default(100),
 
-  /** A custom clip shape as a CSS clip-path `polygon(...)` in percentages of the
-   *  box, drawn with the curve/shape tool. Empty means the RECT/CIRCLE/mask
-   *  shape applies instead. */
-  clipPath: z.string().trim().max(4000).default(""),
-
   /** Layers: hidden drops the element from the design entirely; locked keeps
    *  it from being moved or resized in the builder. Both are admin-side. */
   hidden: z.boolean().default(false),

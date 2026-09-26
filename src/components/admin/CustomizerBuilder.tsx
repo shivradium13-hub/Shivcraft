@@ -16,6 +16,7 @@ import {
 import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas";
 import { CustomizerFonts } from "@/components/shop/customizer/CustomizerFonts";
 import { ProductCustomizer } from "@/components/shop/customizer/ProductCustomizer";
+import { ImageCropModal } from "@/components/shop/ImageCropModal";
 
 /**
  * The admin's customizer builder.
@@ -525,7 +526,6 @@ export function CustomizerBuilder({
                   // A frame is decoration, not something the customer must fill.
                   required: kind !== "FRAME",
                   opacity: 100,
-                  clipPath: "",
                   hidden: false,
                   locked: false,
                   // A new frame follows the customer's frame colour by default,
@@ -921,154 +921,6 @@ function ViewsTab({
   );
 }
 
-/** Parses a stored `polygon(x% y%, …)` clip-path back into editable points. */
-function parsePolygon(clip: string): { x: number; y: number }[] {
-  const m = /polygon\(([^)]*)\)/.exec(clip);
-  if (!m) return [];
-  return m[1]
-    .split(",")
-    .map((pair) => {
-      const [x, y] = pair.trim().split(/\s+/).map((n) => parseFloat(n));
-      return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
-    })
-    .filter((p): p is { x: number; y: number } => Boolean(p));
-}
-
-/**
- * The "Create curve shape" clip tool: draw a custom shape by clicking points,
- * stored as a CSS `clip-path: polygon(...)` the renderer applies to the element.
- * Real and self-contained — no fake button; an empty result clears the shape.
- */
-function CurveShapeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div>
-      <p className="mb-1 text-xs font-semibold text-sr-ink">Clip mask (curve tool — draw a custom shape)</p>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="rounded-lg bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:bg-night-soft"
-        >
-          ✎ {value ? "Edit curve shape" : "Create curve shape"}
-        </button>
-        {value ? (
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            className="rounded-lg border border-sr-line-strong px-3 py-2 text-xs font-semibold text-sr-body"
-          >
-            Clear
-          </button>
-        ) : null}
-        <span className={`text-[11px] ${value ? "text-success" : "text-sr-muted"}`}>
-          {value ? "Custom shape set" : "No custom shape"}
-        </span>
-      </div>
-      {open ? (
-        <CurveShapeModal
-          initial={value}
-          onCancel={() => setOpen(false)}
-          onSave={(v) => {
-            onChange(v);
-            setOpen(false);
-          }}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function CurveShapeModal({
-  initial,
-  onCancel,
-  onSave,
-}: {
-  initial: string;
-  onCancel: () => void;
-  onSave: (clipPath: string) => void;
-}) {
-  const [points, setPoints] = useState<{ x: number; y: number }[]>(() => parsePolygon(initial));
-  const boxRef = useRef<HTMLDivElement>(null);
-
-  function addPoint(e: React.MouseEvent<HTMLDivElement>) {
-    const b = boxRef.current?.getBoundingClientRect();
-    if (!b) return;
-    const x = clamp(round(((e.clientX - b.left) / b.width) * 100), 0, 100);
-    const y = clamp(round(((e.clientY - b.top) / b.height) * 100), 0, 100);
-    setPoints((p) => [...p, { x, y }]);
-  }
-
-  const poly = points.map((p) => `${p.x}% ${p.y}%`).join(", ");
-  const svgPoints = points.map((p) => `${p.x},${p.y}`).join(" ");
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Curve shape editor"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/80 p-4"
-      onClick={onCancel}
-    >
-      <div className="w-full max-w-md rounded-card bg-canvas p-4" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-semibold text-ink">Draw a custom shape</p>
-          <button type="button" onClick={onCancel} className="text-xs font-semibold text-muted">
-            Close
-          </button>
-        </div>
-        <p className="mb-2 text-xs text-muted">
-          Click to drop points around the shape (at least 3). The element is clipped to this outline.
-        </p>
-        <div
-          ref={boxRef}
-          onClick={addPoint}
-          className="relative aspect-square w-full cursor-crosshair overflow-hidden rounded-lg border border-line-strong bg-[repeating-conic-gradient(#e7e7e9_0%_25%,#fff_0%_50%)] bg-[length:24px_24px]"
-        >
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-            {points.length >= 2 ? (
-              <polygon
-                points={svgPoints}
-                fill="rgba(238,114,46,0.25)"
-                stroke="#ee722e"
-                strokeWidth={0.6}
-              />
-            ) : null}
-            {points.map((p, i) => (
-              <circle key={i} cx={p.x} cy={p.y} r={1.4} fill="#ee722e" />
-            ))}
-          </svg>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setPoints((p) => p.slice(0, -1))}
-            disabled={points.length === 0}
-            className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft disabled:opacity-40"
-          >
-            Undo point
-          </button>
-          <button
-            type="button"
-            onClick={() => setPoints([])}
-            className="rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft"
-          >
-            Clear
-          </button>
-          <button
-            type="button"
-            disabled={points.length < 3}
-            onClick={() => onSave(`polygon(${poly})`)}
-            className="ml-auto rounded-lg bg-sr-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
-          >
-            Save shape
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /**
  * One "Insert …" row in the Create panel: quick shape presets plus a direct
  * JPG/PNG upload, so a frame or image box can be dropped in already carrying its
@@ -1085,6 +937,7 @@ function InsertRow({
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function upload(file: File) {
@@ -1104,7 +957,6 @@ function InsertRow({
       setError("Upload failed — check your connection.");
     } finally {
       setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -1142,11 +994,22 @@ function InsertRow({
           className="sr-only"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (f) void upload(f);
+            if (f) setCropFile(f);
+            if (fileRef.current) fileRef.current.value = "";
           }}
         />
       </div>
       {error ? <p className="w-full text-[11px] text-danger">{error}</p> : null}
+      {cropFile ? (
+        <ImageCropModal
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onApply={(cropped) => {
+            setCropFile(null);
+            void upload(cropped);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1469,16 +1332,11 @@ function ZonesTab({
               <div className="sm:col-span-2">
                 <MediaUploadField
                   label="Custom shape / clipping mask (PNG)"
-                  hint="The customer's photo is clipped to this shape's alpha. Leave empty to use the Rectangle/Circle shape above, or draw one below."
+                  hint="The customer's photo is clipped to this shape's alpha. Leave empty to use the Rectangle/Circle shape above."
                   value={selected.maskUrl}
                   onChange={(url) => onPatch(selected.id, { maskUrl: url })}
                   accept="image/png,image/webp"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <CurveShapeField
-                  value={selected.clipPath}
-                  onChange={(clipPath) => onPatch(selected.id, { clipPath })}
+                  crop={false}
                 />
               </div>
               <Field label="Border colour">
@@ -1705,16 +1563,9 @@ function ZonesTab({
                   value={selected.maskUrl}
                   onChange={(url) => onPatch(selected.id, { maskUrl: url })}
                   accept="image/png,image/webp"
+                  crop={false}
                 />
               </div>
-              <Field label="Frame image URL (optional)" hint="Or paste a URL instead of uploading.">
-                <input
-                  className={input}
-                  placeholder="Image URL"
-                  value={selected.imageUrl}
-                  onChange={(e) => onPatch(selected.id, { imageUrl: e.target.value })}
-                />
-              </Field>
               {productImages.length > 0 ? (
                 <div className="sm:col-span-2">
                   <p className="mb-1 text-[11px] text-sr-muted">Or pick a product image:</p>
@@ -2956,15 +2807,20 @@ function MediaUploadField({
   value,
   onChange,
   accept = "image/jpeg,image/png,image/webp",
+  crop = true,
 }: {
   label: string;
   hint?: string;
   value: string;
   onChange: (url: string) => void;
   accept?: string;
+  /** Whether to open the crop step before uploading. Off for masks, whose exact
+   *  alpha must be preserved untouched. */
+  crop?: boolean;
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const ref = useRef<HTMLInputElement>(null);
 
   async function upload(file: File) {
@@ -3016,11 +2872,27 @@ function MediaUploadField({
           type="file"
           accept={accept}
           className="sr-only"
-          onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            if (crop) setCropFile(f);
+            else void upload(f);
+            if (ref.current) ref.current.value = "";
+          }}
         />
       </div>
       {hint ? <span className="text-xs text-sr-muted">{hint}</span> : null}
       {error ? <span className="text-xs font-medium text-danger">{error}</span> : null}
+      {cropFile ? (
+        <ImageCropModal
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onApply={(cropped) => {
+            setCropFile(null);
+            void upload(cropped);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

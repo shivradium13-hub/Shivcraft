@@ -189,8 +189,6 @@ function ZoneLayer({
     borderRadius: zone.shape === "CIRCLE" ? "9999px" : `${zone.cornerRadius}%`,
     // The element's own opacity; 100 leaves it untouched.
     opacity: opacity < 100 ? opacity / 100 : undefined,
-    // A hand-drawn custom shape from the curve tool clips the whole element.
-    clipPath: zone.clipPath || undefined,
     /* Makes the zone a container, so the text below can be sized as a
        percentage of the ZONE's height rather than the viewport's. Without it
        `cqh` resolves against the small viewport and the text comes out the

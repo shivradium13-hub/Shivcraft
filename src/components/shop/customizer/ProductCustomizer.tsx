@@ -28,6 +28,7 @@ import { CustomizerCanvas } from "./CustomizerCanvas";
 import { publishCustomizer } from "./customizerBridge";
 import { RepositionBox } from "./RepositionBox";
 import { usePhotoGestures } from "./usePhotoGestures";
+import { ImageCropModal } from "../ImageCropModal";
 
 /**
  * The customer's customiser.
@@ -126,6 +127,8 @@ export function ProductCustomizer({
   const [history, setHistory] = useState<CustomerDesign[]>([]);
   const [future, setFuture] = useState<CustomerDesign[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  /* A photo waiting to be cropped before it is uploaded into its zone. */
+  const [cropState, setCropState] = useState<{ file: File; zone: CustomizerZone } | null>(null);
 
   /* Zones on the current view that the customer's option choices reveal. A
      zone hidden by a conditional rule is not shown as a tab, a step or a
@@ -483,6 +486,7 @@ export function ProductCustomizer({
   /* ----------------------------------------------------------------- view */
 
   return (
+    <>
     <section className="rounded-card border border-brand-200 bg-brand-50/50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-lg font-semibold text-brand-800">Personalise it</h2>
@@ -788,7 +792,9 @@ export function ProductCustomizer({
                     className="sr-only"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) void upload(file, activeZone);
+                      // Crop first, then upload the cropped result into the zone.
+                      if (file) setCropState({ file, zone: activeZone });
+                      if (fileRef.current) fileRef.current.value = "";
                     }}
                   />
                   <button
@@ -1237,6 +1243,20 @@ export function ProductCustomizer({
         </dl>
       ) : null}
     </section>
+
+    {cropState ? (
+      <ImageCropModal
+        file={cropState.file}
+        aspect={cropState.zone.height > 0 ? cropState.zone.width / cropState.zone.height : null}
+        onCancel={() => setCropState(null)}
+        onApply={(cropped) => {
+          const { zone } = cropState;
+          setCropState(null);
+          void upload(cropped, zone);
+        }}
+      />
+    ) : null}
+    </>
   );
 }
 

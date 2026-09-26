@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 
+import { ImageCropModal } from "./ImageCropModal";
+
 type Uploaded = { id: string; url: string; name: string };
 
 type Status =
@@ -30,10 +32,10 @@ export function PhotoUploadField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Status>({ phase: "idle" });
   const [dragging, setDragging] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
-  async function send(file: File) {
-    // Check what we can before spending the upload; the server checks the
-    // real magic bytes regardless, since this side is easy to bypass.
+  /** Validate, then open the crop step; the upload happens on Apply. */
+  function pick(file: File) {
     if (!ACCEPTED.includes(file.type)) {
       setStatus({ phase: "error", message: "Use a JPG, PNG or WebP image." });
       return;
@@ -45,7 +47,11 @@ export function PhotoUploadField({
       });
       return;
     }
+    setStatus({ phase: "idle" });
+    setCropFile(file);
+  }
 
+  async function send(file: File) {
     setStatus({ phase: "uploading", name: file.name });
     try {
       const body = new FormData();
@@ -128,7 +134,7 @@ export function PhotoUploadField({
             e.preventDefault();
             setDragging(false);
             const file = e.dataTransfer.files?.[0];
-            if (file) void send(file);
+            if (file) pick(file);
           }}
           className={`rounded-lg border border-dashed p-4 text-center transition ${
             dragging ? "border-brand-500 bg-brand-50" : "border-field bg-field-bg"
@@ -155,9 +161,24 @@ export function PhotoUploadField({
         className="sr-only"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) void send(file);
+          if (file) pick(file);
         }}
       />
+
+      {cropFile ? (
+        <ImageCropModal
+          file={cropFile}
+          onCancel={() => {
+            setCropFile(null);
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+          onApply={(cropped) => {
+            setCropFile(null);
+            if (inputRef.current) inputRef.current.value = "";
+            void send(cropped);
+          }}
+        />
+      ) : null}
 
       {helpText ? <p className="mt-1.5 text-xs text-muted">{helpText}</p> : null}
       {status.phase === "error" ? (
