@@ -392,7 +392,14 @@ export function CustomizerBuilder({
                       <div
                         onPointerDown={(e) => onPointerDown(e, z, "move")}
                         onClick={() => setSelectedZone(z.id)}
-                        className={`pointer-events-auto absolute inset-0 rounded ${
+                        /* The bounds line follows the box's real shape — a square
+                           corner for a rectangle, the matching radius for a
+                           rounded box, a full circle for a circle — so it never
+                           shows a "carved" corner over a sharp image box. */
+                        style={{
+                          borderRadius: z.shape === "CIRCLE" ? "9999px" : `${z.cornerRadius}%`,
+                        }}
+                        className={`pointer-events-auto absolute inset-0 ${
                           z.locked ? "cursor-not-allowed" : "cursor-move"
                         } ${
                           // Text areas carry no outline — just the text — so the
