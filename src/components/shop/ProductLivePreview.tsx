@@ -119,6 +119,11 @@ export function ProductLivePreview({
     if (!snap) return;
     const zone = snap.config.zones.find((z) => z.id === zoneId);
     const value = snap.design.zones[zoneId];
+    if (zone?.kind === "TEXT") {
+      // Tapping the text on the product opens the keyboard: focus its field.
+      snap.requestTextEdit(zoneId);
+      return;
+    }
     const emptyPhoto =
       zone?.kind === "PHOTO" && !(value?.kind === "PHOTO" && value.photo.uploadId);
     if (emptyPhoto) snap.requestPhotoUpload(zoneId);

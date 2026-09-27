@@ -133,6 +133,11 @@ export function ProductCustomizer({
      the image needs its own input that is always present. */
   const tapUploadRef = useRef<HTMLInputElement>(null);
   const pendingUploadZoneRef = useRef<CustomizerZone | null>(null);
+  /* The active text zone's input, focused when the customer taps that text on the
+     product image so the mobile keyboard opens; a pending flag lets the focus run
+     once the input for the newly-selected zone has actually mounted. */
+  const textInputRef = useRef<HTMLInputElement>(null);
+  const pendingTextFocusRef = useRef(false);
   /* What the crop editor is open on: a freshly picked file, or an existing
    *  photo being re-cropped ("Edit"), plus its target zone. */
   const [crop, setCrop] = useState<{ file?: File; imageUrl?: string; zone: CustomizerZone } | null>(null);
@@ -302,6 +307,38 @@ export function ProductCustomizer({
     },
     [config.zones],
   );
+
+  /** Focuses a text area's input when the customer taps that text on the product
+   *  image, so the on-screen keyboard opens right away. If the zone is already
+   *  active its input is focused synchronously (best for the mobile keyboard,
+   *  which wants the focus inside the tap gesture); otherwise it is selected and
+   *  a pending flag focuses the input once it has mounted. */
+  const requestTextEdit = useCallback(
+    (zoneId: string) => {
+      const zone = config.zones.find((z) => z.id === zoneId);
+      if (!zone || zone.kind !== "TEXT") return;
+      if (activeZoneId === zoneId && textInputRef.current) {
+        textInputRef.current.focus();
+        return;
+      }
+      setActiveZoneId(zoneId);
+      pendingTextFocusRef.current = true;
+    },
+    [config.zones, activeZoneId],
+  );
+
+  /* Once the tapped text zone's input has mounted, focus it (and bring it into
+     view). Runs only when a tap requested it, so selecting a zone from the panel
+     chips never steals focus or pops the keyboard. */
+  useEffect(() => {
+    if (!pendingTextFocusRef.current) return;
+    if (activeZone?.kind !== "TEXT") return;
+    const input = textInputRef.current;
+    if (!input) return;
+    pendingTextFocusRef.current = false;
+    input.focus();
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [activeZone]);
 
   /**
    * Applies a starting template: its option choices, its wording and the view
@@ -485,6 +522,7 @@ export function ProductCustomizer({
       repositionZone,
       onZoneSelect: setActiveZoneId,
       requestPhotoUpload,
+      requestTextEdit,
       setViewId,
       setTextProps,
       gestureHandlers: gestures.handlers,
@@ -498,6 +536,7 @@ export function ProductCustomizer({
     reposition,
     repositionZone,
     requestPhotoUpload,
+    requestTextEdit,
     setViewId,
     setTextProps,
     gestures.handlers,
@@ -998,6 +1037,7 @@ export function ProductCustomizer({
                           {activeZone.required ? <span className="text-danger"> *</span> : null}
                         </span>
                         <input
+                          ref={textInputRef}
                           value={tv?.value ?? ""}
                           maxLength={activeZone.maxChars ?? 120}
                           onChange={(e) => setText(activeZone.id, e.target.value)}
