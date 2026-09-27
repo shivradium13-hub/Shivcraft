@@ -437,10 +437,15 @@ function ZoneLayer({
         </span>
       ) : null}
 
-      {/* Customer side: a faint hint on the selected, still-empty photo area so
-          it is clear where the upload will land. Text areas get no fill. */}
+      {/* Customer side: a faint label on the selected, still-empty photo area so
+          it is clear where the upload will land — no white "shade" fill over the
+          box, so the product art stays fully visible. A soft text-shadow keeps
+          the label legible over any image. */}
       {highlightActive && !showGuides && active && !value && zone.kind === "PHOTO" ? (
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-brand-50/40 text-center text-[10px] leading-tight font-semibold text-brand-700/80">
+        <span
+          className="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-[10px] leading-tight font-semibold text-brand-700/70"
+          style={{ textShadow: "0 1px 2px rgba(255,255,255,0.7)" }}
+        >
           Add photo
         </span>
       ) : null}
