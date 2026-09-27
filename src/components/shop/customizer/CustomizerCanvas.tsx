@@ -218,9 +218,7 @@ function ZoneLayer({
           boxShadow: outerShadow,
         }}
         onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
-        className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
-          showGuides && active ? "outline-2 outline-dashed outline-brand-500" : ""
-        }`}
+        className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""}`}
       >
         {zone.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -277,11 +275,10 @@ function ZoneLayer({
       style={{ ...box, boxShadow: photoOuterShadow, border: photoBorder }}
       onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
       className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
-        // Admin builder guides: full dashed outline on the selected photo area.
-        showGuides && active && zone.kind === "PHOTO" ? "outline-2 outline-dashed outline-brand-500" : ""
-      } ${
         // Customer selection indicator: a subtle, temporary dashed outline on the
         // area the focused field edits (photo or text). Only the active one.
+        // (The admin builder draws its own handle box, so no outline here for it —
+        // an outline plus the box's white "add photo" fill obscured editing.)
         highlightActive && active ? "outline-2 outline-dashed outline-brand-500/45 outline-offset-2" : ""
       }`}
     >
@@ -433,7 +430,9 @@ function ZoneLayer({
       ) : null}
 
       {showGuides && active && !value ? (
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-brand-50/70 text-center text-[10px] leading-tight font-semibold text-brand-700">
+        // A faint label only — no filled "shade" over the box, which hid the
+        // product art behind it and made positioning an empty area hard.
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-[10px] leading-tight font-semibold text-brand-700/55">
           {zone.kind === "PHOTO" ? "Add photo" : zone.label}
         </span>
       ) : null}

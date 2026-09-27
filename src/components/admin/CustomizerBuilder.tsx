@@ -392,11 +392,14 @@ export function CustomizerBuilder({
                           z.locked ? "cursor-not-allowed" : "cursor-move"
                         } ${
                           // Text areas carry no outline — just the text — so the
-                          // canvas stays clean; other areas show a select ring.
+                          // canvas stays clean. The selected area is marked by its
+                          // resize/rotate handles plus a thin, neutral bounds line
+                          // rather than a bold orange ring, which (with the box's
+                          // white fill) had obscured editing.
                           z.kind === "TEXT"
                             ? ""
                             : isSel
-                              ? "ring-2 ring-sr-600"
+                              ? "ring-1 ring-sr-line-strong"
                               : z.locked
                                 ? "ring-1 ring-sr-line-strong"
                                 : "ring-1 ring-sr-400/60"
