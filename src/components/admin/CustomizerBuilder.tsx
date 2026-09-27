@@ -1323,6 +1323,7 @@ function ZonesTab({
                     round: selected.shape === "CIRCLE",
                     cornerRadius: selected.cornerRadius,
                     maskUrl: selected.maskUrl,
+                    aspectRatio: selected.height > 0 ? selected.width / selected.height : undefined,
                   }}
                 />
               </div>
@@ -1571,6 +1572,7 @@ function ZonesTab({
                     round: selected.shape === "CIRCLE",
                     cornerRadius: selected.cornerRadius,
                     maskUrl: selected.maskUrl,
+                    aspectRatio: selected.height > 0 ? selected.width / selected.height : undefined,
                   }}
                 />
               </div>
@@ -2836,9 +2838,9 @@ function MediaUploadField({
   /** Whether to open the crop step before uploading. Off for masks, whose exact
    *  alpha must be preserved untouched. */
   crop?: boolean;
-  /** The element's shape, so the crop step previews the same clip the canvas
-   *  will apply (single source of truth: the admin's shape). */
-  shape?: { round?: boolean; cornerRadius?: number; maskUrl?: string };
+  /** The element's shape + aspect, so the crop step previews the same ratio and
+   *  clip the canvas will apply (single source of truth: the admin's box). */
+  shape?: { round?: boolean; cornerRadius?: number; maskUrl?: string; aspectRatio?: number };
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2909,6 +2911,7 @@ function MediaUploadField({
         <CropModal
           file={cropFile}
           title="Crop image"
+          aspectRatio={shape?.aspectRatio}
           round={shape?.round}
           cornerRadius={shape?.cornerRadius}
           maskUrl={shape?.maskUrl}
