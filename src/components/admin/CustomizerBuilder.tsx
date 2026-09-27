@@ -366,10 +366,14 @@ export function CustomizerBuilder({
           )}
 
           {/* Handles sit over the canvas so the admin moves the real zone
-              rather than a separate drawing that could disagree with it.
-              Hidden zones are not shown; locked zones show but cannot be moved. */}
-          {view
-            ? config.zones
+              rather than a separate drawing that could disagree with it. The
+              overlay is inset to exactly match the canvas box (the p-2 padding),
+              so a zone's handle/bounds line up pixel-for-pixel with the rendered
+              box — no second, offset border. Hidden zones are not shown; locked
+              zones show but cannot be moved. */}
+          {view ? (
+            <div className="pointer-events-none absolute inset-2">
+              {config.zones
                 .filter((z) => view.zoneIds.includes(z.id) && !z.hidden)
                 .map((z) => {
                   const isSel = selectedZone === z.id;
@@ -377,8 +381,8 @@ export function CustomizerBuilder({
                     <div
                       key={z.id}
                       style={{
-                        left: `calc(${z.x}% + 0.5rem)`,
-                        top: `calc(${z.y}% + 0.5rem)`,
+                        left: `${z.x}%`,
+                        top: `${z.y}%`,
                         width: `${z.width}%`,
                         height: `${z.height}%`,
                         transform: z.rotation ? `rotate(${z.rotation}deg)` : undefined,
@@ -388,7 +392,7 @@ export function CustomizerBuilder({
                       <div
                         onPointerDown={(e) => onPointerDown(e, z, "move")}
                         onClick={() => setSelectedZone(z.id)}
-                        className={`absolute inset-0 rounded ${
+                        className={`pointer-events-auto absolute inset-0 rounded ${
                           z.locked ? "cursor-not-allowed" : "cursor-move"
                         } ${
                           // Text areas carry no outline — just the text — so the
@@ -411,21 +415,22 @@ export function CustomizerBuilder({
                           {/* Resize, bottom-right. */}
                           <div
                             onPointerDown={(e) => onPointerDown(e, z, "resize")}
-                            className="absolute -right-1.5 -bottom-1.5 h-3.5 w-3.5 cursor-nwse-resize rounded-sm border-2 border-white bg-sr-600 shadow"
+                            className="pointer-events-auto absolute -right-1.5 -bottom-1.5 h-3.5 w-3.5 cursor-nwse-resize rounded-sm border-2 border-white bg-sr-600 shadow"
                             title="Resize"
                           />
                           {/* Rotate, above the top edge. */}
                           <div
                             onPointerDown={(e) => onPointerDown(e, z, "rotate")}
-                            className="absolute -top-6 left-1/2 h-3.5 w-3.5 -translate-x-1/2 cursor-grab rounded-full border-2 border-white bg-sr-600 shadow"
+                            className="pointer-events-auto absolute -top-6 left-1/2 h-3.5 w-3.5 -translate-x-1/2 cursor-grab rounded-full border-2 border-white bg-sr-600 shadow"
                             title="Rotate"
                           />
                         </>
                       ) : null}
                     </div>
                   );
-                })
-            : null}
+                })}
+            </div>
+          ) : null}
         </div>
 
         <p className="mt-2 text-xs text-sr-muted">
