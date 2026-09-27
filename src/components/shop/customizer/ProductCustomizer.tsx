@@ -61,6 +61,11 @@ type Props = {
    *  controls and publishes its state under `bridgeId`. */
   integrated?: boolean;
   bridgeId?: string;
+  /** Whether the customer has started personalising (panel open). Published to
+   *  the live preview so a tap there opens the panel before it edits. */
+  active?: boolean;
+  /** Opens the panel — used when the customer taps the product image first. */
+  onActivate?: () => void;
 };
 
 const MAX_HISTORY = 40;
@@ -76,6 +81,8 @@ export function ProductCustomizer({
   initialDesignName = null,
   integrated = false,
   bridgeId,
+  active = true,
+  onActivate,
 }: Props) {
   const storageKey = `sr:design:${productId}:v${config.version}`;
   const firstView = config.views[0]?.id ?? "";
@@ -522,6 +529,8 @@ export function ProductCustomizer({
     publishCustomizer(bridgeId, {
       config,
       design,
+      active,
+      onActivate: onActivate ?? (() => {}),
       activeZoneId: activeZone?.id ?? null,
       reposition,
       repositionZone,
@@ -537,6 +546,8 @@ export function ProductCustomizer({
     bridgeId,
     config,
     design,
+    active,
+    onActivate,
     activeZone,
     reposition,
     repositionZone,

@@ -2,10 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { CustomerDesign } from "@/lib/customizer/design";
-import { readConfig } from "@/lib/customizer/schema";
+import { isZoneVisible, readConfig } from "@/lib/customizer/schema";
 import { effectivePriceP, formatPaise } from "@/lib/money";
 import type { ProductDetail } from "@/server/catalog/product";
 
@@ -68,16 +68,17 @@ export function ProductPurchase({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  /* A brief highlight on the personaliser after "Customize Now" scrolls to it. */
-  const [highlightCustomizer, setHighlightCustomizer] = useState(false);
+  /* The "Personalise it" panel stays hidden until the customer presses
+     "Customize Now"; then it opens and we scroll to it. */
+  const [personalising, setPersonalising] = useState(false);
 
-  function goCustomize() {
-    const el = document.getElementById("sr-personalise");
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    setHighlightCustomizer(true);
-    window.setTimeout(() => setHighlightCustomizer(false), 1400);
-  }
+  const startCustomize = useCallback(() => {
+    setPersonalising(true);
+    // Scroll after the panel has been revealed on the next paint.
+    window.setTimeout(() => {
+      document.getElementById("sr-personalise")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+  }, []);
 
   /* Price reflects the chosen options, the same way the server will compute it. */
   const unitPriceP = useMemo(() => {
@@ -122,6 +123,27 @@ export function ProductPurchase({
      existing product renders exactly as it did before. */
   const customizerConfig = useMemo(() => readConfig(product.customizer), [product.customizer]);
   const [design, setDesign] = useState<CustomerDesign | null>(null);
+
+  /* Whether the personalisation is complete — every required, visible area has
+     content. Mirrors the customizer's own "ready to add to cart" check, so the
+     "Buy Now" button only appears once the design is done. */
+  const designReady = useMemo(() => {
+    if (!customizerConfig.enabled || !design) return false;
+    const required = customizerConfig.zones.filter(
+      (z) =>
+        z.required &&
+        customizerConfig.views.some((v) => v.zoneIds.includes(z.id)) &&
+        isZoneVisible(customizerConfig, z, design.options),
+    );
+    return required.every((z) => {
+      const value = design.zones[z.id];
+      return value?.kind === "PHOTO"
+        ? Boolean(value.photo.uploadId)
+        : value?.kind === "TEXT"
+          ? value.text.value.trim().length > 0
+          : false;
+    });
+  }, [customizerConfig, design]);
 
   async function addToCart(thenCheckout: boolean) {
     setBusy(true);
@@ -212,12 +234,10 @@ export function ProductPurchase({
       {/* ---------------------------------------------------- customizer */}
       {customizerConfig.enabled ? <CustomizerFonts config={customizerConfig} /> : null}
       {customizerConfig.enabled ? (
-        <div
-          id="sr-personalise"
-          className={`scroll-mt-24 rounded-card transition ${
-            highlightCustomizer ? "ring-2 ring-brand-400 ring-offset-2" : ""
-          }`}
-        >
+        /* Mounted always (so the product image live-preview keeps rendering the
+           design via the bridge), but the controls panel stays hidden until the
+           customer presses "Customize Now". */
+        <div id="sr-personalise" className={`scroll-mt-24 ${personalising ? "" : "hidden"}`}>
           <ProductCustomizer
             productId={product.id}
             productName={product.name}
@@ -232,6 +252,8 @@ export function ProductPurchase({
                only the controls, not a second canvas. */
             integrated
             bridgeId={product.id}
+            active={personalising}
+            onActivate={startCustomize}
           />
         </div>
       ) : null}
@@ -427,27 +449,54 @@ export function ProductPurchase({
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          disabled={busy || outOfStock}
-          onClick={() => addToCart(false)}
-          className="flex-1 rounded-full border-2 border-brand-500 px-6 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-50"
-        >
-          {busy ? "Adding…" : outOfStock ? "Out of stock" : "Add to Cart"}
-        </button>
-        {/* On a personalisable product the primary action is "Customize Now"
-            (in place of Buy Now): it opens the "Personalise it" interface so the
-            customer designs the piece before buying. Plain products keep Buy Now. */}
-        {customizerConfig.enabled ? (
+      {/* Staged flow for personalisable products:
+          1) "Customize Now" opens the Personalise it panel;
+          2) once the design is complete, "Add to Cart" + "Buy Now" appear and
+             Buy Now takes the customer on to address & payment.
+          Plain products keep the usual Add to Cart + Buy Now. */}
+      {customizerConfig.enabled ? (
+        !personalising ? (
           <button
             type="button"
-            onClick={goCustomize}
-            className="flex-1 gc-cta rounded-full px-6 py-3 text-sm font-semibold transition"
+            onClick={startCustomize}
+            className="gc-cta w-full rounded-full px-6 py-3 text-sm font-semibold transition"
           >
             🎨 Customize Now
           </button>
+        ) : designReady ? (
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={busy || outOfStock}
+              onClick={() => addToCart(false)}
+              className="flex-1 rounded-full border-2 border-brand-500 px-6 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-50"
+            >
+              {busy ? "Adding…" : outOfStock ? "Out of stock" : "Add to Cart"}
+            </button>
+            <button
+              type="button"
+              disabled={busy || outOfStock}
+              onClick={() => addToCart(true)}
+              className="flex-1 gc-cta rounded-full px-6 py-3 text-sm font-semibold transition disabled:opacity-50"
+            >
+              Buy Now
+            </button>
+          </div>
         ) : (
+          <p className="rounded-lg bg-brand-50 px-3 py-2.5 text-center text-sm font-medium text-brand-800">
+            Personalisation पूरी करें — फिर <strong>Buy Now</strong> दिखेगा.
+          </p>
+        )
+      ) : (
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            disabled={busy || outOfStock}
+            onClick={() => addToCart(false)}
+            className="flex-1 rounded-full border-2 border-brand-500 px-6 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-50"
+          >
+            {busy ? "Adding…" : outOfStock ? "Out of stock" : "Add to Cart"}
+          </button>
           <button
             type="button"
             disabled={busy || outOfStock}
@@ -456,8 +505,8 @@ export function ProductPurchase({
           >
             Buy Now
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {notice ? (
         <p

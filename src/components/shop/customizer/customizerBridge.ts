@@ -24,6 +24,12 @@ import type { CustomizerConfig, CustomizerZone } from "@/lib/customizer/schema";
 export type CustomizerSnapshot = {
   config: CustomizerConfig;
   design: CustomerDesign;
+  /** Whether the customer has started personalising (the panel is open). Until
+   *  then a tap on the product image only opens the panel rather than editing. */
+  active: boolean;
+  /** Open the personalisation panel — called when the customer taps the product
+   *  image before "Customize Now" has been pressed. */
+  onActivate: () => void;
   activeZoneId: string | null;
   /** The id of the text area being repositioned, or null. */
   reposition: string | null;

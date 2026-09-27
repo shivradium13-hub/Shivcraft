@@ -117,6 +117,12 @@ export function ProductLivePreview({
      selected element so it can be edited/dragged. */
   const handleZoneTap = (zoneId: string) => {
     if (!snap) return;
+    // Before the customer has pressed "Customize Now", a tap on the product
+    // image just opens the personalisation panel rather than editing a zone.
+    if (!snap.active) {
+      snap.onActivate();
+      return;
+    }
     const zone = snap.config.zones.find((z) => z.id === zoneId);
     const value = snap.design.zones[zoneId];
     if (zone?.kind === "TEXT") {
