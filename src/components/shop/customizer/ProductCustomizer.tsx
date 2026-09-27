@@ -317,14 +317,19 @@ export function ProductCustomizer({
     (zoneId: string) => {
       const zone = config.zones.find((z) => z.id === zoneId);
       if (!zone || zone.kind !== "TEXT") return;
-      if (activeZoneId === zoneId && textInputRef.current) {
+      // Compare against the *effective* active zone (which falls back to the
+      // first zone before anything is selected): if that input is already the
+      // one on screen, focus it now, inside the tap gesture, so the mobile
+      // keyboard opens. Otherwise select the zone and focus once it mounts.
+      if (activeZone?.id === zoneId && textInputRef.current) {
+        setActiveZoneId(zoneId);
         textInputRef.current.focus();
         return;
       }
       setActiveZoneId(zoneId);
       pendingTextFocusRef.current = true;
     },
-    [config.zones, activeZoneId],
+    [config.zones, activeZone],
   );
 
   /* Once the tapped text zone's input has mounted, focus it (and bring it into
