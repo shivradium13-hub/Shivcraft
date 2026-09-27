@@ -68,6 +68,16 @@ export function ProductPurchase({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  /* A brief highlight on the personaliser after "Customize Now" scrolls to it. */
+  const [highlightCustomizer, setHighlightCustomizer] = useState(false);
+
+  function goCustomize() {
+    const el = document.getElementById("sr-personalise");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setHighlightCustomizer(true);
+    window.setTimeout(() => setHighlightCustomizer(false), 1400);
+  }
 
   /* Price reflects the chosen options, the same way the server will compute it. */
   const unitPriceP = useMemo(() => {
@@ -160,6 +170,20 @@ export function ProductPurchase({
 
   return (
     <div className="space-y-5">
+      {/* ----------------------------------------------- customize now CTA
+          A clear entry point to personalisation: it scrolls to (and briefly
+          highlights) the "Personalise it" panel — most useful on a phone, where
+          the panel sits below the product image and the options. */}
+      {customizerConfig.enabled ? (
+        <button
+          type="button"
+          onClick={goCustomize}
+          className="gc-cta w-full rounded-full px-6 py-3 text-sm font-semibold transition"
+        >
+          🎨 Customize Now
+        </button>
+      ) : null}
+
       {/* ------------------------------------------------------- variants */}
       {product.variantGroups.map((group) => (
         <div key={group.name}>
@@ -202,21 +226,28 @@ export function ProductPurchase({
       {/* ---------------------------------------------------- customizer */}
       {customizerConfig.enabled ? <CustomizerFonts config={customizerConfig} /> : null}
       {customizerConfig.enabled ? (
-        <ProductCustomizer
-          productId={product.id}
-          productName={product.name}
-          config={customizerConfig}
-          basePriceP={effectivePriceP(product)}
-          onDesignChange={setDesign}
-          signedIn={signedIn}
-          initialDesign={savedDesign}
-          initialDesignName={savedDesignName}
-          /* The live preview is the product image itself (ProductLivePreview),
-             fed via the bridge under this product's id — so this panel renders
-             only the controls, not a second canvas. */
-          integrated
-          bridgeId={product.id}
-        />
+        <div
+          id="sr-personalise"
+          className={`scroll-mt-24 rounded-card transition ${
+            highlightCustomizer ? "ring-2 ring-brand-400 ring-offset-2" : ""
+          }`}
+        >
+          <ProductCustomizer
+            productId={product.id}
+            productName={product.name}
+            config={customizerConfig}
+            basePriceP={effectivePriceP(product)}
+            onDesignChange={setDesign}
+            signedIn={signedIn}
+            initialDesign={savedDesign}
+            initialDesignName={savedDesignName}
+            /* The live preview is the product image itself (ProductLivePreview),
+               fed via the bridge under this product's id — so this panel renders
+               only the controls, not a second canvas. */
+            integrated
+            bridgeId={product.id}
+          />
+        </div>
       ) : null}
 
       {/* -------------------------------------------------- customization */}

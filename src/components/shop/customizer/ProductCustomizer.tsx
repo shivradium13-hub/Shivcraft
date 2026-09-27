@@ -127,6 +127,12 @@ export function ProductCustomizer({
   const [history, setHistory] = useState<CustomerDesign[]>([]);
   const [future, setFuture] = useState<CustomerDesign[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  /* A dedicated, always-mounted input for "tap the photo area on the product
+     image to upload". The normal upload button's input only exists while a photo
+     zone is the active one, so tapping a different (or not-yet-active) zone on
+     the image needs its own input that is always present. */
+  const tapUploadRef = useRef<HTMLInputElement>(null);
+  const pendingUploadZoneRef = useRef<CustomizerZone | null>(null);
   /* What the crop editor is open on: a freshly picked file, or an existing
    *  photo being re-cropped ("Edit"), plus its target zone. */
   const [crop, setCrop] = useState<{ file?: File; imageUrl?: string; zone: CustomizerZone } | null>(null);
@@ -281,6 +287,21 @@ export function ProductCustomizer({
   const setViewId = useCallback((viewId: string) => {
     setDesign((prev) => ({ ...prev, viewId }));
   }, []);
+
+  /** Opens the photo picker for a zone straight away — used when the customer
+   *  taps a photo area on the product image. Selects the zone, remembers it, and
+   *  clicks the always-mounted input (synchronously, so the tap still counts as
+   *  the user gesture that is allowed to open the file dialog). */
+  const requestPhotoUpload = useCallback(
+    (zoneId: string) => {
+      const zone = config.zones.find((z) => z.id === zoneId);
+      if (!zone || zone.kind !== "PHOTO") return;
+      setActiveZoneId(zoneId);
+      pendingUploadZoneRef.current = zone;
+      tapUploadRef.current?.click();
+    },
+    [config.zones],
+  );
 
   /**
    * Applies a starting template: its option choices, its wording and the view
@@ -463,6 +484,7 @@ export function ProductCustomizer({
       reposition,
       repositionZone,
       onZoneSelect: setActiveZoneId,
+      requestPhotoUpload,
       setViewId,
       setTextProps,
       gestureHandlers: gestures.handlers,
@@ -475,6 +497,7 @@ export function ProductCustomizer({
     activeZone,
     reposition,
     repositionZone,
+    requestPhotoUpload,
     setViewId,
     setTextProps,
     gestures.handlers,
@@ -489,6 +512,21 @@ export function ProductCustomizer({
 
   return (
     <>
+    {/* Always mounted so a tap on the product image can open the picker for any
+        photo zone, even one that is not the active zone in the panel. */}
+    <input
+      ref={tapUploadRef}
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      className="sr-only"
+      onChange={(e) => {
+        const f = e.target.files?.[0];
+        const zone = pendingUploadZoneRef.current;
+        pendingUploadZoneRef.current = null;
+        if (f && zone) setCrop({ file: f, zone });
+        if (tapUploadRef.current) tapUploadRef.current.value = "";
+      }}
+    />
     <section className="rounded-card border border-brand-200 bg-brand-50/50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-lg font-semibold text-brand-800">Personalise it</h2>

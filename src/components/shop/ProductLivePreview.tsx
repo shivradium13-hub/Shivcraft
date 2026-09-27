@@ -111,6 +111,20 @@ export function ProductLivePreview({
       ? (snap.design.zones[rep] as { kind: "TEXT"; text: TextPlacement }).text
       : null;
 
+  /* Tapping a zone on the product image: an empty photo area opens the photo
+     picker straight away (that is where the customer "adds" their image), while
+     any other zone — or a photo that already has an image — just becomes the
+     selected element so it can be edited/dragged. */
+  const handleZoneTap = (zoneId: string) => {
+    if (!snap) return;
+    const zone = snap.config.zones.find((z) => z.id === zoneId);
+    const value = snap.design.zones[zoneId];
+    const emptyPhoto =
+      zone?.kind === "PHOTO" && !(value?.kind === "PHOTO" && value.photo.uploadId);
+    if (emptyPhoto) snap.requestPhotoUpload(zoneId);
+    else snap.onZoneSelect(zoneId);
+  };
+
   const liveMain = snap ? (
     <div
       /* The zoom scales the whole preview (canvas + selection overlay together),
@@ -133,7 +147,7 @@ export function ProductLivePreview({
         activeZoneId={snap.activeZoneId}
         interactive
         highlightActive
-        onZoneSelect={snap.onZoneSelect}
+        onZoneSelect={handleZoneTap}
       />
       {/* The reposition handle box only exists while placing text, so the product
           image carries no box otherwise. */}

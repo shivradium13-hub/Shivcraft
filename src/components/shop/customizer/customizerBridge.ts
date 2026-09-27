@@ -29,6 +29,9 @@ export type CustomizerSnapshot = {
   reposition: string | null;
   repositionZone: CustomizerZone | null;
   onZoneSelect: (zoneId: string) => void;
+  /** Open the photo picker + crop for a zone. Used when the customer taps an
+   *  empty photo area on the product image — the upload opens straight away. */
+  requestPhotoUpload: (zoneId: string) => void;
   setViewId: (viewId: string) => void;
   setTextProps: (zoneId: string, patch: Partial<TextPlacement>, live?: boolean) => void;
   /** Photo pan/pinch/zoom handlers, spread onto the preview's canvas wrapper so
