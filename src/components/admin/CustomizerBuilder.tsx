@@ -279,9 +279,13 @@ export function CustomizerBuilder({
 
   return (
     <div className="grid gap-4">
-      {/* ----------------------------------------------------- top controls */}
-      <div className="flex flex-wrap items-center gap-2 rounded-card border border-sr-line bg-sr-surface p-2.5">
-        <label className="flex min-w-0 flex-1 items-center gap-2 text-xs font-semibold text-sr-body">
+      {/* ----------------------------------------------------- top controls
+          Stacks on a phone (name on its own row, actions wrapping below) and
+          becomes a single wrapping row from sm up. Action labels never wrap
+          mid-word, so a narrow screen shows tidy chips rather than three-line
+          buttons. */}
+      <div className="flex flex-col gap-2 rounded-card border border-sr-line bg-sr-surface p-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+        <label className="flex w-full min-w-0 items-center gap-2 text-xs font-semibold text-sr-body sm:flex-1">
           <span className="shrink-0 text-sr-muted">Template name</span>
           <input
             className={`${input} min-w-0 flex-1`}
@@ -291,7 +295,7 @@ export function CustomizerBuilder({
           />
         </label>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             onClick={() => {
@@ -299,7 +303,7 @@ export function CustomizerBuilder({
               setConfig(withStarterView(EMPTY_CONFIG, productImages[0] ?? ""));
               setSelectedZone(null);
             }}
-            className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
+            className="whitespace-nowrap rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
             title="Start a fresh blank template (Undo restores it)"
           >
             + New template
@@ -308,7 +312,7 @@ export function CustomizerBuilder({
             type="button"
             onClick={undo}
             disabled={past.length === 0}
-            className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body disabled:opacity-40"
+            className="whitespace-nowrap rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body disabled:opacity-40"
           >
             Undo
           </button>
@@ -316,12 +320,12 @@ export function CustomizerBuilder({
             type="button"
             onClick={redo}
             disabled={future.length === 0}
-            className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body disabled:opacity-40"
+            className="whitespace-nowrap rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body disabled:opacity-40"
           >
             Redo
           </button>
           <span
-            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${
               dirty ? "bg-warn/10 text-warn" : "bg-success-soft text-success"
             }`}
           >
@@ -331,7 +335,7 @@ export function CustomizerBuilder({
             type="button"
             onClick={() => setPreviewing(true)}
             disabled={!view}
-            className="rounded-lg bg-sr-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sr-700 disabled:opacity-40"
+            className="whitespace-nowrap rounded-lg bg-sr-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sr-700 disabled:opacity-40"
           >
             Preview customer experience
           </button>
