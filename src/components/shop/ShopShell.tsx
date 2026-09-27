@@ -30,7 +30,13 @@ export function ShopShell({
   const close = useCallback(() => setIsOpen(false), []);
 
   // Navigating away should not leave the drawer hanging open behind the page.
-  useEffect(() => close(), [pathname, close]);
+  // Close it as the route changes using the adjust-state-during-render pattern
+  // (the React-blessed alternative to a setState-in-effect).
+  const [seenPath, setSeenPath] = useState(pathname);
+  if (seenPath !== pathname) {
+    setSeenPath(pathname);
+    if (isOpen) setIsOpen(false);
+  }
 
   useEffect(() => {
     if (!isOpen) return;
@@ -62,7 +68,29 @@ function CategoryDrawer({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const pathname = usePathname();
+
+  // Which category (or subcategory) is being viewed, so the drawer can mark it
+  // and open its branch — matching the active state the desktop nav already has.
+  const activeSlug = pathname.startsWith("/category/")
+    ? pathname.slice("/category/".length)
+    : null;
+  const allGiftsActive = pathname === "/search";
+  const activeParentId = activeSlug
+    ? categories.find(
+        (c) => c.slug === activeSlug || c.children.some((s) => s.slug === activeSlug),
+      )?.id ?? null
+    : null;
+
+  // Auto-expand the active branch. Re-sync when the route changes (navigation
+  // closes the drawer, so this simply prepares the branch for the next open)
+  // using the adjust-state-during-render pattern — no effect, no extra render.
+  const [expanded, setExpanded] = useState<string | null>(activeParentId);
+  const [seenPath, setSeenPath] = useState(pathname);
+  if (seenPath !== pathname) {
+    setSeenPath(pathname);
+    setExpanded(activeParentId);
+  }
 
   return (
     <div
@@ -105,19 +133,26 @@ function CategoryDrawer({
         <nav className="flex-1 overflow-y-auto overscroll-contain px-2 py-3">
           <Link
             href="/search"
-            className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-brand-50"
+            aria-current={allGiftsActive ? "page" : undefined}
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-brand-50 ${
+              allGiftsActive ? "bg-brand-50 text-brand-700" : "text-ink"
+            }`}
           >
             <span aria-hidden="true">🎁</span> All Gifts
           </Link>
 
           {categories.map((cat) => {
             const isExpanded = expanded === cat.id;
+            const isCatActive = activeSlug === cat.slug;
             return (
               <div key={cat.id} className="mt-0.5">
                 <div className="flex items-stretch">
                   <Link
                     href={`/category/${cat.slug}`}
-                    className="flex flex-1 items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-brand-50"
+                    aria-current={isCatActive ? "page" : undefined}
+                    className={`flex flex-1 items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-brand-50 ${
+                      isCatActive ? "bg-brand-50 text-brand-700" : "text-ink"
+                    }`}
                   >
                     {cat.icon ? <span aria-hidden="true">{cat.icon}</span> : null}
                     {cat.name}
@@ -149,16 +184,22 @@ function CategoryDrawer({
 
                 {isExpanded ? (
                   <ul className="mt-0.5 mb-1 ml-5 border-l border-line pl-2">
-                    {cat.children.map((sub) => (
-                      <li key={sub.id}>
-                        <Link
-                          href={`/category/${sub.slug}`}
-                          className="block rounded-lg px-3 py-2 text-sm text-ink-soft hover:bg-brand-50 hover:text-brand-700"
-                        >
-                          {sub.name}
-                        </Link>
-                      </li>
-                    ))}
+                    {cat.children.map((sub) => {
+                      const isSubActive = activeSlug === sub.slug;
+                      return (
+                        <li key={sub.id}>
+                          <Link
+                            href={`/category/${sub.slug}`}
+                            aria-current={isSubActive ? "page" : undefined}
+                            className={`block rounded-lg px-3 py-2 text-sm hover:bg-brand-50 hover:text-brand-700 ${
+                              isSubActive ? "bg-brand-50 font-medium text-brand-700" : "text-ink-soft"
+                            }`}
+                          >
+                            {sub.name}
+                          </Link>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : null}
               </div>
