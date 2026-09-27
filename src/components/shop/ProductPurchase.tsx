@@ -170,20 +170,6 @@ export function ProductPurchase({
 
   return (
     <div className="space-y-5">
-      {/* ----------------------------------------------- customize now CTA
-          A clear entry point to personalisation: it scrolls to (and briefly
-          highlights) the "Personalise it" panel — most useful on a phone, where
-          the panel sits below the product image and the options. */}
-      {customizerConfig.enabled ? (
-        <button
-          type="button"
-          onClick={goCustomize}
-          className="gc-cta w-full rounded-full px-6 py-3 text-sm font-semibold transition"
-        >
-          🎨 Customize Now
-        </button>
-      ) : null}
-
       {/* ------------------------------------------------------- variants */}
       {product.variantGroups.map((group) => (
         <div key={group.name}>
@@ -450,14 +436,27 @@ export function ProductPurchase({
         >
           {busy ? "Adding…" : outOfStock ? "Out of stock" : "Add to Cart"}
         </button>
-        <button
-          type="button"
-          disabled={busy || outOfStock}
-          onClick={() => addToCart(true)}
-          className="flex-1 gc-cta rounded-full px-6 py-3 text-sm font-semibold transition disabled:opacity-50"
-        >
-          Buy Now
-        </button>
+        {/* On a personalisable product the primary action is "Customize Now"
+            (in place of Buy Now): it opens the "Personalise it" interface so the
+            customer designs the piece before buying. Plain products keep Buy Now. */}
+        {customizerConfig.enabled ? (
+          <button
+            type="button"
+            onClick={goCustomize}
+            className="flex-1 gc-cta rounded-full px-6 py-3 text-sm font-semibold transition"
+          >
+            🎨 Customize Now
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={busy || outOfStock}
+            onClick={() => addToCart(true)}
+            className="flex-1 gc-cta rounded-full px-6 py-3 text-sm font-semibold transition disabled:opacity-50"
+          >
+            Buy Now
+          </button>
+        )}
       </div>
 
       {notice ? (
