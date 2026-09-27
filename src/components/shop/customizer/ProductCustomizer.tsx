@@ -1259,6 +1259,8 @@ export function ProductCustomizer({
         imageUrl={crop.imageUrl}
         aspectRatio={crop.zone.height > 0 ? crop.zone.width / crop.zone.height : undefined}
         round={crop.zone.shape === "CIRCLE"}
+        cornerRadius={crop.zone.cornerRadius}
+        maskUrl={crop.zone.maskUrl}
         title="Crop photo"
         onCancel={() => setCrop(null)}
         onCropped={(cropped) => {

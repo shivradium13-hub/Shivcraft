@@ -1316,6 +1316,11 @@ function ZonesTab({
                   hint="Shown in the box until the customer uploads their own photo. Leave empty for an empty photo slot."
                   value={selected.imageUrl}
                   onChange={(url) => onPatch(selected.id, { imageUrl: url })}
+                  shape={{
+                    round: selected.shape === "CIRCLE",
+                    cornerRadius: selected.cornerRadius,
+                    maskUrl: selected.maskUrl,
+                  }}
                 />
               </div>
               {selected.imageUrl ? (
@@ -1559,6 +1564,11 @@ function ZonesTab({
                   hint="A transparent PNG overrides the fill and sits over the customer's content."
                   value={selected.imageUrl}
                   onChange={(url) => onPatch(selected.id, { imageUrl: url })}
+                  shape={{
+                    round: selected.shape === "CIRCLE",
+                    cornerRadius: selected.cornerRadius,
+                    maskUrl: selected.maskUrl,
+                  }}
                 />
               </div>
               <div className="sm:col-span-2">
@@ -2813,6 +2823,7 @@ function MediaUploadField({
   onChange,
   accept = "image/jpeg,image/png,image/webp",
   crop = true,
+  shape,
 }: {
   label: string;
   hint?: string;
@@ -2822,6 +2833,9 @@ function MediaUploadField({
   /** Whether to open the crop step before uploading. Off for masks, whose exact
    *  alpha must be preserved untouched. */
   crop?: boolean;
+  /** The element's shape, so the crop step previews the same clip the canvas
+   *  will apply (single source of truth: the admin's shape). */
+  shape?: { round?: boolean; cornerRadius?: number; maskUrl?: string };
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2892,6 +2906,9 @@ function MediaUploadField({
         <CropModal
           file={cropFile}
           title="Crop image"
+          round={shape?.round}
+          cornerRadius={shape?.cornerRadius}
+          maskUrl={shape?.maskUrl}
           onCancel={() => setCropFile(null)}
           onCropped={(cropped) => {
             setCropFile(null);

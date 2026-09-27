@@ -1,7 +1,7 @@
 "use client";
 
 import Cropper from "cropperjs";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import "cropperjs/dist/cropper.css";
 
@@ -21,6 +21,8 @@ export function CropModal({
   imageUrl,
   aspectRatio,
   round = false,
+  cornerRadius = 0,
+  maskUrl = "",
   title = "Crop Image",
   onCancel,
   onCropped,
@@ -33,6 +35,11 @@ export function CropModal({
   aspectRatio?: number;
   /** Show the crop box as a circle (for round frames). */
   round?: boolean;
+  /** Rounded-rectangle corner radius (% of the box), for a rounded frame. */
+  cornerRadius?: number;
+  /** A custom shape / clipping-mask PNG — the crop preview is clipped to its
+   *  alpha so the customer sees the exact frame shape while cropping. */
+  maskUrl?: string;
   title?: string;
   onCancel: () => void;
   onCropped: (result: File) => void;
@@ -112,6 +119,23 @@ export function CropModal({
   const iconBtn =
     "flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 text-white/90 transition hover:bg-white/10";
 
+  /* The crop box mirrors the product's actual shape, so the customer sees the
+     exact frame while cropping (single source of truth: the admin's shape).
+     A custom mask PNG wins; otherwise a circle, a rounded rectangle, or a plain
+     rectangle. The chosen shape masks the cropper's view-box/face via CSS
+     variables read by the .gc-crop-* rules. */
+  const isCircle = round;
+  const shapeClasses = [
+    isCircle ? "gc-crop-round" : cornerRadius > 0 ? "gc-crop-rounded" : "",
+    maskUrl ? "gc-crop-mask" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const shapeVars = {
+    ...(cornerRadius > 0 && !isCircle ? { ["--gc-crop-radius"]: `${cornerRadius}%` } : {}),
+    ...(maskUrl ? { ["--gc-crop-mask"]: `url("${maskUrl}")` } : {}),
+  } as CSSProperties;
+
   return (
     <div
       role="dialog"
@@ -121,7 +145,8 @@ export function CropModal({
       onClick={onCancel}
     >
       <div
-        className={`flex w-full max-w-2xl flex-col overflow-hidden rounded-card bg-[#0f1115] shadow-lift ${round ? "gc-crop-round" : ""}`}
+        className={`flex w-full max-w-2xl flex-col overflow-hidden rounded-card bg-[#0f1115] shadow-lift ${shapeClasses}`}
+        style={shapeVars}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">

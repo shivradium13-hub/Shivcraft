@@ -199,6 +199,27 @@
     border-radius: 50%;
   }
 
+  /* A rounded-rectangle frame: the crop box previews the same corner radius. */
+  .gc-crop-rounded .cropper-view-box,
+  .gc-crop-rounded .cropper-face {
+    border-radius: var(--gc-crop-radius, 0);
+  }
+
+  /* A custom shape (heart, star, polygon, any admin mask PNG): the crop box is
+     clipped to the mask's alpha, so the customer sees the exact final shape
+     while cropping. Fit inside and centred — the same as the render-time mask. */
+  .gc-crop-mask .cropper-view-box,
+  .gc-crop-mask .cropper-face {
+    -webkit-mask-image: var(--gc-crop-mask);
+    mask-image: var(--gc-crop-mask);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+  }
+
   .gc-hide-scrollbar {
     scrollbar-width: none;
   }
