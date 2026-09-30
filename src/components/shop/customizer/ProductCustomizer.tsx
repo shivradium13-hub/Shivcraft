@@ -1083,7 +1083,7 @@ export function ProductCustomizer({
                             {tv?.value.length ?? 0} of {activeZone.maxChars} characters
                           </span>
                         ) : null}
-                        <span className="text-[11px] text-muted italic">
+                        <span className="text-xs text-muted italic">
                           *If you leave this empty, we print the default text shown in the product image.
                         </span>
                       </label>
@@ -1811,7 +1811,7 @@ function CustomizationSummary({
             <button
               type="button"
               onClick={() => onEdit(it.id)}
-              className="shrink-0 rounded-lg border border-line-strong px-2.5 py-1 text-[11px] font-semibold text-ink-soft transition hover:border-brand-400"
+              className="shrink-0 rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:border-brand-400 hover:text-brand-700"
             >
               Edit
             </button>
