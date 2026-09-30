@@ -83,14 +83,16 @@ export function QuickFilters() {
     chips.some((c) => c.on) || activeBand !== undefined || params.get("rating") !== null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    // A single-row slider: chips scroll horizontally (hidden scrollbar, snap)
+    // instead of wrapping onto several rows.
+    <div className="gc-hide-scrollbar gc-rail flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
       {chips.map((chip) => (
         <button
           key={chip.key}
           type="button"
           aria-pressed={chip.on}
           onClick={() => setParam({ [chip.key]: chip.on ? null : "true" })}
-          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+          className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition ${
             chip.on
               ? "border-brand-600 bg-brand-600 text-white"
               : "border-field bg-field-bg text-ink-soft hover:border-brand-300"
@@ -110,7 +112,7 @@ export function QuickFilters() {
             onClick={() =>
               setParam(on ? { minPrice: null, maxPrice: null } : { minPrice: band.min, maxPrice: band.max })
             }
-            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+            className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition ${
               on
                 ? "border-brand-600 bg-brand-600 text-white"
                 : "border-field bg-field-bg text-ink-soft hover:border-brand-300"
@@ -125,7 +127,7 @@ export function QuickFilters() {
         type="button"
         aria-pressed={params.get("rating") === "4"}
         onClick={() => setParam({ rating: params.get("rating") === "4" ? null : "4" })}
-        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+        className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition ${
           params.get("rating") === "4"
             ? "border-brand-600 bg-brand-600 text-white"
             : "border-field bg-field-bg text-ink-soft hover:border-brand-300"
@@ -146,7 +148,7 @@ export function QuickFilters() {
               rating: null,
             })
           }
-          className="text-xs font-semibold text-brand-700 underline-offset-2 hover:underline"
+          className="shrink-0 whitespace-nowrap text-xs font-semibold text-brand-700 underline-offset-2 hover:underline"
         >
           Clear filters
         </button>
