@@ -342,7 +342,7 @@ export function CustomizerBuilder({
         </div>
       </div>
 
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:items-start">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,640px)_minmax(0,360px)] lg:items-start lg:justify-center">
       {/* ------------------------------------------------------- preview */}
       <div className="lg:sticky lg:top-4">
         <div
