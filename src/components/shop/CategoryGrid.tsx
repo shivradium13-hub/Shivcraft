@@ -16,9 +16,10 @@ export type HomeCategory = {
 /**
  * The homepage "Shop by category" as a clean, responsive card grid (reference
  * style): 2 per row on phones, 3 on tablets, 4 on desktop, every card the same
- * square aspect so rows never break. A card shows the category's short video
- * (autoplayed, muted, looped, image as poster) when the admin set one, else the
- * image. Tapping opens the category.
+ * square aspect so rows never break. The category image fills the whole card and
+ * the name sits over its bottom in a light, frosted (translucent) band — the
+ * image shows through faintly behind it. A short video (autoplayed, muted,
+ * looped, image as poster) plays when the admin set one, else the image.
  */
 export function CategoryGrid({ categories }: { categories: HomeCategory[] }) {
   return (
@@ -27,33 +28,36 @@ export function CategoryGrid({ categories }: { categories: HomeCategory[] }) {
         <Link
           key={cat.id}
           href={`/category/${cat.slug}`}
-          className="group overflow-hidden rounded-card border border-line bg-paper transition hover:border-brand-300 hover:shadow-card"
+          className="group relative block aspect-square overflow-hidden rounded-card border border-line bg-brand-50 transition hover:border-brand-300 hover:shadow-card"
         >
-          <div className="relative aspect-square w-full overflow-hidden bg-brand-50">
-            {cat.videoUrl ? (
-              <video
-                src={cat.videoUrl}
-                poster={cat.imageUrl ?? undefined}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
-                className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
-              />
-            ) : (
-              <ProductImage
-                src={cat.imageUrl}
-                alt=""
-                sizes="(min-width: 1024px) 320px, (min-width: 640px) 33vw, 50vw"
-                className="transition duration-300 group-hover:scale-105"
-              />
-            )}
+          {cat.videoUrl ? (
+            <video
+              src={cat.videoUrl}
+              poster={cat.imageUrl ?? undefined}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <ProductImage
+              src={cat.imageUrl}
+              alt=""
+              sizes="(min-width: 1024px) 320px, (min-width: 640px) 33vw, 50vw"
+              className="transition duration-300 group-hover:scale-105"
+            />
+          )}
+
+          {/* Frosted name band over the bottom of the image — the picture shows
+              through faintly behind the category name. */}
+          <div className="absolute inset-x-0 bottom-0 bg-paper/80 px-3 py-2.5 text-center backdrop-blur-sm">
+            <p className="line-clamp-1 text-sm font-semibold text-ink">
+              {cat.icon ? <span aria-hidden="true">{cat.icon} </span> : null}
+              {cat.name}
+            </p>
           </div>
-          <p className="line-clamp-1 px-3 py-3 text-center text-sm font-semibold text-ink">
-            {cat.icon ? <span aria-hidden="true">{cat.icon} </span> : null}
-            {cat.name}
-          </p>
         </Link>
       ))}
     </div>
