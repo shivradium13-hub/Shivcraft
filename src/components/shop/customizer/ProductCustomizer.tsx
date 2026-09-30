@@ -1088,118 +1088,11 @@ export function ProductCustomizer({
                         </span>
                       </label>
 
-                      {tv ? (
-                        <>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Segmented
-                              value={tv.align ?? activeZone.align}
-                              options={[
-                                ["left", "Align left", "⇤"],
-                                ["center", "Align centre", "≡"],
-                                ["right", "Align right", "⇥"],
-                              ]}
-                              onPick={(v) =>
-                                setTextProps(activeZone.id, { align: v as TextPlacement["align"] })
-                              }
-                            />
-                            <div className="flex gap-1" role="group" aria-label="Text style">
-                              <StyleToggle
-                                on={!!tv.bold}
-                                label="Bold"
-                                onClick={() => setTextProps(activeZone.id, { bold: !tv.bold })}
-                              >
-                                <span className="font-bold">B</span>
-                              </StyleToggle>
-                              <StyleToggle
-                                on={!!tv.italic}
-                                label="Italic"
-                                onClick={() => setTextProps(activeZone.id, { italic: !tv.italic })}
-                              >
-                                <span className="italic">I</span>
-                              </StyleToggle>
-                              <StyleToggle
-                                on={!!tv.underline}
-                                label="Underline"
-                                onClick={() => setTextProps(activeZone.id, { underline: !tv.underline })}
-                              >
-                                <span className="underline">U</span>
-                              </StyleToggle>
-                            </div>
-                            {/* Mirror, only when the admin allowed the customer to. */}
-                            {activeZone.customerCanMirror ? (
-                              <div className="flex gap-1" role="group" aria-label="Mirror text">
-                                <StyleToggle
-                                  on={!!tv.mirrorH}
-                                  label="Mirror horizontally"
-                                  onClick={() => setTextProps(activeZone.id, { mirrorH: !tv.mirrorH })}
-                                >
-                                  <span aria-hidden="true">↔</span>
-                                </StyleToggle>
-                                <StyleToggle
-                                  on={!!tv.mirrorV}
-                                  label="Mirror vertically"
-                                  onClick={() => setTextProps(activeZone.id, { mirrorV: !tv.mirrorV })}
-                                >
-                                  <span aria-hidden="true">↕</span>
-                                </StyleToggle>
-                              </div>
-                            ) : null}
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-ink">Size</span>
-                            <div className="flex items-center rounded-lg border border-line-strong">
-                              <button
-                                type="button"
-                                aria-label="Smaller"
-                                onClick={() =>
-                                  setTextProps(activeZone.id, {
-                                    fontSizePct: clampSize((tv.fontSizePct ?? activeZone.fontSizePct) - 1),
-                                  })
-                                }
-                                className="px-3 py-1.5 text-sm leading-none text-ink"
-                              >
-                                −
-                              </button>
-                              <span className="min-w-9 text-center text-xs font-semibold tabular-nums">
-                                {Math.round(tv.fontSizePct ?? activeZone.fontSizePct)}
-                              </span>
-                              <button
-                                type="button"
-                                aria-label="Larger"
-                                onClick={() =>
-                                  setTextProps(activeZone.id, {
-                                    fontSizePct: clampSize((tv.fontSizePct ?? activeZone.fontSizePct) + 1),
-                                  })
-                                }
-                                className="px-3 py-1.5 text-sm leading-none text-ink"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-xs font-semibold text-ink">Position</span>
-                            <Small
-                              onClick={() =>
-                                setReposition(reposition === activeZone.id ? null : activeZone.id)
-                              }
-                            >
-                              {reposition === activeZone.id ? "Finish reposition" : "↔ Reposition"}
-                            </Small>
-                            {tv.offsetX || tv.offsetY || tv.rotation ? (
-                              <Small
-                                onClick={() =>
-                                  setTextProps(activeZone.id, { offsetX: 0, offsetY: 0, rotation: 0 })
-                                }
-                              >
-                                Reset
-                              </Small>
-                            ) : null}
-                          </div>
-                        </>
-                      ) : null}
+                      {/* The per-field text formatting toolbar (alignment, B/I/U,
+                          mirror, size and reposition) is intentionally not shown to
+                          the customer: they only enter their wording, and the admin's
+                          font, size, alignment and position from the Frame Designer
+                          apply. Removing it keeps the admin's layout intact. */}
                     </>
                   )}
                 </div>
@@ -1816,10 +1709,6 @@ const PRESET_GRID: { label: string; glyph: string; x: number; y: number }[] = [
   { label: "Bottom right", glyph: "↘", x: 40, y: 40 },
 ];
 
-function clampSize(n: number) {
-  return Math.min(80, Math.max(4, Math.round(n)));
-}
-
 /** A four-step, honest indicator of where the customer is in the flow. */
 function ProgressSteps({ current }: { current: number }) {
   const labels = ["Product", "Personalise", "Preview", "Add to cart"];
@@ -1849,70 +1738,6 @@ function ProgressSteps({ current }: { current: number }) {
         );
       })}
     </ol>
-  );
-}
-
-/** A small segmented control (used for text alignment). */
-function Segmented({
-  value,
-  options,
-  onPick,
-}: {
-  value: string;
-  options: [string, string, string][];
-  onPick: (value: string) => void;
-}) {
-  return (
-    <div className="inline-flex overflow-hidden rounded-lg border border-line-strong" role="group">
-      {options.map(([val, label, glyph], i) => {
-        const active = value === val;
-        return (
-          <button
-            key={val}
-            type="button"
-            aria-label={label}
-            aria-pressed={active}
-            title={label}
-            onClick={() => onPick(val)}
-            className={`px-2.5 py-1.5 text-xs leading-none ${i > 0 ? "border-l border-line-strong" : ""} ${
-              active ? "bg-brand-600 text-white" : "text-ink-soft hover:bg-brand-50"
-            }`}
-          >
-            {glyph}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** A single bold/italic/underline toggle. */
-function StyleToggle({
-  on,
-  label,
-  onClick,
-  children,
-}: {
-  on: boolean;
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className={`h-8 w-8 rounded-lg border text-sm transition ${
-        on
-          ? "border-brand-600 bg-brand-50 text-brand-700"
-          : "border-line-strong text-ink-soft hover:border-brand-400"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 
