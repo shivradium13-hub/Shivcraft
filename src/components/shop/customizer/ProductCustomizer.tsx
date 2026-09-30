@@ -892,17 +892,35 @@ export function ProductCustomizer({
                       if (fileRef.current) fileRef.current.value = "";
                     }}
                   />
+                  <p className="mb-1.5 text-xs font-semibold text-ink">{activeZone.label}</p>
+                  {/* A large square drop-target: shows the picked photo, or a big
+                      "+" to add one. Tapping it (or the button below) opens the
+                      same picker → crop flow. */}
                   <button
                     type="button"
                     disabled={uploading}
                     onClick={() => fileRef.current?.click()}
-                    className="w-full rounded-full bg-brand-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+                    aria-label={activePhoto ? "Change image" : "Add image"}
+                    className="relative flex aspect-square w-44 max-w-full items-center justify-center overflow-hidden rounded-card border-2 border-dashed border-line-strong bg-field-bg transition hover:border-brand-400 disabled:opacity-60"
                   >
-                    {uploading
-                      ? "Uploading photo…"
-                      : activePhoto
-                        ? `Replace photo in ${activeZone.label}`
-                        : `Upload photo for ${activeZone.label}`}
+                    {activePhoto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/uploads/${activePhoto.uploadId}`}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-5xl font-light leading-none text-muted">+</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => fileRef.current?.click()}
+                    className="mt-3 inline-block rounded-full border border-brand-500 px-6 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-60"
+                  >
+                    {uploading ? "Uploading…" : activePhoto ? "Change Image" : "Choose Image"}
                   </button>
                 </>
               ) : null}
@@ -1065,6 +1083,9 @@ export function ProductCustomizer({
                             {tv?.value.length ?? 0} of {activeZone.maxChars} characters
                           </span>
                         ) : null}
+                        <span className="text-[11px] text-muted italic">
+                          *If you leave this empty, we print the default text shown in the product image.
+                        </span>
                       </label>
 
                       {tv ? (
@@ -1545,8 +1566,10 @@ function StyleControls({
 
       {showFont ? (
         <fieldset>
-          <legend className="text-xs font-semibold text-ink">Font</legend>
-          <div className="mt-1.5 flex flex-wrap gap-2">
+          <legend className="text-xs font-semibold text-ink">Select a font</legend>
+          {/* A grid of "Abc" preview tiles, each rendered in its own font, so the
+              customer picks by how the letters look rather than by name. */}
+          <div className="mt-1.5 grid grid-cols-4 gap-2">
             {co.font.families.map((f) => {
               const active = (s.fontFamily ?? co.font.default) === f.name;
               return (
@@ -1554,15 +1577,21 @@ function StyleControls({
                   key={f.name}
                   type="button"
                   aria-pressed={active}
+                  title={f.name}
                   onClick={() => setStyle({ fontFamily: f.name })}
-                  style={{ fontFamily: fontStack(f.name) }}
-                  className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                  className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border bg-paper transition ${
                     active
-                      ? "border-brand-600 bg-brand-50 text-brand-700"
-                      : "border-line-strong text-ink-soft hover:border-brand-400"
+                      ? "border-brand-600 ring-1 ring-brand-200"
+                      : "border-line-strong hover:border-brand-400"
                   }`}
                 >
-                  {f.name}
+                  <span
+                    style={{ fontFamily: fontStack(f.name) }}
+                    className="text-xl leading-none text-ink"
+                  >
+                    Abc
+                  </span>
+                  <span className="max-w-full truncate px-1 text-[9px] text-muted">{f.name}</span>
                 </button>
               );
             })}
