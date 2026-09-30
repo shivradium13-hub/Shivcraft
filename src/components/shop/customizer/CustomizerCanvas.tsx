@@ -17,6 +17,7 @@ import {
   zoneGradientCss,
   zoneTextMirror,
   zoneTextShadow,
+  zoneTextDropShadow,
   zoneTextTexture,
   zonesForView,
   type CustomizerConfig,
@@ -414,17 +415,28 @@ function ZoneLayer({
                     WebkitTextFillColor: "transparent",
                   }
                 : { color: value.text.color ?? text.color }),
-            // Shadow precedence: acrylic emboss → element shadow → global acrylic.
-            ...(acrylic
-              ? { textShadow: acrylic.textShadow }
-              : zoneTextShadow(zone)
-                ? { textShadow: zoneTextShadow(zone)! }
-                : acrylicMirrorOn(config)
-                  ? {
-                      textShadow:
-                        "0 1px 0 rgba(255,255,255,0.65), 0 -1px 0 rgba(0,0,0,0.25), 0 2px 3px rgba(0,0,0,0.35)",
-                    }
-                  : null),
+            // Shadow precedence. Textured letters take a different path: a
+            // text-shadow paints over the clipped background (in FRONT of the
+            // letters), so an outer shadow is rendered as a drop-shadow FILTER
+            // that sits behind the glyphs; an engraved (inset) shadow stays a
+            // surface text-shadow. Non-textured text is unchanged:
+            // acrylic emboss → element shadow → global acrylic.
+            ...(texture
+              ? zoneTextDropShadow(zone)
+                ? { filter: zoneTextDropShadow(zone)! }
+                : zone.shadow?.enabled && zone.shadow.inset
+                  ? { textShadow: zoneTextShadow(zone)! }
+                  : null
+              : acrylic
+                ? { textShadow: acrylic.textShadow }
+                : zoneTextShadow(zone)
+                  ? { textShadow: zoneTextShadow(zone)! }
+                  : acrylicMirrorOn(config)
+                    ? {
+                        textShadow:
+                          "0 1px 0 rgba(255,255,255,0.65), 0 -1px 0 rgba(0,0,0,0.25), 0 2px 3px rgba(0,0,0,0.35)",
+                      }
+                    : null),
           }}
         />
       ) : null}

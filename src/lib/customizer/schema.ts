@@ -696,6 +696,22 @@ export function zoneTextShadow(zone: CustomizerZone): string | null {
   return `${s.offsetX}px ${s.offsetY}px ${s.blur}px ${rgba}`;
 }
 
+/**
+ * A `drop-shadow(...)` filter for a text area's OUTER shadow.
+ *
+ * Used only when the letters are filled by a clipped background (a texture): a
+ * `text-shadow` is painted in the foreground layer, which sits ON TOP of the
+ * element's background, so over textured text it lands in FRONT of the letters.
+ * A `drop-shadow` filter instead shadows the element's final rendered pixels, so
+ * it sits BEHIND the glyphs — where a drop shadow belongs. Null for no shadow,
+ * or an inset (engraved) one, which stays a surface `text-shadow`.
+ */
+export function zoneTextDropShadow(zone: CustomizerZone): string | null {
+  const s = zone.shadow;
+  if (!s?.enabled || s.inset) return null;
+  return `drop-shadow(${s.offsetX}px ${s.offsetY}px ${s.blur}px ${hexToRgba(s.color, s.opacity)})`;
+}
+
 /** A `linear-gradient(...)` for a zone whose gradient is on, else null. */
 export function zoneGradientCss(zone: CustomizerZone): string | null {
   const g = zone.gradient;
