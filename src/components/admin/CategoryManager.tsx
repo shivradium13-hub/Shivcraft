@@ -435,7 +435,24 @@ function AddForm({
   const router = useRouter();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function uploadImage(file: File) {
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const json = await res.json();
+      if (res.ok) setImageUrl(json.data.url);
+      else onError(json?.error?.message ?? "That image could not be uploaded.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function submit() {
     if (!name.trim()) return;
@@ -444,7 +461,7 @@ function AddForm({
       const res = await fetch("/api/admin/categories", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, parentId, icon }),
+        body: JSON.stringify({ name, parentId, icon, imageUrl }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -460,39 +477,77 @@ function AddForm({
   }
 
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      <input
-        autoFocus
-        className={`${input} min-w-0 flex-1`}
-        placeholder={parentId ? "Subcategory name" : "Category name"}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-      />
-      {!parentId ? (
+    <div className="mt-2 space-y-2">
+      <div className="flex flex-wrap gap-2">
         <input
-          className="w-20 rounded-lg border border-field bg-field-bg px-3 py-2 text-sm"
-          placeholder="🎁"
-          maxLength={8}
-          value={icon}
-          onChange={(e) => setIcon(e.target.value)}
+          autoFocus
+          className={`${input} min-w-0 flex-1`}
+          placeholder={parentId ? "Subcategory name" : "Category name"}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
         />
-      ) : null}
-      <button
-        type="button"
-        disabled={busy || !name.trim()}
-        onClick={submit}
-        className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-      >
-        {busy ? "Adding…" : "Add"}
-      </button>
-      <button
-        type="button"
-        onClick={onDone}
-        className="rounded-lg border border-sr-line-strong px-3 py-2 text-sm font-semibold text-sr-body"
-      >
-        Cancel
-      </button>
+        {!parentId ? (
+          <input
+            className="w-20 rounded-lg border border-field bg-field-bg px-3 py-2 text-sm"
+            placeholder="🎁"
+            maxLength={8}
+            value={icon}
+            onChange={(e) => setIcon(e.target.value)}
+          />
+        ) : null}
+      </div>
+
+      {/* Image (optional) — set it now, or later via Edit. The picture shows on
+          the homepage category card; new rows without one fall back to the icon. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" />
+        ) : null}
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400 disabled:opacity-60"
+        >
+          {uploading ? "Uploading…" : imageUrl ? "Replace image" : "Upload image (optional)"}
+        </button>
+        {imageUrl ? (
+          <button
+            type="button"
+            onClick={() => setImageUrl("")}
+            className="text-xs font-semibold text-danger hover:underline"
+          >
+            Remove
+          </button>
+        ) : null}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy || uploading || !name.trim()}
+          onClick={submit}
+          className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {busy ? "Adding…" : "Add"}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="rounded-lg border border-sr-line-strong px-3 py-2 text-sm font-semibold text-sr-body"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
