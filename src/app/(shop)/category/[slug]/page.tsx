@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { productQuerySchema } from "@/lib/validation";
-import { Pagination, QuickFilters, SortSelect } from "@/components/shop/BrowseControls";
+import { Pagination, QuickFilters } from "@/components/shop/BrowseControls";
 import { ProductGrid } from "@/components/shop/ProductCard";
 import { EmptyState } from "@/components/ui/primitives";
 import { getCategoryBySlug, getCategoryTree } from "@/server/catalog/categories";
@@ -67,20 +67,18 @@ export default async function CategoryPage(props: PageProps<"/category/[slug]">)
         <span className="font-medium text-ink">{category.name}</span>
       </nav>
 
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-ink sm:text-3xl">
-            {category.icon ? <span aria-hidden="true">{category.icon} </span> : null}
-            {category.name}
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            {total} {total === 1 ? "product" : "products"}
-            {totalPages > 1 ? ` · page ${page} of ${totalPages}` : ""}
-          </p>
-        </div>
-        <SortSelect />
+      <div className="mb-4">
+        <h1 className="font-display text-2xl font-semibold text-ink sm:text-3xl">
+          {category.icon ? <span aria-hidden="true">{category.icon} </span> : null}
+          {category.name}
+        </h1>
+        <p className="mt-1 text-sm text-muted">
+          {total} {total === 1 ? "product" : "products"}
+          {totalPages > 1 ? ` · page ${page} of ${totalPages}` : ""}
+        </p>
       </div>
 
+      {/* Sort now lives at the front of the filter slider below. */}
       <div className="mb-5">
         <QuickFilters />
       </div>

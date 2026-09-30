@@ -42,12 +42,12 @@ export function SortSelect() {
   const current = params.get("sort") ?? "popularity";
 
   return (
-    <label className="flex items-center gap-2 text-sm">
+    <label className="flex shrink-0 items-center gap-1.5 text-sm">
       <span className="text-muted">Sort</span>
       <select
         value={current}
         onChange={(e) => setParam({ sort: e.target.value })}
-        className="rounded-lg border border-field bg-field-bg px-3 py-1.5 text-sm font-medium text-ink outline-none focus:border-brand-500"
+        className="rounded-full border border-field bg-field-bg px-3 py-1.5 text-xs font-medium text-ink outline-none focus:border-brand-500"
       >
         {SORTS.map((sort) => (
           <option key={sort.value} value={sort.value}>
@@ -83,9 +83,11 @@ export function QuickFilters() {
     chips.some((c) => c.on) || activeBand !== undefined || params.get("rating") !== null;
 
   return (
-    // A single-row slider: chips scroll horizontally (hidden scrollbar, snap)
-    // instead of wrapping onto several rows.
+    // A single-row slider: Sort sits at the front, then the filter chips scroll
+    // horizontally (hidden scrollbar, snap) instead of wrapping onto rows.
     <div className="gc-hide-scrollbar gc-rail flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
+      <SortSelect />
+      <span aria-hidden="true" className="h-5 w-px shrink-0 bg-line" />
       {chips.map((chip) => (
         <button
           key={chip.key}
