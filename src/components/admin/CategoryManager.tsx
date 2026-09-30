@@ -436,9 +436,12 @@ function AddForm({
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
 
   async function uploadImage(file: File) {
     setUploading(true);
@@ -454,6 +457,20 @@ function AddForm({
     }
   }
 
+  async function uploadVideo(file: File) {
+    setUploadingVideo(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const json = await res.json();
+      if (res.ok) setVideoUrl(json.data.url);
+      else onError(json?.error?.message ?? "That video could not be uploaded.");
+    } finally {
+      setUploadingVideo(false);
+    }
+  }
+
   async function submit() {
     if (!name.trim()) return;
     setBusy(true);
@@ -461,7 +478,7 @@ function AddForm({
       const res = await fetch("/api/admin/categories", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, parentId, icon, imageUrl }),
+        body: JSON.stringify({ name, parentId, icon, imageUrl, videoUrl }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -531,10 +548,49 @@ function AddForm({
         />
       </div>
 
+      {/* Video (optional) — when set it plays on the homepage card instead of
+          the image (the image, if any, is used as the poster). */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={uploadingVideo}
+          onClick={() => videoRef.current?.click()}
+          className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400 disabled:opacity-60"
+        >
+          {uploadingVideo ? "Uploading…" : videoUrl ? "Replace video" : "Upload video (optional)"}
+        </button>
+        {videoUrl ? (
+          <>
+            <a
+              href={videoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-sr-600 hover:underline"
+            >
+              Preview
+            </a>
+            <button
+              type="button"
+              onClick={() => setVideoUrl("")}
+              className="text-xs font-semibold text-danger hover:underline"
+            >
+              Remove
+            </button>
+          </>
+        ) : null}
+        <input
+          ref={videoRef}
+          type="file"
+          accept="video/mp4,video/webm"
+          className="sr-only"
+          onChange={(e) => e.target.files?.[0] && uploadVideo(e.target.files[0])}
+        />
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={busy || uploading || !name.trim()}
+          disabled={busy || uploading || uploadingVideo || !name.trim()}
           onClick={submit}
           className="rounded-lg bg-sr-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
