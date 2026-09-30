@@ -125,6 +125,8 @@ export function ProductLivePreview({
     }
     const zone = snap.config.zones.find((z) => z.id === zoneId);
     const value = snap.design.zones[zoneId];
+    // Frames are decorative (admin-only) — never editable/uploadable by the customer.
+    if (zone?.kind === "FRAME") return;
     if (zone?.kind === "TEXT") {
       // Tapping the text on the product opens the keyboard: focus its field.
       snap.requestTextEdit(zoneId);

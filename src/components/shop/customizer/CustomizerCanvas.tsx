@@ -217,8 +217,11 @@ function ZoneLayer({
               : undefined,
           boxShadow: outerShadow,
         }}
-        onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
-        className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""}`}
+        /* Frames are the admin's decoration only — never selectable or
+           uploadable by the customer. pointer-events-none also lets a photo area
+           sitting behind a frame stay tappable. (Admin editing uses the separate
+           handle overlay, not this element.) */
+        className="pointer-events-none absolute overflow-hidden"
       >
         {zone.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
