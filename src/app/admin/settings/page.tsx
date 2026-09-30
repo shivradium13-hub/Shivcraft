@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ChangePasswordForm } from "@/components/admin/ChangePasswordForm";
 import { PaymentStatus } from "@/components/admin/PaymentStatus";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { requireAdmin } from "@/server/auth/guards";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Settings", robots: { index: false, follow: false } };
 
 export default async function AdminSettingsPage() {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { shipping, tax, support, business } = await getAllSettings();
   // Read on the server; only booleans and a test/live label reach the page.
   const payments = razorpayStatus();
@@ -43,6 +44,10 @@ export default async function AdminSettingsPage() {
           business,
         }}
       />
+
+      <div className="mt-8">
+        <ChangePasswordForm email={admin.email} />
+      </div>
     </div>
   );
 }
