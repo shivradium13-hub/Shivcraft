@@ -24,11 +24,11 @@ export const runtime = "nodejs";
 /**
  * POST /api/admin/media — product and category artwork (images and short clips).
  *
- * Images are stored PRIVATE and served through /api/media/[id] (which serves
- * only PUBLIC-flagged rows and never checks ownership; customer photos stay on
- * /api/uploads/[id], which always does). Videos are stored PUBLIC in the blob
- * store and referenced by their direct CDN URL, so the browser gets native
- * range/streaming — the response returns that URL to save on the record.
+ * Both images and short clips are stored PRIVATE and served through
+ * /api/media/[id] (which serves only PUBLIC-flagged rows and never checks
+ * ownership; customer photos stay on /api/uploads/[id], which always does).
+ * The blob store is a private-access store, so a `put` with public access is
+ * rejected — everything goes in private and is streamed back through the route.
  */
 export const POST = route(async (request: Request) => {
   const admin = await requireAdmin();
@@ -75,11 +75,9 @@ export const POST = route(async (request: Request) => {
     const blob = await put(
       `catalogue/${Date.now()}.${VIDEO_EXTENSION[videoType]}`,
       Buffer.from(buffer),
-      { access: "public", contentType: videoType, addRandomSuffix: true },
+      { access: "private", contentType: videoType, addRandomSuffix: true },
     );
 
-    // Recorded for housekeeping; the storefront uses the public CDN URL directly
-    // so the browser gets proper range requests / streaming for video.
     const [row] = await db
       .insert(uploads)
       .values({
@@ -93,7 +91,7 @@ export const POST = route(async (request: Request) => {
       })
       .returning({ id: uploads.id });
 
-    return created({ id: row.id, url: blob.url, kind: "video", contentType: videoType, bytes: file.size });
+    return created({ id: row.id, url: `/api/media/${row.id}`, kind: "video", contentType: videoType, bytes: file.size });
   }
 
   throw new ApiError("BAD_REQUEST", `${IMAGE_REJECTION} ${VIDEO_REJECTION}`);
