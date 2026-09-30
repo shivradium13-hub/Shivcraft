@@ -39,6 +39,24 @@ const input =
 const SHADOW_DEFAULT = { enabled: false, inset: false, color: "#000000", opacity: 45, blur: 6, offsetX: 0, offsetY: 4 };
 const GRADIENT_DEFAULT = { enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 };
 const ACRYLIC_DEFAULT = { enabled: false, finish: "gold" as const };
+const TEXTURE_DEFAULT = {
+  enabled: false, imageUrl: "", scalePct: 100, offsetX: 0, offsetY: 0,
+  opacity: 100, blendMode: "normal" as const, repeat: false,
+};
+/** The control values Reset returns to (keeps the enabled state + uploaded image). */
+const TEXTURE_CONTROL_RESET = { scalePct: 100, offsetX: 0, offsetY: 0, opacity: 100, blendMode: "normal" as const, repeat: false };
+const BLEND_MODES: { id: CustomizerZone["texture"]["blendMode"]; label: string }[] = [
+  { id: "normal", label: "Normal" },
+  { id: "multiply", label: "Multiply" },
+  { id: "screen", label: "Screen" },
+  { id: "overlay", label: "Overlay" },
+  { id: "darken", label: "Darken" },
+  { id: "lighten", label: "Lighten" },
+  { id: "color-burn", label: "Color burn" },
+  { id: "color-dodge", label: "Color dodge" },
+  { id: "soft-light", label: "Soft light" },
+  { id: "hard-light", label: "Hard light" },
+];
 
 type Tab = "views" | "zones" | "options" | "customer" | "templates" | "tools";
 
@@ -572,6 +590,10 @@ export function CustomizerBuilder({
                   gradient: { enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 },
                   maskUrl: "",
                   acrylicMirror: { enabled: false, finish: "gold" },
+                  texture: {
+                    enabled: false, imageUrl: "", scalePct: 100, offsetX: 0, offsetY: 0,
+                    opacity: 100, blendMode: "normal", repeat: false,
+                  },
                 };
                 setConfig((prev) => ({
                   ...prev,
@@ -1534,6 +1556,132 @@ function ZonesTab({
                       ))}
                     </select>
                   </Field>
+                ) : null}
+              </div>
+
+              {/* Texture: clip an uploaded image inside the letters. Uses the same
+                  background-clip:text path as the gradient/acrylic finishes, so it
+                  follows the font, size, edits, move and rotation automatically and
+                  never spills outside the glyphs. */}
+              <div className="grid gap-2 rounded-lg border border-sr-line p-2.5 sm:col-span-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
+                  <input
+                    type="checkbox"
+                    checked={selected.texture?.enabled ?? false}
+                    onChange={(e) =>
+                      onPatch(selected.id, {
+                        texture: { ...TEXTURE_DEFAULT, ...selected.texture, enabled: e.target.checked },
+                      })
+                    }
+                  />
+                  Apply texture to text (clip an image inside the letters)
+                </label>
+
+                {selected.texture?.enabled ? (
+                  <>
+                    <MediaUploadField
+                      label="Texture image (PNG / JPG / WEBP)"
+                      hint="Wood, marble, gold, pattern… shown only inside the letters."
+                      value={selected.texture?.imageUrl ?? ""}
+                      crop={false}
+                      onChange={(url) =>
+                        onPatch(selected.id, {
+                          texture: { ...TEXTURE_DEFAULT, ...selected.texture, imageUrl: url },
+                        })
+                      }
+                    />
+
+                    {selected.texture?.imageUrl ? (
+                      <>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <Num
+                            label="Scale % (100 = fill/cover)"
+                            value={selected.texture?.scalePct ?? 100}
+                            onChange={(v) =>
+                              onPatch(selected.id, { texture: { ...TEXTURE_DEFAULT, ...selected.texture, scalePct: v } })
+                            }
+                          />
+                          <Num
+                            label="Opacity %"
+                            value={selected.texture?.opacity ?? 100}
+                            onChange={(v) =>
+                              onPatch(selected.id, { texture: { ...TEXTURE_DEFAULT, ...selected.texture, opacity: v } })
+                            }
+                          />
+                          <Num
+                            label="Position X (−100…100)"
+                            value={selected.texture?.offsetX ?? 0}
+                            onChange={(v) =>
+                              onPatch(selected.id, { texture: { ...TEXTURE_DEFAULT, ...selected.texture, offsetX: v } })
+                            }
+                          />
+                          <Num
+                            label="Position Y (−100…100)"
+                            value={selected.texture?.offsetY ?? 0}
+                            onChange={(v) =>
+                              onPatch(selected.id, { texture: { ...TEXTURE_DEFAULT, ...selected.texture, offsetY: v } })
+                            }
+                          />
+                        </div>
+
+                        <Field label="Blend mode" hint="How the texture blends with the text colour.">
+                          <select
+                            className={input}
+                            value={selected.texture?.blendMode ?? "normal"}
+                            onChange={(e) =>
+                              onPatch(selected.id, {
+                                texture: {
+                                  ...TEXTURE_DEFAULT,
+                                  ...selected.texture,
+                                  blendMode: e.target.value as CustomizerZone["texture"]["blendMode"],
+                                },
+                              })
+                            }
+                          >
+                            {BLEND_MODES.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.label}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+
+                        <label className="flex items-center gap-2 text-sm text-sr-body">
+                          <input
+                            type="checkbox"
+                            checked={selected.texture?.repeat ?? false}
+                            onChange={(e) =>
+                              onPatch(selected.id, {
+                                texture: { ...TEXTURE_DEFAULT, ...selected.texture, repeat: e.target.checked },
+                              })
+                            }
+                          />
+                          Tile a small texture to fill the letters
+                        </label>
+
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onPatch(selected.id, {
+                                texture: { ...TEXTURE_DEFAULT, ...selected.texture, ...TEXTURE_CONTROL_RESET },
+                              })
+                            }
+                            className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400"
+                          >
+                            Reset texture
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onPatch(selected.id, { texture: { ...TEXTURE_DEFAULT } })}
+                            className="rounded-lg border border-danger px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger-soft"
+                          >
+                            Remove texture
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
             </>

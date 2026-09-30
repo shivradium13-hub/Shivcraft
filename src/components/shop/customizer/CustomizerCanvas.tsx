@@ -17,6 +17,7 @@ import {
   zoneGradientCss,
   zoneTextMirror,
   zoneTextShadow,
+  zoneTextTexture,
   zonesForView,
   type CustomizerConfig,
   type CustomizerZone,
@@ -266,6 +267,8 @@ function ZoneLayer({
     (gradient ? `linear-gradient(${gradient.direction}deg, ${gradient.color1}, ${gradient.color2})` : null);
   /* An acrylic-mirror finish, when set, overrides the colour/gradient entirely. */
   const acrylic = zoneAcrylicText(zone);
+  /* A texture image clipped inside the letters — top of the fill precedence. */
+  const texture = zoneTextTexture(zone);
 
   /* A photo box may carry a border, like a frame does. */
   const photoBorder =
@@ -380,9 +383,21 @@ function ZoneLayer({
             fontWeight: value.text.bold ? 700 : zone.fontWeight ?? undefined,
             fontStyle: value.text.italic ? "italic" : undefined,
             textDecoration: value.text.underline ? "underline" : undefined,
-            // Colour precedence: acrylic-mirror finish → element gradient →
-            // global gradient → plain colour.
-            ...(acrylic
+            // Colour precedence: texture image → acrylic-mirror finish →
+            // element gradient → global gradient → plain colour.
+            ...(texture
+              ? {
+                  backgroundImage: texture.backgroundImage,
+                  backgroundSize: texture.backgroundSize,
+                  backgroundPosition: texture.backgroundPosition,
+                  backgroundRepeat: texture.backgroundRepeat,
+                  backgroundBlendMode: texture.backgroundBlendMode,
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  color: "transparent",
+                  WebkitTextFillColor: "transparent",
+                }
+              : acrylic
               ? {
                   backgroundImage: acrylic.backgroundImage,
                   WebkitBackgroundClip: "text",

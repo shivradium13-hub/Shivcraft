@@ -169,6 +169,35 @@ export const zoneSchema = z.object({
         .default("gold"),
     })
     .default({ enabled: false, finish: "gold" }),
+
+  /** TEXT areas only: a texture image (wood, marble, gold…) clipped INSIDE the
+   *  letters. It reuses the same background-clip:text mechanism as the gradient
+   *  and acrylic finishes, so the texture follows the text's font, size, edits,
+   *  move and rotation automatically and never spills outside the glyphs.
+   *  `scalePct` 100 = cover (fills the letters, cropped, undistorted); higher
+   *  zooms in. `offsetX/Y` shift the texture within the letters (-100..100).
+   *  `opacity` fades the texture toward the plain text `color`. `repeat` tiles a
+   *  small texture. When on, it takes precedence over the colour/gradient/acrylic. */
+  texture: z
+    .object({
+      enabled: z.boolean().default(false),
+      imageUrl: z.string().trim().max(500).default(""),
+      scalePct: z.number().min(10).max(400).default(100),
+      offsetX: z.number().min(-100).max(100).default(0),
+      offsetY: z.number().min(-100).max(100).default(0),
+      opacity: z.number().min(0).max(100).default(100),
+      blendMode: z
+        .enum([
+          "normal", "multiply", "screen", "overlay", "darken", "lighten",
+          "color-burn", "color-dodge", "soft-light", "hard-light",
+        ])
+        .default("normal"),
+      repeat: z.boolean().default(false),
+    })
+    .default({
+      enabled: false, imageUrl: "", scalePct: 100, offsetX: 0, offsetY: 0,
+      opacity: 100, blendMode: "normal", repeat: false,
+    }),
 });
 export type CustomizerZone = z.infer<typeof zoneSchema>;
 
@@ -722,6 +751,54 @@ export function zoneAcrylicText(zone: CustomizerZone): {
     // A light top highlight + a dark lower edge = a raised, mirror-polished look.
     textShadow:
       "0 1px 0 rgba(255,255,255,0.75), 0 -1px 0 rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.45)",
+  };
+}
+
+export type ResolvedTextTexture = {
+  backgroundImage: string;
+  backgroundSize: string;
+  backgroundPosition: string;
+  backgroundRepeat: string;
+  backgroundBlendMode: string;
+};
+
+/**
+ * The CSS that clips a texture image inside a text area's letters, or null when
+ * the area has no texture. Rendered with the SAME background-clip:text path the
+ * gradient and acrylic finishes use, so it follows the font, size, edits, move
+ * and rotation for free and never leaks past the glyphs.
+ *
+ * Three stacked background layers (top → bottom):
+ *   1. a flat tint of the plain text colour at `100 - opacity` — fades the
+ *      texture toward that colour as Opacity drops (100 = pure texture, 0 = plain).
+ *   2. the texture image — sized by Scale (100 = cover, undistorted), positioned
+ *      by Position X/Y, optionally tiled, and blended with the base colour by the
+ *      chosen Blend Mode.
+ *   3. the plain text colour, so a partly-transparent PNG texture still reads.
+ */
+export function zoneTextTexture(zone: CustomizerZone): ResolvedTextTexture | null {
+  if (zone.kind !== "TEXT") return null;
+  const t = zone.texture;
+  if (!t?.enabled || !t.imageUrl) return null;
+
+  const safeUrl = t.imageUrl.replace(/"/g, "%22");
+  const texture = `url("${safeUrl}")`;
+  const tint = `linear-gradient(${hexToRgba(zone.color, 100 - t.opacity)}, ${hexToRgba(zone.color, 100 - t.opacity)})`;
+  const base = `linear-gradient(${hexToRgba(zone.color, 100)}, ${hexToRgba(zone.color, 100)})`;
+
+  // 100 = cover (fills the letters, cropped, no distortion); tiling always uses
+  // an explicit percentage so a small texture actually repeats.
+  const size = t.repeat || t.scalePct !== 100 ? `${t.scalePct}%` : "cover";
+  // -100..100 maps to 0%..100% of the box; 0 stays centred.
+  const posX = Math.max(0, Math.min(100, 50 + t.offsetX / 2));
+  const posY = Math.max(0, Math.min(100, 50 + t.offsetY / 2));
+
+  return {
+    backgroundImage: `${tint}, ${texture}, ${base}`,
+    backgroundSize: `auto, ${size}, auto`,
+    backgroundPosition: `center, ${posX}% ${posY}%, center`,
+    backgroundRepeat: `no-repeat, ${t.repeat ? "repeat" : "no-repeat"}, no-repeat`,
+    backgroundBlendMode: `normal, ${t.blendMode}, normal`,
   };
 }
 
