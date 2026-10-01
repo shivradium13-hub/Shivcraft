@@ -2537,44 +2537,8 @@ function CustomerOptionsTab({
   const setCO = (next: Partial<typeof co>) =>
     onChange({ ...config, customerOptions: { ...co, ...next } });
 
-  const [newGoogle, setNewGoogle] = useState("");
-  const [uploadingFont, setUploadingFont] = useState(false);
-  const [fontError, setFontError] = useState<string | null>(null);
   const [sizeLabel, setSizeLabel] = useState("");
   const [sizePx, setSizePx] = useState("");
-  const fontFileRef = useRef<HTMLInputElement>(null);
-
-  async function uploadFonts(files: FileList) {
-    setUploadingFont(true);
-    setFontError(null);
-    try {
-      const added: typeof co.font.families = [];
-      for (const file of Array.from(files)) {
-        const body = new FormData();
-        body.append("file", file);
-        const res = await fetch("/api/admin/customizer/fonts", { method: "POST", body });
-        const json = await res.json().catch(() => null);
-        if (!res.ok) {
-          setFontError(json?.error?.message ?? "That font could not be uploaded.");
-          continue;
-        }
-        added.push({
-          name: json.data.name as string,
-          source: "upload",
-          url: json.data.url as string,
-          format: json.data.format as typeof co.font.families[number]["format"],
-        });
-      }
-      if (added.length > 0) {
-        const merged = [...co.font.families];
-        for (const f of added) if (!merged.some((m) => m.name === f.name)) merged.push(f);
-        setCO({ font: { ...co.font, families: merged, default: co.font.default || added[0].name } });
-      }
-    } finally {
-      setUploadingFont(false);
-      if (fontFileRef.current) fontFileRef.current.value = "";
-    }
-  }
 
   return (
     <div className="grid gap-4">
@@ -2596,127 +2560,10 @@ function CustomerOptionsTab({
         onChange={(v) => setCO({ textColor: v })}
       />
 
-      {/* -------------------------------------------------------- fonts */}
-      <div className="rounded-lg border border-sr-line p-3">
-        <label className="flex items-center gap-2 text-sm font-semibold text-sr-ink">
-          <input
-            type="checkbox"
-            checked={co.font.enabled}
-            onChange={(e) => setCO({ font: { ...co.font, enabled: e.target.checked } })}
-          />
-          Font style — let customers pick the font
-        </label>
-        <p className="mt-0.5 text-[11px] text-sr-muted">
-          Add or remove fonts below (Google Fonts by name, or your own font files). Tick the box to
-          offer the font picker to customers.
-        </p>
-
-        {
-          <div className="mt-2 grid gap-2">
-            {co.font.families.length > 0 ? (
-              <ul className="grid gap-1">
-                {co.font.families.map((f) => (
-                  <li
-                    key={f.name}
-                    className="flex items-center gap-2 rounded-md bg-sr-canvas px-2 py-1 text-xs"
-                  >
-                    <span className="flex-1 truncate font-medium text-sr-body" style={{ fontFamily: `"${f.name}"` }}>
-                      {f.name}
-                    </span>
-                    <span className="rounded bg-sr-surface px-1.5 py-0.5 text-[10px] text-sr-muted">
-                      {f.source}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCO({
-                          font: {
-                            ...co.font,
-                            families: co.font.families.filter((x) => x.name !== f.name),
-                            default: co.font.default === f.name ? "" : co.font.default,
-                          },
-                        })
-                      }
-                      className="rounded px-1 text-sr-muted hover:text-danger"
-                      aria-label={`Remove ${f.name}`}
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-[11px] text-sr-muted">No fonts yet.</p>
-            )}
-
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                value={newGoogle}
-                onChange={(e) => setNewGoogle(e.target.value)}
-                placeholder="Google font name (e.g. Lobster)"
-                className={`${input} max-w-[220px]`}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const name = newGoogle.trim();
-                  if (!name || co.font.families.some((f) => f.name === name)) return;
-                  setCO({
-                    font: {
-                      ...co.font,
-                      families: [...co.font.families, { name, source: "google", url: "", format: "" }],
-                      default: co.font.default || name,
-                    },
-                  });
-                  setNewGoogle("");
-                }}
-                className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
-              >
-                + Add Google font
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                ref={fontFileRef}
-                type="file"
-                accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2"
-                multiple
-                className="sr-only"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) void uploadFonts(e.target.files);
-                }}
-              />
-              <button
-                type="button"
-                disabled={uploadingFont}
-                onClick={() => fontFileRef.current?.click()}
-                className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body disabled:opacity-60"
-              >
-                {uploadingFont ? "Uploading…" : "Upload font file (.ttf / .otf / .woff)"}
-              </button>
-            </div>
-            {fontError ? <p className="text-[11px] text-danger">{fontError}</p> : null}
-
-            {co.font.families.length > 0 ? (
-              <label className="flex items-center gap-2 text-xs text-sr-body">
-                Default
-                <select
-                  className={`${input} max-w-[180px]`}
-                  value={co.font.default}
-                  onChange={(e) => setCO({ font: { ...co.font, default: e.target.value } })}
-                >
-                  {co.font.families.map((f) => (
-                    <option key={f.name} value={f.name}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-          </div>
-        }
-      </div>
+      {/* The product-wide "let customers pick the font" option was removed — fonts
+          are now chosen per text box in Text properties (Editable areas). Products
+          that still have a product-wide font list keep working via the backward-
+          compatible fallback in zoneFonts(). */}
 
       {/* ---------------------------------------------------- text size */}
       <div className="rounded-lg border border-sr-line p-3">

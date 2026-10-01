@@ -1449,7 +1449,6 @@ function StyleControls({
 
   const showFrame = co.frameColor.enabled && co.frameColor.colors.length > 0;
   const showText = co.textColor.enabled && co.textColor.colors.length > 0;
-  const showFont = co.font.enabled && co.font.families.length > 0;
   const showSize = co.textSize.enabled && co.textSize.choices.length > 0;
   const showGradient = co.gradient.enabled;
   const showLed = co.ledGlow.enabled;
@@ -1474,7 +1473,7 @@ function StyleControls({
     setGenerating(false);
   }
 
-  if (!showFrame && !showText && !showFont && !showSize && !showGradient && !showLed) return null;
+  if (!showFrame && !showText && !showSize && !showGradient && !showLed) return null;
 
   return (
     <div className="mt-4 grid gap-4 border-t border-line pt-4">
@@ -1496,40 +1495,8 @@ function StyleControls({
         />
       ) : null}
 
-      {showFont ? (
-        <fieldset>
-          <legend className="text-xs font-semibold text-ink">Select a font</legend>
-          {/* A grid of "Abc" preview tiles, each rendered in its own font, so the
-              customer picks by how the letters look rather than by name. */}
-          <div className="mt-1.5 grid grid-cols-4 gap-2">
-            {co.font.families.map((f) => {
-              const active = (s.fontFamily ?? co.font.default) === f.name;
-              return (
-                <button
-                  key={f.name}
-                  type="button"
-                  aria-pressed={active}
-                  title={f.name}
-                  onClick={() => setStyle({ fontFamily: f.name })}
-                  className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border bg-paper transition ${
-                    active
-                      ? "border-brand-600 ring-1 ring-brand-200"
-                      : "border-line-strong hover:border-brand-400"
-                  }`}
-                >
-                  <span
-                    style={{ fontFamily: fontStack(f.name) }}
-                    className="text-xl leading-none text-ink"
-                  >
-                    Abc
-                  </span>
-                  <span className="max-w-full truncate px-1 text-[9px] text-muted">{f.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-      ) : null}
+      {/* The product-wide font picker was removed — the customer now chooses a
+          font per text box (in the box's editor), showing only that box's fonts. */}
 
       {showSize ? (
         <fieldset>
