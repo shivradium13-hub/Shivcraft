@@ -363,6 +363,10 @@ export function CustomizerBuilder({
     <div className="grid gap-5 lg:grid-cols-[minmax(0,640px)_minmax(0,360px)] lg:items-start lg:justify-center">
       {/* ------------------------------------------------------- preview */}
       <div className="lg:sticky lg:top-4">
+        {/* Load the Frame Designer's fonts (Google + uploaded) so THIS live
+            preview renders the chosen font instead of a fallback. The separate
+            "Preview customer experience" panel loads them on its own. */}
+        <CustomizerFonts config={config} />
         <div
           ref={surface}
           onPointerMove={onPointerMove}
