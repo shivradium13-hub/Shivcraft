@@ -164,6 +164,10 @@ export function ProductCustomizer({
   const activeZone = zones.find((z) => z.id === activeZoneId) ?? zones[0] ?? null;
   const activeValue = activeZone ? design.zones[activeZone.id] : undefined;
   const activePhoto = activeValue?.kind === "PHOTO" ? activeValue.photo : null;
+  /* Every photo (image) box for this view. When there is more than one, the
+     customer gets a grid of separate upload boxes (one "Choose Image" each),
+     rather than editing a single box at a time. */
+  const photoZones = zones.filter((z) => z.kind === "PHOTO");
 
   /* ---------------------------------------------------------- persistence */
 
@@ -853,6 +857,60 @@ export function ProductCustomizer({
       {/* ----------------------------------------------------------- style */}
       <StyleControls config={config} design={design} setStyle={setStyle} />
 
+      {/* ------------------------------------------------- image boxes grid
+          When the product has more than one photo box, show them all at once —
+          each its own labelled box with a "+" / "Choose Image", so the customer
+          uploads a separate photo per box (one box's photo never affects another).
+          Single-photo products keep the single inline uploader below. */}
+      {config.tools.photoUpload && photoZones.length > 1 ? (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-semibold text-ink">Your photos</p>
+          <div className="grid grid-cols-2 gap-3">
+            {photoZones.map((zone) => {
+              const v = design.zones[zone.id];
+              const photo = v?.kind === "PHOTO" ? v.photo : null;
+              return (
+                <div key={zone.id} className="grid gap-1.5">
+                  <span className="truncate text-xs font-semibold text-ink">
+                    {zone.label}
+                    {zone.required ? <span className="text-danger"> *</span> : null}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => requestPhotoUpload(zone.id)}
+                    aria-label={photo ? `Change ${zone.label}` : `Add ${zone.label}`}
+                    className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-card border-2 border-dashed bg-field-bg transition hover:border-brand-400 ${
+                      activeZone?.id === zone.id ? "border-brand-500" : "border-line-strong"
+                    }`}
+                  >
+                    {photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/uploads/${photo.uploadId}`}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-5xl font-light leading-none text-muted">+</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => requestPhotoUpload(zone.id)}
+                    className="rounded-full border border-brand-500 px-3 py-1.5 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
+                  >
+                    {photo ? "Change Image" : "Choose Image"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] text-muted">
+            Tap a box to upload its photo. Select one to move, zoom or crop it below.
+          </p>
+        </div>
+      ) : null}
+
       {/* ------------------------------------------------------------ zones */}
       {zones.length > 1 ? (
         <div className="mt-4 flex flex-wrap gap-1.5">
@@ -879,7 +937,9 @@ export function ProductCustomizer({
         <div className="mt-3">
           {activeZone.kind === "PHOTO" ? (
             <>
-              {config.tools.photoUpload ? (
+              {/* Single inline uploader — only when there is NOT a multi-box grid
+                  above (that grid handles uploads for multi-photo products). */}
+              {config.tools.photoUpload && photoZones.length <= 1 ? (
                 <>
                   <input
                     ref={fileRef}
