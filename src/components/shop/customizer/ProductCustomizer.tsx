@@ -18,6 +18,7 @@ import {
   isZoneVisible,
   resolveOption,
   resolveTextStyle,
+  zoneFonts,
   zonesForView,
   type CustomizerConfig,
   type CustomizerTemplate,
@@ -1088,11 +1089,49 @@ export function ProductCustomizer({
                         </span>
                       </label>
 
+                      {/* Per-box font picker — only the fonts the admin enabled for
+                          THIS text box, each previewed in its own style. Picking one
+                          applies to this box alone; the others are untouched. */}
+                      {(() => {
+                        const boxFonts = zoneFonts(config, activeZone);
+                        if (boxFonts.length <= 1) return null;
+                        const current = tv?.fontFamily ?? activeZone.fontFamily;
+                        return (
+                          <fieldset>
+                            <legend className="text-xs font-semibold text-ink">Font</legend>
+                            <div className="mt-1.5 grid grid-cols-4 gap-2">
+                              {boxFonts.map((f) => {
+                                const active = current === f.name;
+                                return (
+                                  <button
+                                    key={f.name}
+                                    type="button"
+                                    aria-pressed={active}
+                                    title={f.name}
+                                    onClick={() => setTextProps(activeZone.id, { fontFamily: f.name })}
+                                    className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border bg-paper transition ${
+                                      active
+                                        ? "border-brand-600 ring-1 ring-brand-200"
+                                        : "border-line-strong hover:border-brand-400"
+                                    }`}
+                                  >
+                                    <span style={{ fontFamily: fontStack(f.name) }} className="text-xl leading-none text-ink">
+                                      Abc
+                                    </span>
+                                    <span className="max-w-full truncate px-1 text-[9px] text-muted">{f.name}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </fieldset>
+                        );
+                      })()}
+
                       {/* The per-field text formatting toolbar (alignment, B/I/U,
                           mirror, size and reposition) is intentionally not shown to
                           the customer: they only enter their wording, and the admin's
-                          font, size, alignment and position from the Frame Designer
-                          apply. Removing it keeps the admin's layout intact. */}
+                          size, alignment and position from the Frame Designer apply.
+                          Font is offered per box above. */}
                     </>
                   )}
                 </div>

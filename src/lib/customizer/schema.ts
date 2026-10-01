@@ -115,6 +115,22 @@ export const zoneSchema = z.object({
   maxChars: z.number().int().min(1).max(500).nullable().default(null),
   defaultText: z.string().max(500).default(""),
   fontFamily: z.string().max(80).default("Inter"),
+  /** TEXT zones only: the fonts the customer may choose for THIS text box, each
+   *  managed (added/uploaded) per box so one box's fonts never affect another.
+   *  Each entry carries its own source/file so it loads. `fontFamily` above is
+   *  the box's default (shown until the customer picks another). Empty falls back
+   *  to the product-wide font list, so older products keep working unchanged. */
+  fonts: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(80),
+        source: z.enum(["google", "upload", "system"]).default("google"),
+        url: z.string().trim().max(500).default(""),
+        format: z.enum(["woff2", "woff", "truetype", "opentype", ""]).default(""),
+      }),
+    )
+    .max(40)
+    .default([]),
   fontSizePct: z.number().min(1).max(100).default(12),
   /** CSS font weight, 100–900. 400 is Regular; 600 Semi Bold; 700 Bold. */
   fontWeight: z.number().int().min(100).max(900).default(400),
@@ -564,6 +580,21 @@ function styleOf(design: CustomerDesign | { style?: DesignStyle }): DesignStyle 
   return design.style ?? {};
 }
 
+/**
+ * The fonts a customer may choose for a given text box.
+ *
+ * A box with its own font list uses exactly that list (independent per box).
+ * A box with none falls back to the product-wide font list (only when that
+ * picker is enabled), so older products keep offering their fonts. Anything
+ * else means the box's font is fixed to the admin's design.
+ */
+export function zoneFonts(config: CustomizerConfig, zone: CustomizerZone): FontDef[] {
+  if (zone.kind !== "TEXT") return [];
+  if (zone.fonts && zone.fonts.length > 0) return zone.fonts;
+  if (config.customerOptions.font.enabled) return config.customerOptions.font.families;
+  return [];
+}
+
 /** The effective colour, font family and size for a text zone. */
 export function resolveTextStyle(
   config: CustomizerConfig,
@@ -579,14 +610,23 @@ export function resolveTextStyle(
     else if (co.textColor.default) color = co.textColor.default;
   }
 
-  // The admin's per-zone font is the font the text was designed in, so it is
-  // what the customer sees by default. When the picker is on, the customer can
-  // change it by actively choosing an allowed font; the global default no longer
-  // silently overrides the admin's design.
+  // The admin's per-box font is the font the text was designed in, so it is what
+  // the customer sees by default. The customer's own per-box pick — an allowed
+  // font for THIS box — overrides it. The product-wide picker still applies to
+  // boxes that have no per-box font list, so older products keep working.
   let fontFamily = zone.fontFamily;
-  if (co.font.enabled && style.fontFamily) {
-    const names = co.font.families.map((f) => f.name);
-    if (names.includes(style.fontFamily)) fontFamily = style.fontFamily;
+  const allowed = zoneFonts(config, zone).map((f) => f.name);
+  const value = design.zones[zone.id];
+  const perBoxPick = value?.kind === "TEXT" ? value.text.fontFamily : undefined;
+  if (perBoxPick && allowed.includes(perBoxPick)) {
+    fontFamily = perBoxPick;
+  } else if (
+    (!zone.fonts || zone.fonts.length === 0) &&
+    co.font.enabled &&
+    style.fontFamily &&
+    co.font.families.some((f) => f.name === style.fontFamily)
+  ) {
+    fontFamily = style.fontFamily;
   }
 
   let fontSizePct = zone.fontSizePct;
@@ -842,19 +882,30 @@ const BUILTIN_GOOGLE_FONTS = new Set([
  *   URL, so they load wherever they are used.
  */
 export function fontsToLoad(config: CustomizerConfig): FontDef[] {
+  const out: FontDef[] = [];
+  const have = new Set<string>();
+  const add = (f: FontDef) => {
+    if (f.name && !have.has(f.name)) {
+      out.push(f);
+      have.add(f.name);
+    }
+  };
+
   const families = config.customerOptions.font.families;
   const usedNames = new Set(config.zones.map((z) => z.fontFamily).filter(Boolean));
 
-  const out: FontDef[] = config.customerOptions.font.enabled
-    ? [...families]
-    : families.filter((f) => usedNames.has(f.name));
+  // Product-wide list: all of it when the picker is on, else only what a box uses.
+  if (config.customerOptions.font.enabled) families.forEach(add);
+  else families.filter((f) => usedNames.has(f.name)).forEach(add);
 
-  const have = new Set(out.map((f) => f.name));
+  // Per-box fonts — each text box manages its own.
+  for (const z of config.zones) {
+    if (z.kind === "TEXT" && z.fonts) z.fonts.forEach(add);
+  }
+
+  // A built-in Google font used as a box default but never added anywhere.
   for (const name of usedNames) {
-    if (!have.has(name) && BUILTIN_GOOGLE_FONTS.has(name)) {
-      out.push({ name, source: "google", url: "", format: "" });
-      have.add(name);
-    }
+    if (!have.has(name) && BUILTIN_GOOGLE_FONTS.has(name)) add({ name, source: "google", url: "", format: "" });
   }
   return out;
 }

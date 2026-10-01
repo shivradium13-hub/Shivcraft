@@ -378,7 +378,9 @@ function ZoneLayer({
                 .join(" ") || undefined,
           }}
           textStyle={{
-            fontFamily: fontStack(value.text.fontFamily ?? text.fontFamily),
+            // resolveTextStyle already resolves the per-box font (the customer's
+            // pick clamped to this box's allowed fonts, else the admin default).
+            fontFamily: fontStack(text.fontFamily),
             fontSize: `${value.text.fontSizePct ?? text.fontSizePct}cqh`,
             lineHeight: 1.15,
             fontWeight: value.text.bold ? 700 : zone.fontWeight ?? undefined,

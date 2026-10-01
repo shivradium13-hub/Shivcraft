@@ -6,6 +6,7 @@ import { emptyDesign, type CustomerDesign } from "@/lib/customizer/design";
 import {
   ACRYLIC_FINISHES,
   EMPTY_CONFIG,
+  fontStack,
   type CustomizerConfig,
   type CustomizerOptionGroup,
   type CustomizerTemplate,
@@ -593,6 +594,7 @@ export function CustomizerBuilder({
                   shadow: { enabled: false, inset: false, color: "#000000", opacity: 45, blur: 6, offsetX: 0, offsetY: 4 },
                   gradient: { enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 },
                   maskUrl: "",
+                  fonts: [],
                   acrylicMirror: { enabled: false, finish: "gold" },
                   texture: {
                     enabled: false, imageUrl: "", scalePct: 100, offsetX: 0, offsetY: 0,
@@ -1417,7 +1419,7 @@ function ZonesTab({
                   />
                 </Field>
               </div>
-              <Field label="Font family" hint="Default font. Customer fonts are set under Customer options.">
+              <Field label="Default font" hint="Shown until the customer picks another. Add the customer's font choices below.">
                 <select
                   className={input}
                   value={selected.fontFamily}
@@ -1425,18 +1427,15 @@ function ZonesTab({
                 >
                   {(() => {
                     const base = ["Inter", "Arial", "Georgia", "Times New Roman", "Courier New", "Verdana", "Trebuchet MS", "Poppins", "Roboto", "Montserrat", "Oswald", "Playfair Display", "Lobster", "Great Vibes", "Pacifico"];
-                    // Fonts the admin added under Customer options, shown in their own
-                    // group so they are easy to find; standard fonts fill the rest.
-                    const custom = Array.from(
-                      new Set(config.customerOptions.font.families.map((f) => f.name).filter(Boolean)),
-                    );
+                    // This box's own fonts (added below) come first; standard fonts fill the rest.
+                    const custom = Array.from(new Set((selected.fonts ?? []).map((f) => f.name).filter(Boolean)));
                     const customSet = new Set(custom);
                     const standard = base.filter((b) => !customSet.has(b));
                     const known = new Set([...custom, ...standard]);
                     return (
                       <>
                         {custom.length > 0 ? (
-                          <optgroup label="Customer fonts (added below)">
+                          <optgroup label="This box's fonts">
                             {custom.map((f) => (
                               <option key={`c-${f}`} value={f}>
                                 {f}
@@ -1460,6 +1459,9 @@ function ZonesTab({
                   })()}
                 </select>
               </Field>
+              <div className="sm:col-span-2">
+                <ZoneFontManager zone={selected} onPatch={onPatch} />
+              </div>
               <Field label="Font weight">
                 <select
                   className={input}
@@ -2989,6 +2991,160 @@ function ToolsTab({
 }
 
 /* --------------------------------------------------------------- helpers */
+
+/**
+ * Per-text-box font manager (admin).
+ *
+ * Each text box keeps its own list of fonts — add a Google font by name or
+ * upload a font file — and those are exactly the fonts the customer may choose
+ * for that box. The "Default font" dropdown above picks which one shows first.
+ * One box's fonts never touch another's.
+ */
+function ZoneFontManager({
+  zone,
+  onPatch,
+}: {
+  zone: CustomizerZone;
+  onPatch: (id: string, body: Partial<CustomizerZone>) => void;
+}) {
+  const fonts = zone.fonts ?? [];
+  const [newGoogle, setNewGoogle] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function addGoogle() {
+    const name = newGoogle.trim();
+    if (!name || fonts.some((f) => f.name === name)) return;
+    const next = [...fonts, { name, source: "google" as const, url: "", format: "" as const }];
+    // If this is the first font and no explicit default is set, make it the default.
+    onPatch(zone.id, { fonts: next, fontFamily: fonts.length === 0 ? name : zone.fontFamily });
+    setNewGoogle("");
+  }
+
+  async function uploadFiles(files: FileList) {
+    setUploading(true);
+    setError(null);
+    try {
+      const added: CustomizerZone["fonts"] = [];
+      for (const file of Array.from(files)) {
+        const body = new FormData();
+        body.append("file", file);
+        const res = await fetch("/api/admin/customizer/fonts", { method: "POST", body });
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          setError(json?.error?.message ?? "That font could not be uploaded.");
+          continue;
+        }
+        added.push({
+          name: json.data.name as string,
+          source: "upload",
+          url: json.data.url as string,
+          format: json.data.format as CustomizerZone["fonts"][number]["format"],
+        });
+      }
+      if (added.length > 0) {
+        const merged = [...fonts];
+        for (const f of added) if (!merged.some((m) => m.name === f.name)) merged.push(f);
+        onPatch(zone.id, { fonts: merged, fontFamily: fonts.length === 0 ? added[0].name : zone.fontFamily });
+      }
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  function remove(name: string) {
+    const next = fonts.filter((f) => f.name !== name);
+    onPatch(zone.id, {
+      fonts: next,
+      fontFamily: zone.fontFamily === name ? (next[0]?.name ?? "Inter") : zone.fontFamily,
+    });
+  }
+
+  return (
+    <div className="grid gap-2 rounded-lg border border-sr-line p-2.5">
+      <div>
+        <p className="text-xs font-semibold text-sr-ink">Fonts the customer can choose (this box only)</p>
+        <p className="mt-0.5 text-[11px] text-sr-muted">
+          Add a Google font by name, or upload a font file. The customer sees exactly these for this text box.
+        </p>
+      </div>
+
+      {fonts.length > 0 ? (
+        <ul className="grid gap-1">
+          {fonts.map((f) => (
+            <li key={f.name} className="flex items-center gap-2 rounded-md bg-sr-canvas px-2 py-1 text-xs">
+              <span className="flex-1 truncate font-medium text-sr-body" style={{ fontFamily: fontStack(f.name) }}>
+                {f.name}
+              </span>
+              {zone.fontFamily === f.name ? (
+                <span className="rounded bg-sr-gold-soft px-1.5 py-0.5 text-[10px] font-semibold text-sr-gold">
+                  DEFAULT
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onPatch(zone.id, { fontFamily: f.name })}
+                  className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-sr-600 hover:underline"
+                >
+                  Set default
+                </button>
+              )}
+              <span className="rounded bg-sr-surface px-1.5 py-0.5 text-[10px] text-sr-muted">{f.source}</span>
+              <button
+                type="button"
+                onClick={() => remove(f.name)}
+                className="rounded px-1 text-sr-muted hover:text-danger"
+                aria-label={`Remove ${f.name}`}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[11px] text-sr-muted">
+          No fonts yet — the customer can’t change this box’s font until you add some.
+        </p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={newGoogle}
+          onChange={(e) => setNewGoogle(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addGoogle())}
+          placeholder="Google font name (e.g. Lobster)"
+          className={`${input} max-w-[200px]`}
+        />
+        <button
+          type="button"
+          onClick={addGoogle}
+          className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400"
+        >
+          + Add Google font
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2"
+          multiple
+          className="sr-only"
+          onChange={(e) => e.target.files && e.target.files.length > 0 && void uploadFiles(e.target.files)}
+        />
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400 disabled:opacity-60"
+        >
+          {uploading ? "Uploading…" : "Upload font file (.ttf / .otf / .woff)"}
+        </button>
+      </div>
+      {error ? <p className="text-[11px] text-danger">{error}</p> : null}
+    </div>
+  );
+}
 
 function Field({
   label,
