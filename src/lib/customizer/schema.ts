@@ -579,11 +579,14 @@ export function resolveTextStyle(
     else if (co.textColor.default) color = co.textColor.default;
   }
 
+  // The admin's per-zone font is the font the text was designed in, so it is
+  // what the customer sees by default. When the picker is on, the customer can
+  // change it by actively choosing an allowed font; the global default no longer
+  // silently overrides the admin's design.
   let fontFamily = zone.fontFamily;
-  if (co.font.enabled) {
+  if (co.font.enabled && style.fontFamily) {
     const names = co.font.families.map((f) => f.name);
-    if (style.fontFamily && names.includes(style.fontFamily)) fontFamily = style.fontFamily;
-    else if (co.font.default && names.includes(co.font.default)) fontFamily = co.font.default;
+    if (names.includes(style.fontFamily)) fontFamily = style.fontFamily;
   }
 
   let fontSizePct = zone.fontSizePct;

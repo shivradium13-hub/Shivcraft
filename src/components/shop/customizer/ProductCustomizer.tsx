@@ -1349,9 +1349,9 @@ function withDefaultStyle(design: CustomerDesign, config: CustomizerConfig): Cus
   if (co.textColor.enabled && style.textColor === undefined && co.textColor.default) {
     style.textColor = co.textColor.default;
   }
-  if (co.font.enabled && style.fontFamily === undefined && co.font.default) {
-    style.fontFamily = co.font.default;
-  }
+  // Note: the font is deliberately NOT pre-seeded to co.font.default — each text
+  // area keeps the font the admin designed it in until the customer actively
+  // picks a different one, so the customer sees the admin's design.
   if (co.textSize.enabled && style.textSizePx === undefined && co.textSize.default) {
     style.textSizePx = co.textSize.default;
   }
