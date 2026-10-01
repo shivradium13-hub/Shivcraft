@@ -818,21 +818,42 @@ export function zoneTextTexture(zone: CustomizerZone): ResolvedTextTexture | nul
   };
 }
 
+/** The designer's built-in font picks that come from Google Fonts (the rest of
+ *  the built-in list — Arial, Georgia, Inter, … — are web-safe/app fonts that
+ *  need no loading). Kept in sync with the family list in the Frame Designer's
+ *  "Font family" dropdown. */
+const BUILTIN_GOOGLE_FONTS = new Set([
+  "Poppins", "Roboto", "Montserrat", "Oswald", "Playfair Display", "Lobster", "Great Vibes", "Pacifico",
+]);
+
 /**
- * The fonts a configuration needs loaded.
+ * The fonts a configuration needs loaded — the SAME list for the admin preview
+ * and the customer, so a text area renders in exactly the font the admin chose
+ * on both sides (no admin↔customer mismatch).
  *
- * When the customer font picker is on, every allowed family loads (the customer
- * may choose any). When it is off, the families the admin actually used as a
- * text area's default still load — otherwise a zone whose default is, say,
- * "Dancing Script" would fall back to a system font for both the admin preview
- * and the customer, even though the admin picked it. So any added font that is
- * in use renders, whether or not it is offered to the customer.
+ * - Customer picker on: every allowed family loads (the customer may pick any).
+ * - Picker off: only the families a zone actually uses as its default load.
+ * - Either way, any built-in Google font chosen as a zone default also loads,
+ *   even if it was never added under Customer options — otherwise it would fall
+ *   back to a system font on both sides. Uploaded fonts always carry their file
+ *   URL, so they load wherever they are used.
  */
 export function fontsToLoad(config: CustomizerConfig): FontDef[] {
   const families = config.customerOptions.font.families;
-  if (config.customerOptions.font.enabled) return families;
   const usedNames = new Set(config.zones.map((z) => z.fontFamily).filter(Boolean));
-  return families.filter((f) => usedNames.has(f.name));
+
+  const out: FontDef[] = config.customerOptions.font.enabled
+    ? [...families]
+    : families.filter((f) => usedNames.has(f.name));
+
+  const have = new Set(out.map((f) => f.name));
+  for (const name of usedNames) {
+    if (!have.has(name) && BUILTIN_GOOGLE_FONTS.has(name)) {
+      out.push({ name, source: "google", url: "", format: "" });
+      have.add(name);
+    }
+  }
+  return out;
 }
 
 /** A CSS font-family stack for a family name, with sensible fallbacks. */
