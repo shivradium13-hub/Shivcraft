@@ -818,9 +818,21 @@ export function zoneTextTexture(zone: CustomizerZone): ResolvedTextTexture | nul
   };
 }
 
-/** The fonts a configuration needs loaded for its allowed set. */
+/**
+ * The fonts a configuration needs loaded.
+ *
+ * When the customer font picker is on, every allowed family loads (the customer
+ * may choose any). When it is off, the families the admin actually used as a
+ * text area's default still load — otherwise a zone whose default is, say,
+ * "Dancing Script" would fall back to a system font for both the admin preview
+ * and the customer, even though the admin picked it. So any added font that is
+ * in use renders, whether or not it is offered to the customer.
+ */
 export function fontsToLoad(config: CustomizerConfig): FontDef[] {
-  return config.customerOptions.font.enabled ? config.customerOptions.font.families : [];
+  const families = config.customerOptions.font.families;
+  if (config.customerOptions.font.enabled) return families;
+  const usedNames = new Set(config.zones.map((z) => z.fontFamily).filter(Boolean));
+  return families.filter((f) => usedNames.has(f.name));
 }
 
 /** A CSS font-family stack for a family name, with sensible fallbacks. */

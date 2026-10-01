@@ -1421,13 +1421,38 @@ function ZonesTab({
                 >
                   {(() => {
                     const base = ["Inter", "Arial", "Georgia", "Times New Roman", "Courier New", "Verdana", "Trebuchet MS", "Poppins", "Roboto", "Montserrat", "Oswald", "Playfair Display", "Lobster", "Great Vibes", "Pacifico"];
-                    const extra = config.customerOptions.font.families.map((f) => f.name);
-                    const all = Array.from(new Set([...base, ...extra, selected.fontFamily].filter(Boolean)));
-                    return all.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ));
+                    // Fonts the admin added under Customer options, shown in their own
+                    // group so they are easy to find; standard fonts fill the rest.
+                    const custom = Array.from(
+                      new Set(config.customerOptions.font.families.map((f) => f.name).filter(Boolean)),
+                    );
+                    const customSet = new Set(custom);
+                    const standard = base.filter((b) => !customSet.has(b));
+                    const known = new Set([...custom, ...standard]);
+                    return (
+                      <>
+                        {custom.length > 0 ? (
+                          <optgroup label="Customer fonts (added below)">
+                            {custom.map((f) => (
+                              <option key={`c-${f}`} value={f}>
+                                {f}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ) : null}
+                        <optgroup label="Standard fonts">
+                          {standard.map((f) => (
+                            <option key={`s-${f}`} value={f}>
+                              {f}
+                            </option>
+                          ))}
+                        </optgroup>
+                        {/* Keep the current value selectable even if it is neither. */}
+                        {selected.fontFamily && !known.has(selected.fontFamily) ? (
+                          <option value={selected.fontFamily}>{selected.fontFamily}</option>
+                        ) : null}
+                      </>
+                    );
                   })()}
                 </select>
               </Field>
