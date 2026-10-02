@@ -893,7 +893,18 @@ export function ProductCustomizer({
                         className="absolute inset-0 h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="text-5xl font-light leading-none text-muted">+</span>
+                      <>
+                        {/* The admin's default image for this box, faded (70%). */}
+                        {zone.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={zone.imageUrl}
+                            alt=""
+                            className="absolute inset-0 h-full w-full object-cover opacity-70"
+                          />
+                        ) : null}
+                        <span className="relative text-5xl font-light leading-none text-muted">+</span>
+                      </>
                     )}
                   </button>
                   <button
@@ -974,7 +985,19 @@ export function ProductCustomizer({
                         className="absolute inset-0 h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="text-5xl font-light leading-none text-muted">+</span>
+                      <>
+                        {/* The admin's default image for this box, shown faded (70%)
+                            as a hint until the customer uploads their own. */}
+                        {activeZone.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={activeZone.imageUrl}
+                            alt=""
+                            className="absolute inset-0 h-full w-full object-cover opacity-70"
+                          />
+                        ) : null}
+                        <span className="relative text-5xl font-light leading-none text-muted">+</span>
+                      </>
                     )}
                   </button>
                   <button
