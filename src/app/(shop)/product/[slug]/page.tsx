@@ -168,8 +168,8 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
         <span className="line-clamp-1 font-medium text-ink">{product.name}</span>
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div className="lg:sticky lg:top-[88px] lg:self-start">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="min-w-0 lg:sticky lg:top-[88px] lg:self-start">
           {customizerConfig.enabled ? (
             <ProductLivePreview
               productId={product.id}
