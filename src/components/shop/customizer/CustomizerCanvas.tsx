@@ -281,13 +281,9 @@ function ZoneLayer({
     <div
       style={{ ...box, boxShadow: photoOuterShadow, border: photoBorder }}
       onPointerDown={selectable ? () => onSelect!(zone.id) : undefined}
-      className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""} ${
-        // Customer selection indicator: a subtle, temporary dashed outline on the
-        // area the focused field edits (photo or text). Only the active one.
-        // (The admin builder draws its own handle box, so no outline here for it —
-        // an outline plus the box's white "add photo" fill obscured editing.)
-        highlightActive && active ? "outline-2 outline-dashed outline-brand-500/45 outline-offset-2" : ""
-      }`}
+      /* No selection outline on the product image — selecting a zone shows no
+         dashed border; the controls panel already shows which area is active. */
+      className={`absolute overflow-hidden ${selectable ? "cursor-pointer" : ""}`}
     >
       {value?.kind === "PHOTO" ? (
         <>
