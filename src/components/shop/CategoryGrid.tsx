@@ -51,8 +51,8 @@ export function CategoryGrid({ categories }: { categories: HomeCategory[] }) {
           )}
 
           {/* Frosted name band over the bottom of the image — the picture shows
-              through faintly behind the category name. */}
-          <div className="absolute inset-x-0 bottom-0 bg-paper/80 px-3 py-2.5 text-center backdrop-blur-sm">
+              through behind the category name (50% so the image reads clearly). */}
+          <div className="absolute inset-x-0 bottom-0 bg-paper/50 px-3 py-2.5 text-center backdrop-blur-sm">
             <p className="line-clamp-1 text-sm font-semibold text-ink">
               {cat.icon ? <span aria-hidden="true">{cat.icon} </span> : null}
               {cat.name}
