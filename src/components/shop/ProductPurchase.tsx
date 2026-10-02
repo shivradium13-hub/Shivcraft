@@ -11,7 +11,6 @@ import type { ProductDetail } from "@/server/catalog/product";
 
 import { notifyCartChanged } from "./CartBadge";
 import { CustomizerCanvas } from "./customizer/CustomizerCanvas";
-import { useCustomizerSnapshot } from "./customizer/customizerBridge";
 import { CustomizerFonts } from "./customizer/CustomizerFonts";
 import { PhotoUploadField } from "./PhotoUploadField";
 
@@ -70,10 +69,10 @@ export function ProductPurchase({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  /* Full-screen design preview (the "Preview" button), fed by the live design
-     the customizer publishes to the bridge. */
+  /* Full-screen design preview (the "Preview" button), from the design the
+     customizer reports via onDesignChange (ProductPurchase's own state, so the
+     preview never subscribes to the bridge the customizer publishes to). */
   const [previewOpen, setPreviewOpen] = useState(false);
-  const snap = useCustomizerSnapshot(product.id);
 
   /* Price reflects the chosen options, the same way the server will compute it. */
   const unitPriceP = useMemo(() => {
@@ -428,7 +427,7 @@ export function ProductPurchase({
           <button
             type="button"
             onClick={() => setPreviewOpen(true)}
-            disabled={!snap}
+            disabled={!design}
             className="w-full rounded-full border-2 border-brand-500 px-6 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-50"
           >
             Preview
@@ -532,7 +531,7 @@ export function ProductPurchase({
       )}
 
       {/* Full-screen preview of the live design (the "Preview" button). */}
-      {previewOpen && snap ? (
+      {previewOpen && design ? (
         <div
           role="dialog"
           aria-modal="true"
@@ -541,7 +540,7 @@ export function ProductPurchase({
           onClick={() => setPreviewOpen(false)}
         >
           <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-            <CustomizerCanvas config={snap.config} design={snap.design} viewId={snap.design.viewId} />
+            <CustomizerCanvas config={customizerConfig} design={design} viewId={design.viewId} />
           </div>
           <button
             type="button"
