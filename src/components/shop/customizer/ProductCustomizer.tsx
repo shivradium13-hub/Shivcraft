@@ -773,7 +773,9 @@ export function ProductCustomizer({
         </div>
       ) : null}
 
-      {config.tools.fullscreenPreview && Object.keys(design.zones).length > 0 ? (
+      {/* When integrated into the product page, the purchase panel shows its own
+          "Preview" button, so this inline one is hidden to avoid a duplicate. */}
+      {!integrated && config.tools.fullscreenPreview && Object.keys(design.zones).length > 0 ? (
         <button
           type="button"
           onClick={() => setFullscreen(true)}

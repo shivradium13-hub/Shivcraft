@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { CustomerDesign } from "@/lib/customizer/design";
 import { isZoneVisible, readConfig } from "@/lib/customizer/schema";
@@ -10,6 +10,8 @@ import { effectivePriceP, formatPaise } from "@/lib/money";
 import type { ProductDetail } from "@/server/catalog/product";
 
 import { notifyCartChanged } from "./CartBadge";
+import { CustomizerCanvas } from "./customizer/CustomizerCanvas";
+import { useCustomizerSnapshot } from "./customizer/customizerBridge";
 import { CustomizerFonts } from "./customizer/CustomizerFonts";
 import { PhotoUploadField } from "./PhotoUploadField";
 
@@ -68,17 +70,10 @@ export function ProductPurchase({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  /* The "Personalise it" panel stays hidden until the customer presses
-     "Customize Now"; then it opens and we scroll to it. */
-  const [personalising, setPersonalising] = useState(false);
-
-  const startCustomize = useCallback(() => {
-    setPersonalising(true);
-    // Scroll after the panel has been revealed on the next paint.
-    window.setTimeout(() => {
-      document.getElementById("sr-personalise")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
-  }, []);
+  /* Full-screen design preview (the "Preview" button), fed by the live design
+     the customizer publishes to the bridge. */
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const snap = useCustomizerSnapshot(product.id);
 
   /* Price reflects the chosen options, the same way the server will compute it. */
   const unitPriceP = useMemo(() => {
@@ -234,10 +229,10 @@ export function ProductPurchase({
       {/* ---------------------------------------------------- customizer */}
       {customizerConfig.enabled ? <CustomizerFonts config={customizerConfig} /> : null}
       {customizerConfig.enabled ? (
-        /* Mounted always (so the product image live-preview keeps rendering the
-           design via the bridge), but the controls panel stays hidden until the
-           customer presses "Customize Now". */
-        <div id="sr-personalise" className={`scroll-mt-24 ${personalising ? "" : "hidden"}`}>
+        /* Always shown (Ritwika-style): the customer personalises right away —
+           no "Customize Now" gate. The product image live-preview renders the
+           design via the bridge. */
+        <div id="sr-personalise" className="scroll-mt-24">
           <ProductCustomizer
             productId={product.id}
             productName={product.name}
@@ -252,8 +247,8 @@ export function ProductPurchase({
                only the controls, not a second canvas. */
             integrated
             bridgeId={product.id}
-            active={personalising}
-            onActivate={startCustomize}
+            active
+            onActivate={() => {}}
           />
         </div>
       ) : null}
@@ -420,50 +415,101 @@ export function ProductPurchase({
       ) : null}
 
       {/* ------------------------------------------------ quantity + cart */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center rounded-lg border border-line-strong">
-          <button
-            type="button"
-            aria-label="Decrease quantity"
-            disabled={quantity <= 1}
-            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-            className="px-3 py-2 text-lg leading-none text-ink disabled:opacity-40"
-          >
-            −
-          </button>
-          <span className="min-w-10 text-center text-sm font-semibold tabular-nums">{quantity}</span>
-          <button
-            type="button"
-            aria-label="Increase quantity"
-            disabled={quantity >= Math.min(20, availableStock)}
-            onClick={() => setQuantity((q) => Math.min(20, availableStock, q + 1))}
-            className="px-3 py-2 text-lg leading-none text-ink disabled:opacity-40"
-          >
-            +
-          </button>
-        </div>
-
-        <p className="text-sm">
-          <span className="text-muted">Total </span>
-          <strong className="text-base text-ink">{formatPaise(unitPriceP * quantity)}</strong>
-        </p>
-      </div>
-
-      {/* Staged flow for personalisable products:
-          1) "Customize Now" opens the Personalise it panel;
-          2) once the design is complete, "Add to Cart" + "Buy Now" appear and
-             Buy Now takes the customer on to address & payment.
-          Plain products keep the usual Add to Cart + Buy Now. */}
       {customizerConfig.enabled ? (
-        !personalising ? (
+        /* Ritwika-style: a Preview button, then quantity + Add to Cart below it
+           (no separate Buy Now). Add to Cart stays disabled until the required
+           photo/text areas are filled. */
+        <div className="grid gap-3">
+          <p className="text-sm">
+            <span className="text-muted">Total </span>
+            <strong className="text-base text-ink">{formatPaise(unitPriceP * quantity)}</strong>
+          </p>
+
           <button
             type="button"
-            onClick={startCustomize}
-            className="gc-cta w-full rounded-full px-6 py-3 text-sm font-semibold transition"
+            onClick={() => setPreviewOpen(true)}
+            disabled={!snap}
+            className="w-full rounded-full border-2 border-brand-500 px-6 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-50"
           >
-            🎨 Customize Now
+            Preview
           </button>
-        ) : designReady ? (
+
+          <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center rounded-lg border border-line-strong">
+              <button
+                type="button"
+                aria-label="Decrease quantity"
+                disabled={quantity <= 1}
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="px-3 py-2 text-lg leading-none text-ink disabled:opacity-40"
+              >
+                −
+              </button>
+              <span className="min-w-10 text-center text-sm font-semibold tabular-nums">{quantity}</span>
+              <button
+                type="button"
+                aria-label="Increase quantity"
+                disabled={quantity >= Math.min(20, availableStock)}
+                onClick={() => setQuantity((q) => Math.min(20, availableStock, q + 1))}
+                className="px-3 py-2 text-lg leading-none text-ink disabled:opacity-40"
+              >
+                +
+              </button>
+            </div>
+
+            <button
+              type="button"
+              disabled={busy || outOfStock || !designReady}
+              onClick={() => addToCart(false)}
+              className="flex-1 gc-cta rounded-full px-6 py-3 text-sm font-semibold transition disabled:opacity-50"
+            >
+              {busy
+                ? "Adding…"
+                : outOfStock
+                  ? "Out of stock"
+                  : !designReady
+                    ? "Complete personalisation"
+                    : "Add to Cart"}
+            </button>
+          </div>
+
+          {!designReady ? (
+            <p className="text-xs text-muted">
+              Fill the required photo and text areas above, then “Add to Cart” turns on.
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        /* Plain products: quantity + Total, then Add to Cart + Buy Now. */
+        <>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center rounded-lg border border-line-strong">
+              <button
+                type="button"
+                aria-label="Decrease quantity"
+                disabled={quantity <= 1}
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="px-3 py-2 text-lg leading-none text-ink disabled:opacity-40"
+              >
+                −
+              </button>
+              <span className="min-w-10 text-center text-sm font-semibold tabular-nums">{quantity}</span>
+              <button
+                type="button"
+                aria-label="Increase quantity"
+                disabled={quantity >= Math.min(20, availableStock)}
+                onClick={() => setQuantity((q) => Math.min(20, availableStock, q + 1))}
+                className="px-3 py-2 text-lg leading-none text-ink disabled:opacity-40"
+              >
+                +
+              </button>
+            </div>
+            <p className="text-sm">
+              <span className="text-muted">Total </span>
+              <strong className="text-base text-ink">{formatPaise(unitPriceP * quantity)}</strong>
+            </p>
+          </div>
+
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
@@ -482,31 +528,30 @@ export function ProductPurchase({
               Buy Now
             </button>
           </div>
-        ) : (
-          <p className="rounded-lg bg-brand-50 px-3 py-2.5 text-center text-sm font-medium text-brand-800">
-            Personalisation पूरी करें — फिर <strong>Buy Now</strong> दिखेगा.
-          </p>
-        )
-      ) : (
-        <div className="flex flex-wrap gap-3">
+        </>
+      )}
+
+      {/* Full-screen preview of the live design (the "Preview" button). */}
+      {previewOpen && snap ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Design preview"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-ink/90 p-4"
+          onClick={() => setPreviewOpen(false)}
+        >
+          <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <CustomizerCanvas config={snap.config} design={snap.design} viewId={snap.design.viewId} />
+          </div>
           <button
             type="button"
-            disabled={busy || outOfStock}
-            onClick={() => addToCart(false)}
-            className="flex-1 rounded-full border-2 border-brand-500 px-6 py-3 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 disabled:opacity-50"
+            onClick={() => setPreviewOpen(false)}
+            className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-ink"
           >
-            {busy ? "Adding…" : outOfStock ? "Out of stock" : "Add to Cart"}
-          </button>
-          <button
-            type="button"
-            disabled={busy || outOfStock}
-            onClick={() => addToCart(true)}
-            className="flex-1 gc-cta rounded-full px-6 py-3 text-sm font-semibold transition disabled:opacity-50"
-          >
-            Buy Now
+            Close
           </button>
         </div>
-      )}
+      ) : null}
 
       {notice ? (
         <p
