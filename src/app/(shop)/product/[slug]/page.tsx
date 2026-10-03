@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { discountPercent, effectivePriceP, formatPaise } from "@/lib/money";
+import { effectivePriceP } from "@/lib/money";
 import { PincodeCheck } from "@/components/shop/PincodeCheck";
 import { ProductGallery } from "@/components/shop/ProductGallery";
 import { ProductLivePreview } from "@/components/shop/ProductLivePreview";
+import { ProductPriceDisplay } from "@/components/shop/ProductPriceDisplay";
 import { ProductPurchase } from "@/components/shop/ProductPurchase";
 import { ProductRail } from "@/components/shop/ProductCard";
 import { ReviewForm, type ReviewEligibility } from "@/components/shop/ReviewForm";
@@ -101,7 +102,17 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
   }
 
   const price = effectivePriceP(product);
-  const off = discountPercent(product);
+
+  /* Seed the headline price with the default-selected variants (the first in-stock
+     option of each group — mirroring ProductPurchase), so first paint already
+     matches the Total; it then follows the customer's choices live via the bridge. */
+  const defaultVariantDeltaP = product.variantGroups.reduce((sum, group) => {
+    const option = group.options.find((o) => o.stock > 0) ?? group.options[0];
+    return sum + (option?.priceDeltaP ?? 0);
+  }, 0);
+  const unitSeedP = price + defaultVariantDeltaP;
+  const mrpSeedP = product.priceP + defaultVariantDeltaP;
+  const offSeed = mrpSeedP > unitSeedP ? Math.round(((mrpSeedP - unitSeedP) / mrpSeedP) * 100) : 0;
 
   /* A Frame-Designer product shows the live personalization preview as the
      product image itself; every other product keeps the normal photo gallery. */
@@ -206,18 +217,12 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
             ) : null}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-baseline gap-3">
-            <span className="font-display text-3xl font-semibold text-brand-600">{formatPaise(price)}</span>
-            {off > 0 ? (
-              <>
-                <span className="text-base text-muted line-through">{formatPaise(product.priceP)}</span>
-                <span className="rounded-md bg-brand-600 px-2 py-0.5 text-sm font-semibold text-white">
-                  {off}% OFF
-                </span>
-              </>
-            ) : null}
-          </div>
-          <p className="mt-1 text-xs text-muted">Inclusive of all taxes</p>
+          <ProductPriceDisplay
+            productId={product.id}
+            unitP={unitSeedP}
+            mrpP={mrpSeedP}
+            offPercent={offSeed}
+          />
 
           {feat.offers && offers.length > 0 ? (
             <div className="mt-5 rounded-card border border-marigold-200 bg-marigold-50 p-3">

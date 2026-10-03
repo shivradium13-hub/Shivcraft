@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { CustomerDesign } from "@/lib/customizer/design";
 import { isZoneVisible, readConfig } from "@/lib/customizer/schema";
@@ -10,6 +10,7 @@ import { effectivePriceP, formatPaise } from "@/lib/money";
 import type { ProductDetail } from "@/server/catalog/product";
 
 import { notifyCartChanged } from "./CartBadge";
+import { publishPrice } from "./pricingBridge";
 import { CustomizerCanvas } from "./customizer/CustomizerCanvas";
 import { CustomizerFonts } from "./customizer/CustomizerFonts";
 import { PhotoUploadField } from "./PhotoUploadField";
@@ -84,6 +85,24 @@ export function ProductPurchase({
     }
     return base + delta;
   }, [product, chosen]);
+
+  /* Publish the live unit price so the headline price above these controls moves
+     with the chosen variants, exactly like the Total below. The variant delta is
+     added to both the MRP and the discounted price, so the savings stay the same
+     and the % off is recomputed. Cleared on unmount. */
+  useEffect(() => {
+    let delta = 0;
+    for (const group of product.variantGroups) {
+      const option = group.options.find((o) => o.id === chosen[group.name]);
+      if (option) delta += option.priceDeltaP;
+    }
+    const unitP = (product.discountPriceP ?? product.priceP) + delta;
+    const mrpP = product.priceP + delta;
+    const offPercent = mrpP > unitP ? Math.round(((mrpP - unitP) / mrpP) * 100) : 0;
+    publishPrice(product.id, { unitP, mrpP, offPercent });
+  }, [product, chosen]);
+
+  useEffect(() => () => publishPrice(product.id, null), [product.id]);
 
   const selectedVariantIds = useMemo(() => Object.values(chosen).filter(Boolean), [chosen]);
 
