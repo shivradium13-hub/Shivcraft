@@ -22,6 +22,8 @@ const schema = z.object({
     .optional(),
   logoHeight: z.number().min(1).max(500).optional(),
   logoHeightMobile: z.number().min(1).max(500).optional(),
+  footerLogoHeight: z.number().min(1).max(500).optional(),
+  footerLogoHeightMobile: z.number().min(1).max(500).optional(),
 });
 
 export const GET = route(async () => {

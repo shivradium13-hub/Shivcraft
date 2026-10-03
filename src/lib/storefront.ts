@@ -43,13 +43,19 @@ export type StorefrontSettings = {
   logoHeight: number;
   /** Header logo height in px on phones (usually a little smaller than desktop). */
   logoHeightMobile: number;
+  /** Footer logo height in px on desktop. */
+  footerLogoHeight: number;
+  /** Footer logo height in px on phones. */
+  footerLogoHeightMobile: number;
 };
 
-/** Header logo height bounds (px). */
+/** Logo height bounds (px), shared by the header and footer controls. */
 export const LOGO_HEIGHT_MIN = 24;
 export const LOGO_HEIGHT_MAX = 96;
 export const LOGO_HEIGHT_DEFAULT = 56;
 export const LOGO_HEIGHT_MOBILE_DEFAULT = 48;
+export const FOOTER_LOGO_HEIGHT_DEFAULT = 44;
+export const FOOTER_LOGO_HEIGHT_MOBILE_DEFAULT = 36;
 
 /** Labels for the admin UI, and the canonical order the homepage ships with. */
 export const HOME_SECTION_META: { id: HomeSectionId; label: string; hint: string }[] = [
@@ -89,6 +95,8 @@ export const DEFAULT_STOREFRONT: StorefrontSettings = {
   promises: DEFAULT_PROMISES,
   logoHeight: LOGO_HEIGHT_DEFAULT,
   logoHeightMobile: LOGO_HEIGHT_MOBILE_DEFAULT,
+  footerLogoHeight: FOOTER_LOGO_HEIGHT_DEFAULT,
+  footerLogoHeightMobile: FOOTER_LOGO_HEIGHT_MOBILE_DEFAULT,
 };
 
 export const MAX_PROMISES = 9;
@@ -147,6 +155,19 @@ export function normaliseStorefront(raw: unknown): StorefrontSettings {
   };
   const logoHeight = clampHeight(value.logoHeight, LOGO_HEIGHT_DEFAULT);
   const logoHeightMobile = clampHeight(value.logoHeightMobile, LOGO_HEIGHT_MOBILE_DEFAULT);
+  const footerLogoHeight = clampHeight(value.footerLogoHeight, FOOTER_LOGO_HEIGHT_DEFAULT);
+  const footerLogoHeightMobile = clampHeight(
+    value.footerLogoHeightMobile,
+    FOOTER_LOGO_HEIGHT_MOBILE_DEFAULT,
+  );
 
-  return { home, product, promises, logoHeight, logoHeightMobile };
+  return {
+    home,
+    product,
+    promises,
+    logoHeight,
+    logoHeightMobile,
+    footerLogoHeight,
+    footerLogoHeightMobile,
+  };
 }

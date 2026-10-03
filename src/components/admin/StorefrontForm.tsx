@@ -20,10 +20,16 @@ function LogoSizeControl({
   label,
   value,
   onChange,
+  src = "/logo.png",
+  dark = false,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
+  /** Which logo image to preview. */
+  src?: string;
+  /** Preview on a dark chip (for a white-wordmark logo like the footer's). */
+  dark?: boolean;
 }) {
   const clamp = (n: number) => Math.min(LOGO_HEIGHT_MAX, Math.max(LOGO_HEIGHT_MIN, n));
   return (
@@ -42,9 +48,13 @@ function LogoSizeControl({
           <span className="text-sr-muted">px</span>
         </span>
       </div>
-      <div className="mb-2 flex min-h-[64px] items-center justify-center rounded-lg border border-sr-line bg-sr-surface px-3 py-2">
+      <div
+        className={`mb-2 flex min-h-[64px] items-center justify-center rounded-lg border px-3 py-2 ${
+          dark ? "border-night-line bg-night" : "border-sr-line bg-sr-surface"
+        }`}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="Shiv Radium" style={{ height: value }} className="w-auto object-contain" />
+        <img src={src} alt="Shiv Radium" style={{ height: value }} className="w-auto object-contain" />
       </div>
       <input
         type="range"
@@ -66,6 +76,10 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
   const [promises, setPromises] = useState(initial.promises);
   const [logoHeight, setLogoHeight] = useState(initial.logoHeight);
   const [logoHeightMobile, setLogoHeightMobile] = useState(initial.logoHeightMobile);
+  const [footerLogoHeight, setFooterLogoHeight] = useState(initial.footerLogoHeight);
+  const [footerLogoHeightMobile, setFooterLogoHeightMobile] = useState(
+    initial.footerLogoHeightMobile,
+  );
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +137,8 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
           product,
           logoHeight,
           logoHeightMobile,
+          footerLogoHeight,
+          footerLogoHeightMobile,
           // Drop blank cards so an empty row does not become a blank tile.
           promises: promises.filter((p) => p.title.trim() || p.body.trim()),
         }),
@@ -150,9 +166,13 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
       <section className="rounded-card border border-sr-line bg-sr-surface p-4 shadow-card">
         <h2 className="font-display text-lg font-semibold text-sr-ink">Logo size</h2>
         <p className="mt-0.5 mb-3 text-sm text-sr-muted">
-          How tall the header logo appears. Phones can use a smaller size than desktop. Drag to
-          change — each preview updates live.
+          How tall the logo appears in the header and the footer. Phones can use a smaller size than
+          desktop. Drag to change — each preview updates live.
         </p>
+
+        <h3 className="mb-2 text-xs font-semibold tracking-[0.12em] text-sr-muted uppercase">
+          Header logo
+        </h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <LogoSizeControl
             label="Desktop"
@@ -167,6 +187,32 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
             value={logoHeightMobile}
             onChange={(v) => {
               setLogoHeightMobile(v);
+              dirty();
+            }}
+          />
+        </div>
+
+        <h3 className="mt-4 mb-2 text-xs font-semibold tracking-[0.12em] text-sr-muted uppercase">
+          Footer logo
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <LogoSizeControl
+            label="Desktop"
+            src="/logo-footer.png"
+            dark
+            value={footerLogoHeight}
+            onChange={(v) => {
+              setFooterLogoHeight(v);
+              dirty();
+            }}
+          />
+          <LogoSizeControl
+            label="Mobile"
+            src="/logo-footer.png"
+            dark
+            value={footerLogoHeightMobile}
+            onChange={(v) => {
+              setFooterLogoHeightMobile(v);
               dirty();
             }}
           />

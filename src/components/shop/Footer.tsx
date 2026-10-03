@@ -33,21 +33,33 @@ const columns = [
   },
 ];
 
-export function Footer() {
+export function Footer({
+  logoHeight = 44,
+  logoHeightMobile = 36,
+}: {
+  logoHeight?: number;
+  logoHeightMobile?: number;
+}) {
   return (
     <footer className="mt-12 bg-night text-white">
       <div className="mx-auto w-full max-w-[1400px] px-4 py-10">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
-            {/* The logo on a white chip so the dark wordmark reads on the dark footer. */}
-            <div className="inline-flex items-center self-start rounded-lg bg-white px-3 py-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo.png"
-                alt="Shiv Radium — Custom Gifts & Printing"
-                className="h-9 w-auto object-contain"
-              />
-            </div>
+            {/* The white-wordmark logo sits straight on the dark footer. Both
+                heights are admin-controlled (Storefront settings): a smaller one
+                on phones, the full one from the `sm` breakpoint up. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-footer.png"
+              alt="Shiv Radium — Custom Gifts & Printing"
+              style={
+                {
+                  "--flogo-h": `${logoHeight}px`,
+                  "--flogo-h-m": `${logoHeightMobile}px`,
+                } as React.CSSProperties
+              }
+              className="h-[var(--flogo-h-m)] w-auto max-w-[70vw] object-contain sm:h-[var(--flogo-h)]"
+            />
             <p className="mt-3 max-w-xs text-sm text-night-muted">
               Personalised gifts made to order in India. We send you an artwork proof before
               anything is cut, printed or engraved.
