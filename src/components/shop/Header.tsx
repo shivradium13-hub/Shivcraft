@@ -8,17 +8,20 @@ import { CartBadge } from "./CartBadge";
 import { CategoryNav } from "./CategoryNav";
 import { SearchBar } from "./SearchBar";
 
-function Logo({ height }: { height: number }) {
+function Logo({ height, mobileHeight }: { height: number; mobileHeight: number }) {
   return (
     <Link href="/" className="flex shrink-0 items-center" aria-label="Shiv Radium home">
-      {/* The brand logo. Its height is admin-controlled (Storefront settings);
-          width scales with it. max-w keeps it from crowding a narrow phone. */}
+      {/* The brand logo. Both heights are admin-controlled (Storefront settings):
+          a smaller one on phones, the full one from the `sm` breakpoint up. Width
+          scales with height; max-w keeps it from crowding a narrow phone. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/logo.png"
         alt="Shiv Radium — Custom Gifts & Printing"
-        style={{ height }}
-        className="w-auto max-w-[60vw] object-contain sm:max-w-none"
+        style={
+          { "--logo-h": `${height}px`, "--logo-h-m": `${mobileHeight}px` } as React.CSSProperties
+        }
+        className="h-[var(--logo-h-m)] w-auto max-w-[60vw] object-contain sm:h-[var(--logo-h)] sm:max-w-none"
       />
     </Link>
   );
@@ -97,15 +100,17 @@ const UserIcon = () => (
 export function Header({
   categories = [],
   logoHeight = 56,
+  logoHeightMobile = 48,
 }: {
   categories?: CategoryNode[];
   logoHeight?: number;
+  logoHeightMobile?: number;
 }) {
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
       <div className="mx-auto w-full max-w-[1400px] px-4">
         <div className="flex h-16 items-center gap-3">
-          <Logo height={logoHeight} />
+          <Logo height={logoHeight} mobileHeight={logoHeightMobile} />
 
           <div className="hidden min-w-0 flex-1 md:block">
             <SearchBar />

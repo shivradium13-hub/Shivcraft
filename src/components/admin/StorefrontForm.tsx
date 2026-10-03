@@ -15,12 +15,57 @@ import {
 
 const HOME_LABEL = new Map(HOME_SECTION_META.map((s) => [s.id, s]));
 
+/** One labelled logo-size control: a live preview, a slider and a number box. */
+function LogoSizeControl({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const clamp = (n: number) => Math.min(LOGO_HEIGHT_MAX, Math.max(LOGO_HEIGHT_MIN, n));
+  return (
+    <div className="rounded-lg border border-sr-line bg-sr-canvas p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-semibold text-sr-ink">{label}</span>
+        <span className="flex items-center gap-1 text-sm text-sr-body">
+          <input
+            type="number"
+            min={LOGO_HEIGHT_MIN}
+            max={LOGO_HEIGHT_MAX}
+            value={value}
+            onChange={(e) => onChange(clamp(Number(e.target.value) || LOGO_HEIGHT_MIN))}
+            className="w-16 rounded-lg border border-field bg-field-bg px-2 py-1 text-sm text-sr-ink outline-none focus:border-sr-400"
+          />
+          <span className="text-sr-muted">px</span>
+        </span>
+      </div>
+      <div className="mb-2 flex min-h-[64px] items-center justify-center rounded-lg border border-sr-line bg-sr-surface px-3 py-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Shiv Radium" style={{ height: value }} className="w-auto object-contain" />
+      </div>
+      <input
+        type="range"
+        min={LOGO_HEIGHT_MIN}
+        max={LOGO_HEIGHT_MAX}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-sr-600"
+        aria-label={`${label} logo height`}
+      />
+    </div>
+  );
+}
+
 export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
   const router = useRouter();
   const [home, setHome] = useState(initial.home);
   const [product, setProduct] = useState(initial.product);
   const [promises, setPromises] = useState(initial.promises);
   const [logoHeight, setLogoHeight] = useState(initial.logoHeight);
+  const [logoHeightMobile, setLogoHeightMobile] = useState(initial.logoHeightMobile);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +122,7 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
           home,
           product,
           logoHeight,
+          logoHeightMobile,
           // Drop blank cards so an empty row does not become a blank tile.
           promises: promises.filter((p) => p.title.trim() || p.body.trim()),
         }),
@@ -104,42 +150,26 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
       <section className="rounded-card border border-sr-line bg-sr-surface p-4 shadow-card">
         <h2 className="font-display text-lg font-semibold text-sr-ink">Logo size</h2>
         <p className="mt-0.5 mb-3 text-sm text-sr-muted">
-          How tall the header logo appears. Drag to change — the preview updates live.
+          How tall the header logo appears. Phones can use a smaller size than desktop. Drag to
+          change — each preview updates live.
         </p>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex min-h-[72px] items-center rounded-lg border border-sr-line bg-sr-canvas px-4 py-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Shiv Radium" style={{ height: logoHeight }} className="w-auto object-contain" />
-          </div>
-          <div className="min-w-[220px] flex-1">
-            <input
-              type="range"
-              min={LOGO_HEIGHT_MIN}
-              max={LOGO_HEIGHT_MAX}
-              value={logoHeight}
-              onChange={(e) => {
-                setLogoHeight(Number(e.target.value));
-                dirty();
-              }}
-              className="w-full accent-sr-600"
-            />
-            <div className="mt-1 flex items-center gap-2 text-sm text-sr-body">
-              <span>Height</span>
-              <input
-                type="number"
-                min={LOGO_HEIGHT_MIN}
-                max={LOGO_HEIGHT_MAX}
-                value={logoHeight}
-                onChange={(e) => {
-                  const n = Number(e.target.value) || LOGO_HEIGHT_MIN;
-                  setLogoHeight(Math.min(LOGO_HEIGHT_MAX, Math.max(LOGO_HEIGHT_MIN, n)));
-                  dirty();
-                }}
-                className="w-20 rounded-lg border border-field bg-field-bg px-2 py-1 text-sm text-sr-ink outline-none focus:border-sr-400"
-              />
-              <span className="text-sr-muted">px ({LOGO_HEIGHT_MIN}–{LOGO_HEIGHT_MAX})</span>
-            </div>
-          </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <LogoSizeControl
+            label="Desktop"
+            value={logoHeight}
+            onChange={(v) => {
+              setLogoHeight(v);
+              dirty();
+            }}
+          />
+          <LogoSizeControl
+            label="Mobile"
+            value={logoHeightMobile}
+            onChange={(v) => {
+              setLogoHeightMobile(v);
+              dirty();
+            }}
+          />
         </div>
       </section>
 

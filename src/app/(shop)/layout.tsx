@@ -15,7 +15,11 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
 
   return (
     <ShopShell categories={categories}>
-      <Header categories={categories} logoHeight={storefront.logoHeight} />
+      <Header
+        categories={categories}
+        logoHeight={storefront.logoHeight}
+        logoHeightMobile={storefront.logoHeightMobile}
+      />
       <div className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-6">
         <main className="min-w-0">{children}</main>
       </div>

@@ -39,14 +39,17 @@ export type StorefrontSettings = {
   product: Record<ProductFeatureId, boolean>;
   /** The "Why choose us" cards. Editable text; empty list hides the block. */
   promises: Promise_[];
-  /** Header logo height in px — the admin tunes how big the logo shows. */
+  /** Header logo height in px on desktop — the admin tunes how big the logo shows. */
   logoHeight: number;
+  /** Header logo height in px on phones (usually a little smaller than desktop). */
+  logoHeightMobile: number;
 };
 
 /** Header logo height bounds (px). */
 export const LOGO_HEIGHT_MIN = 24;
 export const LOGO_HEIGHT_MAX = 96;
 export const LOGO_HEIGHT_DEFAULT = 56;
+export const LOGO_HEIGHT_MOBILE_DEFAULT = 48;
 
 /** Labels for the admin UI, and the canonical order the homepage ships with. */
 export const HOME_SECTION_META: { id: HomeSectionId; label: string; hint: string }[] = [
@@ -85,6 +88,7 @@ export const DEFAULT_STOREFRONT: StorefrontSettings = {
   product: Object.fromEntries(PRODUCT_IDS.map((id) => [id, true])) as Record<ProductFeatureId, boolean>,
   promises: DEFAULT_PROMISES,
   logoHeight: LOGO_HEIGHT_DEFAULT,
+  logoHeightMobile: LOGO_HEIGHT_MOBILE_DEFAULT,
 };
 
 export const MAX_PROMISES = 9;
@@ -135,10 +139,14 @@ export function normaliseStorefront(raw: unknown): StorefrontSettings {
     if (cleaned.length > 0) promises = cleaned;
   }
 
-  const rawHeight = Number(value.logoHeight);
-  const logoHeight = Number.isFinite(rawHeight)
-    ? Math.round(Math.min(LOGO_HEIGHT_MAX, Math.max(LOGO_HEIGHT_MIN, rawHeight)))
-    : LOGO_HEIGHT_DEFAULT;
+  const clampHeight = (raw: unknown, fallback: number) => {
+    const n = Number(raw);
+    return Number.isFinite(n)
+      ? Math.round(Math.min(LOGO_HEIGHT_MAX, Math.max(LOGO_HEIGHT_MIN, n)))
+      : fallback;
+  };
+  const logoHeight = clampHeight(value.logoHeight, LOGO_HEIGHT_DEFAULT);
+  const logoHeightMobile = clampHeight(value.logoHeightMobile, LOGO_HEIGHT_MOBILE_DEFAULT);
 
-  return { home, product, promises, logoHeight };
+  return { home, product, promises, logoHeight, logoHeightMobile };
 }
