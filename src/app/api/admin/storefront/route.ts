@@ -24,6 +24,18 @@ const schema = z.object({
   logoHeightMobile: z.number().min(1).max(500).optional(),
   footerLogoHeight: z.number().min(1).max(500).optional(),
   footerLogoHeightMobile: z.number().min(1).max(500).optional(),
+  popup: z
+    .object({
+      enabled: z.boolean().optional(),
+      offerText: z.string().max(200).optional(),
+      heading: z.string().max(200).optional(),
+      body: z.string().max(600).optional(),
+      buttonLabel: z.string().max(80).optional(),
+      imageUrl: z.string().max(1000).optional(),
+      delaySeconds: z.number().min(0).max(600).optional(),
+      repeatDays: z.number().min(0).max(365).optional(),
+    })
+    .optional(),
 });
 
 export const GET = route(async () => {

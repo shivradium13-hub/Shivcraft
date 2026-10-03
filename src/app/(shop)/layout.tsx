@@ -1,6 +1,7 @@
 import { BottomNav } from "@/components/shop/BottomNav";
 import { Footer } from "@/components/shop/Footer";
 import { Header } from "@/components/shop/Header";
+import { PromoPopup } from "@/components/shop/PromoPopup";
 import { ShopShell } from "@/components/shop/ShopShell";
 import { getCategoryTree } from "@/server/catalog/categories";
 import { getStorefrontSettings } from "@/server/settings/storefront";
@@ -28,6 +29,7 @@ export default async function ShopLayout({ children }: LayoutProps<"/">) {
         logoHeightMobile={storefront.footerLogoHeightMobile}
       />
       <BottomNav />
+      <PromoPopup config={storefront.popup} />
     </ShopShell>
   );
 }

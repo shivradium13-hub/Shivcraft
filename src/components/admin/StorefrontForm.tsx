@@ -8,6 +8,8 @@ import {
   LOGO_HEIGHT_MAX,
   LOGO_HEIGHT_MIN,
   MAX_PROMISES,
+  POPUP_DELAY_MAX,
+  POPUP_REPEAT_MAX,
   PRODUCT_FEATURE_META,
   type ProductFeatureId,
   type StorefrontSettings,
@@ -80,12 +82,36 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
   const [footerLogoHeightMobile, setFooterLogoHeightMobile] = useState(
     initial.footerLogoHeightMobile,
   );
+  const [popup, setPopup] = useState(initial.popup);
+  const [popupUploading, setPopupUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function dirty() {
     setNotice(null);
+  }
+
+  function setPopupField<K extends keyof typeof popup>(key: K, value: (typeof popup)[K]) {
+    setPopup((prev) => ({ ...prev, [key]: value }));
+    dirty();
+  }
+
+  async function uploadPopupImage(file: File) {
+    setPopupUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const json = await res.json();
+      if (res.ok) setPopupField("imageUrl", json.data.url);
+      else setError(json?.error?.message ?? "That image could not be uploaded.");
+    } catch {
+      setError("The upload did not finish. Try again.");
+    } finally {
+      setPopupUploading(false);
+    }
   }
 
   function move(index: number, delta: number) {
@@ -139,6 +165,7 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
           logoHeightMobile,
           footerLogoHeight,
           footerLogoHeightMobile,
+          popup,
           // Drop blank cards so an empty row does not become a blank tile.
           promises: promises.filter((p) => p.title.trim() || p.body.trim()),
         }),
@@ -216,6 +243,129 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
               dirty();
             }}
           />
+        </div>
+      </section>
+
+      {/* ------------------------------------------------- promo pop-up */}
+      <section className="rounded-card border border-sr-line bg-sr-surface p-4 shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-lg font-semibold text-sr-ink">Promo pop-up</h2>
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-sr-body">
+            <input
+              type="checkbox"
+              checked={popup.enabled}
+              onChange={(e) => setPopupField("enabled", e.target.checked)}
+              className="h-4 w-4 accent-sr-600"
+            />
+            {popup.enabled ? "On" : "Off"}
+          </label>
+        </div>
+        <p className="mt-0.5 mb-3 text-sm text-sr-muted">
+          A pop-up that eases in after the visitor has browsed a few seconds, inviting them to
+          subscribe. Emails are saved under “Subscribers”. It shows once, then stays away for the
+          repeat window below.
+        </p>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="grid gap-1">
+            <span className="text-xs font-semibold text-sr-ink">Offer line (big highlight)</span>
+            <input
+              className={inputCls}
+              value={popup.offerText}
+              maxLength={80}
+              placeholder="5% off your first order"
+              onChange={(e) => setPopupField("offerText", e.target.value)}
+            />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-xs font-semibold text-sr-ink">Heading</span>
+            <input
+              className={inputCls}
+              value={popup.heading}
+              maxLength={80}
+              placeholder="Subscribe & save"
+              onChange={(e) => setPopupField("heading", e.target.value)}
+            />
+          </label>
+          <label className="grid gap-1 sm:col-span-2">
+            <span className="text-xs font-semibold text-sr-ink">Body text</span>
+            <textarea
+              className={`${inputCls} resize-y`}
+              rows={2}
+              value={popup.body}
+              maxLength={300}
+              placeholder="Get new launches and offers straight to your inbox."
+              onChange={(e) => setPopupField("body", e.target.value)}
+            />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-xs font-semibold text-sr-ink">Button label</span>
+            <input
+              className={inputCls}
+              value={popup.buttonLabel}
+              maxLength={40}
+              placeholder="Subscribe"
+              onChange={(e) => setPopupField("buttonLabel", e.target.value)}
+            />
+          </label>
+          <div className="grid gap-1">
+            <span className="text-xs font-semibold text-sr-ink">Image (optional)</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {popup.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={popup.imageUrl} alt="" className="h-10 w-14 rounded-lg border border-sr-line object-cover" />
+              ) : null}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={popupUploading}
+                onChange={(e) => e.target.files?.[0] && uploadPopupImage(e.target.files[0])}
+                className="text-xs text-sr-body"
+              />
+              {popupUploading ? <span className="text-xs text-sr-muted">Uploading…</span> : null}
+              {popup.imageUrl ? (
+                <button
+                  type="button"
+                  onClick={() => setPopupField("imageUrl", "")}
+                  className="text-xs font-semibold text-danger hover:underline"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <label className="grid gap-1">
+            <span className="text-xs font-semibold text-sr-ink">Show after (seconds)</span>
+            <input
+              type="number"
+              min={0}
+              max={POPUP_DELAY_MAX}
+              className={inputCls}
+              value={popup.delaySeconds}
+              onChange={(e) =>
+                setPopupField(
+                  "delaySeconds",
+                  Math.min(POPUP_DELAY_MAX, Math.max(0, Number(e.target.value) || 0)),
+                )
+              }
+            />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-xs font-semibold text-sr-ink">Don’t show again for (days)</span>
+            <input
+              type="number"
+              min={0}
+              max={POPUP_REPEAT_MAX}
+              className={inputCls}
+              value={popup.repeatDays}
+              onChange={(e) =>
+                setPopupField(
+                  "repeatDays",
+                  Math.min(POPUP_REPEAT_MAX, Math.max(0, Number(e.target.value) || 0)),
+                )
+              }
+            />
+          </label>
         </div>
       </section>
 

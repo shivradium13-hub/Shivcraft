@@ -69,6 +69,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             <Link href="/admin/users" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Customers
             </Link>
+            <Link href="/admin/subscribers" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
+              Subscribers
+            </Link>
             <Link href="/admin/settings" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               Settings
             </Link>

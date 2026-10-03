@@ -43,6 +43,13 @@
       "when": 1791033939417,
       "tag": "0005_broad_black_cat",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791044750982,
+      "tag": "0006_cool_rictor",
+      "breakpoints": true
     }
   ]
 }

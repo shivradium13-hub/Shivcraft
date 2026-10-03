@@ -32,6 +32,22 @@ export type ProductFeatureId =
 
 export type Promise_ = { title: string; body: string };
 
+/** The storefront promo pop-up (newsletter / first-order offer). */
+export type PromoPopup = {
+  enabled: boolean;
+  /** Big highlight line, e.g. "5% off your first order". Optional. */
+  offerText: string;
+  heading: string;
+  body: string;
+  buttonLabel: string;
+  /** Optional image shown beside the text. */
+  imageUrl: string;
+  /** Seconds the visitor browses before it appears. */
+  delaySeconds: number;
+  /** Once closed or subscribed, don't show again for this many days. */
+  repeatDays: number;
+};
+
 export type StorefrontSettings = {
   /** Homepage blocks in render order, each with a visibility flag. */
   home: HomeSection[];
@@ -47,6 +63,22 @@ export type StorefrontSettings = {
   footerLogoHeight: number;
   /** Footer logo height in px on phones. */
   footerLogoHeightMobile: number;
+  /** The storefront promo pop-up. */
+  popup: PromoPopup;
+};
+
+export const POPUP_DELAY_MAX = 120;
+export const POPUP_REPEAT_MAX = 90;
+
+export const DEFAULT_POPUP: PromoPopup = {
+  enabled: false,
+  offerText: "5% off your first order",
+  heading: "Subscribe & save",
+  body: "Get new launches and offers straight to your inbox.",
+  buttonLabel: "Subscribe",
+  imageUrl: "",
+  delaySeconds: 6,
+  repeatDays: 7,
 };
 
 /** Logo height bounds (px), shared by the header and footer controls. */
@@ -97,6 +129,7 @@ export const DEFAULT_STOREFRONT: StorefrontSettings = {
   logoHeightMobile: LOGO_HEIGHT_MOBILE_DEFAULT,
   footerLogoHeight: FOOTER_LOGO_HEIGHT_DEFAULT,
   footerLogoHeightMobile: FOOTER_LOGO_HEIGHT_MOBILE_DEFAULT,
+  popup: DEFAULT_POPUP,
 };
 
 export const MAX_PROMISES = 9;
@@ -161,6 +194,24 @@ export function normaliseStorefront(raw: unknown): StorefrontSettings {
     FOOTER_LOGO_HEIGHT_MOBILE_DEFAULT,
   );
 
+  const rawPopup = (value.popup ?? {}) as Raw;
+  const clampInt = (raw: unknown, min: number, max: number, fallback: number) => {
+    const n = Number(raw);
+    return Number.isFinite(n) ? Math.round(Math.min(max, Math.max(min, n))) : fallback;
+  };
+  const str = (raw: unknown, max: number, fallback: string) =>
+    typeof raw === "string" ? raw.trim().slice(0, max) : fallback;
+  const popup: PromoPopup = {
+    enabled: rawPopup.enabled === true,
+    offerText: str(rawPopup.offerText, 80, DEFAULT_POPUP.offerText),
+    heading: str(rawPopup.heading, 80, DEFAULT_POPUP.heading),
+    body: str(rawPopup.body, 300, DEFAULT_POPUP.body),
+    buttonLabel: str(rawPopup.buttonLabel, 40, DEFAULT_POPUP.buttonLabel) || DEFAULT_POPUP.buttonLabel,
+    imageUrl: str(rawPopup.imageUrl, 500, ""),
+    delaySeconds: clampInt(rawPopup.delaySeconds, 0, POPUP_DELAY_MAX, DEFAULT_POPUP.delaySeconds),
+    repeatDays: clampInt(rawPopup.repeatDays, 0, POPUP_REPEAT_MAX, DEFAULT_POPUP.repeatDays),
+  };
+
   return {
     home,
     product,
@@ -169,5 +220,6 @@ export function normaliseStorefront(raw: unknown): StorefrontSettings {
     logoHeightMobile,
     footerLogoHeight,
     footerLogoHeightMobile,
+    popup,
   };
 }
