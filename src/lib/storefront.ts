@@ -55,7 +55,7 @@ export const LOGO_HEIGHT_MAX = 96;
 export const LOGO_HEIGHT_DEFAULT = 56;
 export const LOGO_HEIGHT_MOBILE_DEFAULT = 48;
 export const FOOTER_LOGO_HEIGHT_DEFAULT = 44;
-export const FOOTER_LOGO_HEIGHT_MOBILE_DEFAULT = 36;
+export const FOOTER_LOGO_HEIGHT_MOBILE_DEFAULT = 44;
 
 /** Labels for the admin UI, and the canonical order the homepage ships with. */
 export const HOME_SECTION_META: { id: HomeSectionId; label: string; hint: string }[] = [

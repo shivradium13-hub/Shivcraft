@@ -35,7 +35,7 @@ const columns = [
 
 export function Footer({
   logoHeight = 44,
-  logoHeightMobile = 36,
+  logoHeightMobile = 44,
 }: {
   logoHeight?: number;
   logoHeightMobile?: number;
