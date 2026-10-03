@@ -30,6 +30,8 @@ export function CategoryManager({ tree }: { tree: AdminCategoryNode[] }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [addingUnder, setAddingUnder] = useState<string | null | "TOP">(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   async function call(url: string, init: RequestInit, key: string) {
     setBusy(key);
@@ -65,6 +67,67 @@ export function CategoryManager({ tree }: { tree: AdminCategoryNode[] }) {
     if (result) setNotice(`Deleted "${result.name}".`);
   }
 
+  /* ---- bulk selection + delete (top categories and subcategories) ---- */
+  const allCategories = tree.flatMap((top) => [top, ...top.children]);
+  const byId = new Map(allCategories.map((c) => [c.id, c]));
+  const allIds = allCategories.map((c) => c.id);
+  const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelected(allSelected ? new Set() : new Set(allIds));
+  }
+
+  async function deleteSelected() {
+    const ids = [...selected].filter((id) => byId.has(id));
+    if (ids.length === 0) return;
+    if (
+      !window.confirm(
+        `Delete ${ids.length} selected categor${ids.length === 1 ? "y" : "ies"}? This cannot be undone.`,
+      )
+    )
+      return;
+
+    /* Subcategories first, then top categories, so deleting a parent is never
+       blocked by a child that is also being deleted in the same batch. A category
+       that still holds products (or kept children) is reported, not force-deleted. */
+    const ordered = [...ids].sort(
+      (a, b) => (byId.get(a)!.parentId ? 0 : 1) - (byId.get(b)!.parentId ? 0 : 1),
+    );
+
+    setBulkBusy(true);
+    setError(null);
+    setNotice(null);
+    let done = 0;
+    const failed: string[] = [];
+    for (const id of ordered) {
+      try {
+        const res = await fetch(`/api/admin/categories/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          done++;
+        } else {
+          const j = await res.json().catch(() => null);
+          failed.push(`“${byId.get(id)?.name ?? "one"}” — ${j?.error?.message ?? "could not delete"}`);
+        }
+      } catch {
+        failed.push(`“${byId.get(id)?.name ?? "one"}” — network problem`);
+      }
+    }
+    setBulkBusy(false);
+    setSelected(new Set());
+    if (done > 0) setNotice(`Deleted ${done} categor${done === 1 ? "y" : "ies"}.`);
+    if (failed.length > 0) setError(`${failed.length} could not be deleted: ${failed.join("; ")}`);
+    router.refresh();
+  }
+
   /** Reorders within one level and sends the whole level's new order. */
   async function move(siblings: AdminCategory[], index: number, direction: -1 | 1) {
     const target = index + direction;
@@ -93,6 +156,30 @@ export function CategoryManager({ tree }: { tree: AdminCategoryNode[] }) {
         </p>
       ) : null}
 
+      {/* Bulk selection toolbar — tick top categories / subcategories below and
+          delete them together. Subcategories are removed before their parents. */}
+      <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-sr-line bg-sr-surface px-3 py-2">
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-sr-body">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={toggleSelectAll}
+            className="h-4 w-4 accent-sr-600"
+            aria-label="Select all categories"
+          />
+          Select all
+        </label>
+        <span className="text-xs text-sr-muted">{selected.size} selected</span>
+        <button
+          type="button"
+          disabled={selected.size === 0 || bulkBusy}
+          onClick={deleteSelected}
+          className="ml-auto rounded-lg border border-danger px-3 py-1.5 text-xs font-semibold text-danger transition hover:bg-danger-soft disabled:opacity-40"
+        >
+          {bulkBusy ? "Deleting…" : `Delete selected${selected.size ? ` (${selected.size})` : ""}`}
+        </button>
+      </div>
+
       <div className="space-y-3">
         {tree.map((top, topIndex) => (
           <section key={top.id} className="rounded-2xl border border-sr-line bg-sr-surface">
@@ -101,6 +188,8 @@ export function CategoryManager({ tree }: { tree: AdminCategoryNode[] }) {
               isTop
               busy={busy === top.id}
               editing={editing === top.id}
+              selected={selected.has(top.id)}
+              onToggleSelect={() => toggleSelect(top.id)}
               onEdit={() => setEditing(editing === top.id ? null : top.id)}
               onPatch={(body) => patch(top.id, body)}
               onDelete={() => remove(top)}
@@ -119,6 +208,8 @@ export function CategoryManager({ tree }: { tree: AdminCategoryNode[] }) {
                         category={child}
                         busy={busy === child.id}
                         editing={editing === child.id}
+                        selected={selected.has(child.id)}
+                        onToggleSelect={() => toggleSelect(child.id)}
                         onEdit={() => setEditing(editing === child.id ? null : child.id)}
                         onPatch={(body) => patch(child.id, body)}
                         onDelete={() => remove(child)}
@@ -182,6 +273,8 @@ function CategoryRow({
   isTop = false,
   busy,
   editing,
+  selected,
+  onToggleSelect,
   onEdit,
   onPatch,
   onDelete,
@@ -194,6 +287,8 @@ function CategoryRow({
   isTop?: boolean;
   busy: boolean;
   editing: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
   onEdit: () => void;
   onPatch: (body: Record<string, unknown>) => void;
   onDelete: () => void;
@@ -245,6 +340,13 @@ function CategoryRow({
   return (
     <div className={busy ? "opacity-60" : ""}>
       <div className={`flex flex-wrap items-center gap-2 ${isTop ? "p-4" : "p-2.5"}`}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          className="h-4 w-4 shrink-0 accent-sr-600"
+          aria-label={`Select ${category.name}`}
+        />
         <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sr-50 text-base">
           {category.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
