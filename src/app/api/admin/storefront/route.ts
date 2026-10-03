@@ -20,6 +20,7 @@ const schema = z.object({
     .array(z.object({ title: z.string().max(200), body: z.string().max(500) }))
     .max(40)
     .optional(),
+  logoHeight: z.number().min(1).max(500).optional(),
 });
 
 export const GET = route(async () => {

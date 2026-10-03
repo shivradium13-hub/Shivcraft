@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import {
   HOME_SECTION_META,
+  LOGO_HEIGHT_MAX,
+  LOGO_HEIGHT_MIN,
   MAX_PROMISES,
   PRODUCT_FEATURE_META,
   type ProductFeatureId,
@@ -18,6 +20,7 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
   const [home, setHome] = useState(initial.home);
   const [product, setProduct] = useState(initial.product);
   const [promises, setPromises] = useState(initial.promises);
+  const [logoHeight, setLogoHeight] = useState(initial.logoHeight);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +76,7 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
         body: JSON.stringify({
           home,
           product,
+          logoHeight,
           // Drop blank cards so an empty row does not become a blank tile.
           promises: promises.filter((p) => p.title.trim() || p.body.trim()),
         }),
@@ -96,6 +100,49 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
 
   return (
     <div className="grid gap-6">
+      {/* --------------------------------------------------------- logo */}
+      <section className="rounded-card border border-sr-line bg-sr-surface p-4 shadow-card">
+        <h2 className="font-display text-lg font-semibold text-sr-ink">Logo size</h2>
+        <p className="mt-0.5 mb-3 text-sm text-sr-muted">
+          How tall the header logo appears. Drag to change — the preview updates live.
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex min-h-[72px] items-center rounded-lg border border-sr-line bg-sr-canvas px-4 py-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Shiv Radium" style={{ height: logoHeight }} className="w-auto object-contain" />
+          </div>
+          <div className="min-w-[220px] flex-1">
+            <input
+              type="range"
+              min={LOGO_HEIGHT_MIN}
+              max={LOGO_HEIGHT_MAX}
+              value={logoHeight}
+              onChange={(e) => {
+                setLogoHeight(Number(e.target.value));
+                dirty();
+              }}
+              className="w-full accent-sr-600"
+            />
+            <div className="mt-1 flex items-center gap-2 text-sm text-sr-body">
+              <span>Height</span>
+              <input
+                type="number"
+                min={LOGO_HEIGHT_MIN}
+                max={LOGO_HEIGHT_MAX}
+                value={logoHeight}
+                onChange={(e) => {
+                  const n = Number(e.target.value) || LOGO_HEIGHT_MIN;
+                  setLogoHeight(Math.min(LOGO_HEIGHT_MAX, Math.max(LOGO_HEIGHT_MIN, n)));
+                  dirty();
+                }}
+                className="w-20 rounded-lg border border-field bg-field-bg px-2 py-1 text-sm text-sr-ink outline-none focus:border-sr-400"
+              />
+              <span className="text-sr-muted">px ({LOGO_HEIGHT_MIN}–{LOGO_HEIGHT_MAX})</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ---------------------------------------------- homepage sections */}
       <section className="rounded-card border border-sr-line bg-sr-surface p-4 shadow-card">
         <h2 className="font-display text-lg font-semibold text-sr-ink">Homepage sections</h2>

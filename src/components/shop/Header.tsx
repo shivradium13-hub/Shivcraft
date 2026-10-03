@@ -8,15 +8,18 @@ import { CartBadge } from "./CartBadge";
 import { CategoryNav } from "./CategoryNav";
 import { SearchBar } from "./SearchBar";
 
-function Logo() {
+function Logo({ height }: { height: number }) {
   return (
-    <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="Shiv Radium home">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold tracking-tight text-white">
-        SR
-      </span>
-      <span className="font-display text-xl leading-none font-semibold tracking-tight text-ink">
-        Shiv <span className="text-brand-600">Radium</span>
-      </span>
+    <Link href="/" className="flex shrink-0 items-center" aria-label="Shiv Radium home">
+      {/* The brand logo. Its height is admin-controlled (Storefront settings);
+          width scales with it. max-w keeps it from crowding a narrow phone. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/logo.png"
+        alt="Shiv Radium — Custom Gifts & Printing"
+        style={{ height }}
+        className="w-auto max-w-[60vw] object-contain sm:max-w-none"
+      />
     </Link>
   );
 }
@@ -91,12 +94,18 @@ const UserIcon = () => (
   </svg>
 );
 
-export function Header({ categories = [] }: { categories?: CategoryNode[] }) {
+export function Header({
+  categories = [],
+  logoHeight = 44,
+}: {
+  categories?: CategoryNode[];
+  logoHeight?: number;
+}) {
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80">
       <div className="mx-auto w-full max-w-[1400px] px-4">
         <div className="flex h-16 items-center gap-3">
-          <Logo />
+          <Logo height={logoHeight} />
 
           <div className="hidden min-w-0 flex-1 md:block">
             <SearchBar />

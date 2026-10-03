@@ -39,13 +39,14 @@ export function Footer() {
       <div className="mx-auto w-full max-w-[1400px] px-4 py-10">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold tracking-tight text-white">
-                SR
-              </span>
-              <span className="font-display text-xl font-semibold text-white">
-                Shiv <span className="text-brand-600">Radium</span>
-              </span>
+            {/* The logo on a white chip so the dark wordmark reads on the dark footer. */}
+            <div className="inline-flex items-center self-start rounded-lg bg-white px-3 py-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.png"
+                alt="Shiv Radium — Custom Gifts & Printing"
+                className="h-9 w-auto object-contain"
+              />
             </div>
             <p className="mt-3 max-w-xs text-sm text-night-muted">
               Personalised gifts made to order in India. We send you an artwork proof before
