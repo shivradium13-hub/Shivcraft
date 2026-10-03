@@ -161,7 +161,9 @@ export async function getCartView(shopper: Shopper): Promise<CartView> {
     const config = readConfig(row.product.customizer);
     const customFee = design.success ? customizationFeeP(config, design.data) : 0;
 
-    const unitPriceP = effectivePriceP(row.product) + delta + customFee;
+    /* Absolute pricing: the chosen options ARE the price (base ignored). */
+    const absolute = row.product.variantPriceAbsolute && chosen.length > 0;
+    const unitPriceP = absolute ? delta + customFee : effectivePriceP(row.product) + delta + customFee;
 
     return {
       id: row.item.id,
@@ -170,7 +172,7 @@ export async function getCartView(shopper: Shopper): Promise<CartView> {
       name: row.product.name,
       slug: row.product.slug,
       imageUrl: row.imageUrl,
-      listPriceP: row.product.priceP + delta,
+      listPriceP: absolute ? delta : row.product.priceP + delta,
       unitPriceP,
       quantity: row.item.quantity,
       lineTotalP: unitPriceP * row.item.quantity,

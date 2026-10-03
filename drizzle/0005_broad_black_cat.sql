@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "variant_price_absolute" boolean DEFAULT false NOT NULL;

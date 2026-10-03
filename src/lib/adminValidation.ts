@@ -70,6 +70,8 @@ export const productSchema = z
     videoUrl: optionalText(500),
 
     isPersonalizable: z.boolean().default(false),
+    /** When true, each option's price is its full price, not added to the base. */
+    variantPriceAbsolute: z.boolean().default(false),
     isActive: z.boolean().default(true),
     isBestSeller: z.boolean().default(false),
     isTrending: z.boolean().default(false),

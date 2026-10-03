@@ -110,8 +110,9 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
     const option = group.options.find((o) => o.stock > 0) ?? group.options[0];
     return sum + (option?.priceDeltaP ?? 0);
   }, 0);
-  const unitSeedP = price + defaultVariantDeltaP;
-  const mrpSeedP = product.priceP + defaultVariantDeltaP;
+  const absolutePricing = product.variantPriceAbsolute && product.variantGroups.length > 0;
+  const unitSeedP = absolutePricing ? defaultVariantDeltaP : price + defaultVariantDeltaP;
+  const mrpSeedP = absolutePricing ? defaultVariantDeltaP : product.priceP + defaultVariantDeltaP;
   const offSeed = mrpSeedP > unitSeedP ? Math.round(((mrpSeedP - unitSeedP) / mrpSeedP) * 100) : 0;
 
   /* A Frame-Designer product shows the live personalization preview as the

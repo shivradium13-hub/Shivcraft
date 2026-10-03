@@ -45,6 +45,7 @@ export type ProductFormValues = {
   tags: string;
   videoUrl: string;
   isPersonalizable: boolean;
+  variantPriceAbsolute: boolean;
   isActive: boolean;
   isBestSeller: boolean;
   isTrending: boolean;
@@ -60,7 +61,7 @@ export const EMPTY_PRODUCT: ProductFormValues = {
   price: "", discountPrice: "", stock: "0", lowStockThreshold: "5",
   brand: "", material: "", color: "", size: "", weightGrams: "", occasion: "",
   tags: "", videoUrl: "",
-  isPersonalizable: false, isActive: true, isBestSeller: false, isTrending: false,
+  isPersonalizable: false, variantPriceAbsolute: false, isActive: true, isBestSeller: false, isTrending: false,
   metaTitle: "", metaDescription: "",
   images: [], customizationFields: [], variants: [],
 };
@@ -189,6 +190,7 @@ export function ProductForm({
       // so it is never blocked by their "add at least one field" rule — the
       // admin builds the template in the designer instead.
       isPersonalizable: thenDesign ? false : values.isPersonalizable,
+      variantPriceAbsolute: values.variantPriceAbsolute,
       isActive: values.isActive,
       isBestSeller: values.isBestSeller,
       isTrending: values.isTrending,
@@ -344,6 +346,25 @@ export function ProductForm({
           title="Options / variants"
           subtitle="Choices like Size or Frame finish. Each can add to (or take off) the price and carry its own stock. Leave empty for a single-version product."
         >
+          <label className="mb-3 flex cursor-pointer items-start gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={values.variantPriceAbsolute}
+              onChange={(e) => set("variantPriceAbsolute", e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-sr-600"
+            />
+            <span>
+              <span className="block text-sm font-medium text-sr-ink">
+                Option price is the full price
+              </span>
+              <span className="block text-xs text-sr-muted">
+                When on, each option’s price is used as-is as the final price — the base price is not
+                added and no “+” is shown. Ideal for photo/print sizes where every size has its own
+                flat price. Off: the price is added to the base (a “+” change).
+              </span>
+            </span>
+          </label>
+
           {values.variants.length > 0 ? (
             <div className="space-y-3">
               {values.variants.map((variant, i) => (
@@ -397,8 +418,12 @@ export function ProductForm({
                   </Row>
                   <Row>
                     <Field
-                      label="Price change (₹)"
-                      hint="Added to the price. Use a minus for less."
+                      label={values.variantPriceAbsolute ? "Price (₹)" : "Price change (₹)"}
+                      hint={
+                        values.variantPriceAbsolute
+                          ? "The full price for this option."
+                          : "Added to the price. Use a minus for less."
+                      }
                       error={err(`variants.${i}.priceDelta`)}
                     >
                       <input

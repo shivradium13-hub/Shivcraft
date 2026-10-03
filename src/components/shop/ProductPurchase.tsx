@@ -77,13 +77,15 @@ export function ProductPurchase({
 
   /* Price reflects the chosen options, the same way the server will compute it. */
   const unitPriceP = useMemo(() => {
-    const base = product.discountPriceP ?? product.priceP;
     let delta = 0;
     for (const group of product.variantGroups) {
       const option = group.options.find((o) => o.id === chosen[group.name]);
       if (option) delta += option.priceDeltaP;
     }
-    return base + delta;
+    // Absolute pricing: the chosen options ARE the price. Otherwise it is added
+    // to the base (discounted) price.
+    if (product.variantPriceAbsolute && product.variantGroups.length > 0) return delta;
+    return (product.discountPriceP ?? product.priceP) + delta;
   }, [product, chosen]);
 
   /* Publish the live unit price so the headline price above these controls moves
@@ -96,8 +98,9 @@ export function ProductPurchase({
       const option = group.options.find((o) => o.id === chosen[group.name]);
       if (option) delta += option.priceDeltaP;
     }
-    const unitP = (product.discountPriceP ?? product.priceP) + delta;
-    const mrpP = product.priceP + delta;
+    const absolute = product.variantPriceAbsolute && product.variantGroups.length > 0;
+    const unitP = absolute ? delta : (product.discountPriceP ?? product.priceP) + delta;
+    const mrpP = absolute ? delta : product.priceP + delta;
     const offPercent = mrpP > unitP ? Math.round(((mrpP - unitP) / mrpP) * 100) : 0;
     publishPrice(product.id, { unitP, mrpP, offPercent });
   }, [product, chosen]);
@@ -231,7 +234,9 @@ export function ProductPurchase({
                   } ${soldOut ? "cursor-not-allowed line-through opacity-45" : ""}`}
                 >
                   {option.value}
-                  {option.priceDeltaP !== 0 ? (
+                  {product.variantPriceAbsolute ? (
+                    <span className="ml-1.5 text-xs text-muted">{formatPaise(option.priceDeltaP)}</span>
+                  ) : option.priceDeltaP !== 0 ? (
                     <span className="ml-1.5 text-xs text-muted">
                       {option.priceDeltaP > 0 ? "+" : "−"}
                       {formatPaise(Math.abs(option.priceDeltaP))}

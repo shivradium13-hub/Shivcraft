@@ -259,6 +259,10 @@ export const products = pgTable(
     lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
 
     isPersonalizable: boolean("is_personalizable").notNull().default(false),
+    /** When true, each option's "Price change" is the FULL price for that choice
+     *  (shown as-is, no base price added) rather than a delta. Used for things
+     *  like photo prints where every size has its own flat price. */
+    variantPriceAbsolute: boolean("variant_price_absolute").notNull().default(false),
     /** Versioned customizer configuration. NULL means this product is not
      *  customisable and behaves exactly as it always has. Shape and parsing
      *  live in src/lib/customizer/schema.ts. */
