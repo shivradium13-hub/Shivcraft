@@ -26,6 +26,23 @@ export default async function HomePage() {
   const heroAccent = words.length > 1 ? ` ${words[words.length - 1]}` : "";
   const heroLead = words.length > 1 ? words.slice(0, -1).join(" ") : (hero?.title ?? "");
 
+  /* A full poster, when the admin uploaded one, fills the whole hero at its own
+     ratio (posterW/posterH reserve the space so there is no layout jump). */
+  const heroPosterImg =
+    hero && hero.posterUrl ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={hero.posterUrl}
+        alt={hero.title}
+        className="w-full object-cover"
+        style={
+          hero.posterW && hero.posterH
+            ? { aspectRatio: `${hero.posterW} / ${hero.posterH}` }
+            : undefined
+        }
+      />
+    ) : null;
+
   /* Each homepage block, keyed by id. The admin decides the order and which are
      shown (in Storefront settings); a block still hides itself when it has no
      data, so an enabled-but-empty section never renders an empty shell. */
@@ -191,7 +208,17 @@ export default async function HomePage() {
       {/* Light ground, near-black heading, orange only on the highlighted word
           and the call to action. A full orange panel here would spend most of
           the page's colour budget before anything has been sold. */}
-      {hero ? (
+      {hero && hero.posterUrl ? (
+        <section className="overflow-hidden rounded-card border border-line-strong bg-soft">
+          {hero.href ? (
+            <Link href={hero.href} className="block">
+              {heroPosterImg}
+            </Link>
+          ) : (
+            heroPosterImg
+          )}
+        </section>
+      ) : hero ? (
         <section className="overflow-hidden rounded-card border border-line-strong bg-soft">
           <div className="grid items-center gap-6 p-6 sm:p-9 lg:grid-cols-[1.25fr_1fr]">
             <div>

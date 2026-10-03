@@ -698,6 +698,13 @@ export const banners = pgTable(
     title: varchar("title", { length: 160 }).notNull(),
     subtitle: varchar("subtitle", { length: 240 }),
     imageUrl: text("image_url"),
+    /** A full designed poster image for the Hero. When set, the homepage shows
+        this edge-to-edge (at its own ratio) instead of the title/subtitle/CTA
+        design. posterW/posterH are its natural pixel size, used to reserve space
+        and to show the admin the poster's aspect ratio. */
+    posterUrl: text("poster_url"),
+    posterW: integer("poster_w"),
+    posterH: integer("poster_h"),
     href: varchar("href", { length: 300 }),
     ctaLabel: varchar("cta_label", { length: 60 }),
     /** Where it renders: HERO, STRIP, OFFER. */

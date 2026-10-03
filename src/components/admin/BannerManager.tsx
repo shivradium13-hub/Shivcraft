@@ -8,6 +8,9 @@ export type AdminBannerView = {
   title: string;
   subtitle: string | null;
   imageUrl: string | null;
+  posterUrl: string | null;
+  posterW: number | null;
+  posterH: number | null;
   href: string | null;
   ctaLabel: string | null;
   placement: string;
@@ -35,6 +38,9 @@ type FormValues = {
   title: string;
   subtitle: string;
   imageUrl: string;
+  posterUrl: string;
+  posterW: number | null;
+  posterH: number | null;
   href: string;
   ctaLabel: string;
   placement: string;
@@ -42,6 +48,14 @@ type FormValues = {
   endsAt: string;
   isActive: boolean;
 };
+
+/** Simplify a pixel size to a small "w:h" ratio, e.g. 1600×500 → "16:5". */
+function ratioLabel(w: number | null, h: number | null): string | null {
+  if (!w || !h) return null;
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+  const d = gcd(w, h) || 1;
+  return `${Math.round(w / d)}:${Math.round(h / d)}`;
+}
 
 function toLocalInput(iso: string | null): string {
   if (!iso) return "";
@@ -60,10 +74,12 @@ export function BannerManager({
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const posterRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<string | "NEW" | null>(null);
   const [values, setValues] = useState<FormValues>(blank(placements[0]?.value ?? "HERO"));
   const [busy, setBusy] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingPoster, setUploadingPoster] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<string | null>(null);
@@ -73,6 +89,9 @@ export function BannerManager({
       title: "",
       subtitle: "",
       imageUrl: "",
+      posterUrl: "",
+      posterW: null,
+      posterH: null,
       href: "",
       ctaLabel: "",
       placement,
@@ -128,11 +147,54 @@ export function BannerManager({
     }
   }
 
+  /** Reads an image URL's natural pixel size, so we can store and show its ratio. */
+  function measure(url: string): Promise<{ w: number; h: number } | null> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  }
+
+  async function uploadPoster(file: File) {
+    setUploadingPoster(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json?.error?.message ?? "That poster could not be uploaded.");
+        return;
+      }
+      const url = json.data.url as string;
+      const size = await measure(url);
+      setValues((prev) => ({
+        ...prev,
+        posterUrl: url,
+        posterW: size?.w ?? null,
+        posterH: size?.h ?? null,
+      }));
+    } catch {
+      setError("The upload did not finish. Try again.");
+    } finally {
+      setUploadingPoster(false);
+      if (posterRef.current) posterRef.current.value = "";
+    }
+  }
+
   async function save() {
+    const usePoster = values.placement === "HERO";
     const body = {
       title: values.title,
       subtitle: values.subtitle,
       imageUrl: values.imageUrl,
+      // The poster is a Hero-only feature; never carry one onto another placement.
+      posterUrl: usePoster ? values.posterUrl : "",
+      posterW: usePoster ? values.posterW : null,
+      posterH: usePoster ? values.posterH : null,
       href: values.href,
       ctaLabel: values.ctaLabel,
       placement: values.placement,
@@ -286,7 +348,11 @@ export function BannerManager({
               />
             </Field>
 
-            <Field label="Image" error={fieldErrors.imageUrl}>
+            <Field
+              label="Image"
+              hint="The small picture beside the title in the designed banner."
+              error={fieldErrors.imageUrl}
+            >
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   ref={fileRef}
@@ -319,6 +385,62 @@ export function BannerManager({
               >
                 Remove image
               </button>
+            </div>
+          ) : null}
+
+          {/* Full poster — a finished image that replaces the whole hero. Hero
+              only, so it never becomes a control that does nothing elsewhere. */}
+          {values.placement === "HERO" ? (
+            <div className="mt-4 rounded-lg border border-sr-line bg-sr-canvas p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-sr-ink">Full poster (replaces the hero)</span>
+                {ratioLabel(values.posterW, values.posterH) ? (
+                  <span className="rounded-full bg-sr-gold-soft px-2 py-0.5 text-[11px] font-semibold text-sr-gold">
+                    {values.posterW}×{values.posterH}px · ratio {ratioLabel(values.posterW, values.posterH)}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-0.5 text-xs text-sr-muted">
+                Upload one finished image and it fills the whole hero — the title, subtitle and button
+                are not shown. It appears at its own ratio on phones and desktop; a wide landscape
+                poster works best (around 1600×600px, roughly 8:3). The “Link” above still makes it
+                clickable.
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <input
+                  ref={posterRef}
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadingPoster}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadPoster(file);
+                  }}
+                  className="text-xs text-sr-body"
+                />
+                {uploadingPoster ? <span className="text-xs text-sr-muted">Uploading…</span> : null}
+              </div>
+
+              {values.posterUrl ? (
+                <div className="mt-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={values.posterUrl}
+                    alt=""
+                    className="w-full max-w-md rounded-lg border border-sr-line object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setValues((prev) => ({ ...prev, posterUrl: "", posterW: null, posterH: null }))
+                    }
+                    className="mt-2 block rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body"
+                  >
+                    Remove poster
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -379,10 +501,10 @@ export function BannerManager({
                     key={banner.id}
                     className="flex flex-wrap items-start gap-3 rounded-card border border-sr-line bg-sr-surface p-3 shadow-card"
                   >
-                    {banner.imageUrl ? (
+                    {banner.posterUrl || banner.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={banner.imageUrl}
+                        src={banner.posterUrl ?? banner.imageUrl ?? ""}
                         alt=""
                         className="h-16 w-24 shrink-0 rounded-lg border border-sr-line object-cover"
                       />
@@ -396,6 +518,14 @@ export function BannerManager({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-semibold text-sr-ink">{banner.title}</span>
                         <BannerBadge banner={banner} slots={placement.shown} />
+                        {banner.posterUrl ? (
+                          <span className="rounded-full bg-sr-gold-soft px-2 py-0.5 text-[11px] font-semibold text-sr-gold">
+                            Poster
+                            {ratioLabel(banner.posterW, banner.posterH)
+                              ? ` · ${ratioLabel(banner.posterW, banner.posterH)}`
+                              : ""}
+                          </span>
+                        ) : null}
                       </div>
                       {banner.subtitle ? (
                         <p className="mt-0.5 text-sm text-sr-body">{banner.subtitle}</p>
@@ -426,6 +556,9 @@ export function BannerManager({
                               title: banner.title,
                               subtitle: banner.subtitle ?? "",
                               imageUrl: banner.imageUrl ?? "",
+                              posterUrl: banner.posterUrl ?? "",
+                              posterW: banner.posterW,
+                              posterH: banner.posterH,
                               href: banner.href ?? "",
                               ctaLabel: banner.ctaLabel ?? "",
                               placement: banner.placement,
@@ -452,6 +585,9 @@ export function BannerManager({
                                   title: banner.title,
                                   subtitle: banner.subtitle ?? "",
                                   imageUrl: banner.imageUrl ?? "",
+                                  posterUrl: banner.posterUrl ?? "",
+                                  posterW: banner.posterW,
+                                  posterH: banner.posterH,
                                   href: banner.href ?? "",
                                   ctaLabel: banner.ctaLabel ?? "",
                                   placement: banner.placement,

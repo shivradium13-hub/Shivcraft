@@ -201,6 +201,10 @@ export const bannerSchema = z
     title: z.string().trim().min(2, "Give the banner a title.").max(160),
     subtitle: optionalText(240),
     imageUrl: optionalText(500),
+    /** A full designed poster for the Hero; posterW/posterH are its pixel size. */
+    posterUrl: optionalText(500),
+    posterW: z.number().int().min(1).max(20000).nullable().optional(),
+    posterH: z.number().int().min(1).max(20000).nullable().optional(),
     href: optionalText(300),
     ctaLabel: optionalText(60),
     placement: z.enum(["HERO", "OFFER"], { message: "Choose where the banner goes." }),
