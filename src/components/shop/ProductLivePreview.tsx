@@ -199,56 +199,35 @@ export function ProductLivePreview({
     </div>
   );
 
+  const mainPreview =
+    showLive || !staticImage ? (
+      liveMain
+    ) : (
+      <div
+        className="relative aspect-square overflow-hidden rounded-card border border-line bg-brand-50"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        <Image
+          key={staticImage.id}
+          src={staticImage.url}
+          alt={staticImage.alt ?? name}
+          fill
+          priority
+          sizes="(min-width: 1024px) 420px, 100vw"
+          unoptimized={staticImage.url.endsWith(".svg")}
+          className="object-cover"
+          style={zoomStyle}
+        />
+      </div>
+    );
+
   return (
-    <div>
-      {showLive ? (
-        liveMain
-      ) : staticImage ? (
-        <div
-          className="relative aspect-square overflow-hidden rounded-card border border-line bg-brand-50"
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-        >
-          <Image
-            key={staticImage.id}
-            src={staticImage.url}
-            alt={staticImage.alt ?? name}
-            fill
-            priority
-            sizes="(min-width: 1024px) 520px, 100vw"
-            unoptimized={staticImage.url.endsWith(".svg")}
-            className="object-cover"
-            style={zoomStyle}
-          />
-        </div>
-      ) : (
-        liveMain
-      )}
-
-      {/* Template views (front/back/…), shown only while editing the design. */}
-      {showLive && snap && snap.config.views.length > 1 ? (
-        <div className="gc-hide-scrollbar mt-2 flex gap-2 overflow-x-auto">
-          {snap.config.views.map((view) => (
-            <button
-              key={view.id}
-              type="button"
-              onClick={() => snap.setViewId(view.id)}
-              aria-pressed={snap.design.viewId === view.id}
-              className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-                snap.design.viewId === view.id
-                  ? "border-brand-600 bg-brand-600 text-white"
-                  : "border-line-strong bg-paper text-ink-soft hover:border-brand-400"
-              }`}
-            >
-              {view.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {/* Thumbnails: the live design first, then the admin's uploaded photos. */}
+    /* Thumbnails sit as a vertical strip to the left on desktop (a marketplace
+       gallery) and scroll horizontally below the image on phones. */
+    <div className="flex flex-col-reverse gap-3 sm:flex-row">
       {images.length > 0 ? (
-        <div className="gc-hide-scrollbar mt-3 flex gap-2 overflow-x-auto">
+        <div className="gc-hide-scrollbar flex shrink-0 gap-2 overflow-x-auto sm:max-h-[460px] sm:flex-col sm:overflow-y-auto">
           <button
             type="button"
             onClick={() => setSelected("live")}
@@ -296,6 +275,31 @@ export function ProductLivePreview({
           ))}
         </div>
       ) : null}
+
+      <div className="min-w-0 flex-1">
+        {mainPreview}
+
+        {/* Template views (front/back/…), shown only while editing the design. */}
+        {showLive && snap && snap.config.views.length > 1 ? (
+          <div className="gc-hide-scrollbar mt-2 flex gap-2 overflow-x-auto">
+            {snap.config.views.map((view) => (
+              <button
+                key={view.id}
+                type="button"
+                onClick={() => snap.setViewId(view.id)}
+                aria-pressed={snap.design.viewId === view.id}
+                className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                  snap.design.viewId === view.id
+                    ? "border-brand-600 bg-brand-600 text-white"
+                    : "border-line-strong bg-paper text-ink-soft hover:border-brand-400"
+                }`}
+              >
+                {view.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
