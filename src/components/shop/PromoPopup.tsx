@@ -20,6 +20,7 @@ export function PromoPopup({ config }: { config: PromoPopupConfig }) {
   const [mounted, setMounted] = useState(false); // in the DOM
   const [visible, setVisible] = useState(false); // animated in
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [status, setStatus] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
@@ -63,13 +64,18 @@ export function PromoPopup({ config }: { config: PromoPopupConfig }) {
   async function subscribe(e: React.FormEvent) {
     e.preventDefault();
     if (status === "busy" || status === "done") return;
+    if (!email.trim() && !phone.trim()) {
+      setStatus("error");
+      setMessage("Enter your email or mobile number.");
+      return;
+    }
     setStatus("busy");
     setMessage(null);
     try {
       const res = await fetch("/api/newsletter", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, phone }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok) {
@@ -139,31 +145,42 @@ export function PromoPopup({ config }: { config: PromoPopupConfig }) {
               {message}
             </p>
           ) : (
-            <form onSubmit={subscribe} className="mt-5">
-              <div className="flex overflow-hidden rounded-full border border-line-strong bg-paper focus-within:border-brand-400">
+            <form onSubmit={subscribe} className="mt-5 grid gap-2.5">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                className="w-full rounded-full border border-line-strong bg-paper px-4 py-2.5 text-sm text-ink outline-none focus:border-brand-400"
+              />
+              <div className="flex items-stretch overflow-hidden rounded-full border border-line-strong bg-paper focus-within:border-brand-400">
+                <span className="flex shrink-0 items-center border-r border-line-strong px-3 text-sm text-ink-soft">
+                  +91
+                </span>
                 <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your email address"
-                  className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-ink outline-none"
+                  type="tel"
+                  inputMode="numeric"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Mobile number"
+                  className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-ink outline-none"
                 />
-                <button
-                  type="submit"
-                  disabled={status === "busy"}
-                  className="shrink-0 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-night-soft disabled:opacity-60"
-                >
-                  {status === "busy" ? "…" : config.buttonLabel || "Subscribe"}
-                </button>
               </div>
+              <p className="text-[11px] text-muted">Enter your email or mobile number — either works.</p>
+              <button
+                type="submit"
+                disabled={status === "busy"}
+                className="w-full rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-night-soft disabled:opacity-60"
+              >
+                {status === "busy" ? "…" : config.buttonLabel || "Subscribe"}
+              </button>
               {status === "error" && message ? (
-                <p className="mt-2 text-xs font-medium text-danger">{message}</p>
+                <p className="text-xs font-medium text-danger">{message}</p>
               ) : null}
               <button
                 type="button"
                 onClick={() => close()}
-                className="mt-3 text-xs font-medium text-muted hover:text-ink-soft"
+                className="justify-self-start text-xs font-medium text-muted hover:text-ink-soft"
               >
                 No thanks
               </button>

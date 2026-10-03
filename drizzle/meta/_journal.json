@@ -50,6 +50,13 @@
       "when": 1791044750982,
       "tag": "0006_cool_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791046137665,
+      "tag": "0007_material_hairball",
+      "breakpoints": true
     }
   ]
 }

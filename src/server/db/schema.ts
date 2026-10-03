@@ -729,10 +729,12 @@ export const settings = pgTable("settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Emails captured by the storefront promo pop-up (and any future sign-up form). */
+/** Emails and/or phone numbers captured by the storefront promo pop-up (and any
+    future sign-up form). A subscriber provides an email, a phone, or both. */
 export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   id: uuid("id").primaryKey().defaultRandom(),
-  email: varchar("email", { length: 200 }).notNull().unique(),
+  email: varchar("email", { length: 200 }).unique(),
+  phone: varchar("phone", { length: 20 }).unique(),
   source: varchar("source", { length: 40 }).notNull().default("popup"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
