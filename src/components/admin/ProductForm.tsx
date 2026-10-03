@@ -374,7 +374,11 @@ export function ProductForm({
                   </div>
 
                   <Row>
-                    <Field label="Group" hint='The axis, e.g. "Size".' error={err(`variants.${i}.name`)}>
+                    <Field
+                      label="Group"
+                      hint='Same name = one pick-one set, e.g. "Size".'
+                      error={err(`variants.${i}.name`)}
+                    >
                       <input
                         className={input}
                         value={variant.name}
@@ -438,7 +442,17 @@ export function ProductForm({
                 ...prev,
                 variants: [
                   ...prev.variants,
-                  { name: "", value: "", sku: "", priceDelta: "0", stock: "0", isActive: true },
+                  {
+                    // Default to the last option's Group so a second size, colour,
+                    // etc. joins the same pick-one set instead of becoming its own
+                    // (which would make the customer pay for every one at once).
+                    name: prev.variants.at(-1)?.name ?? "",
+                    value: "",
+                    sku: "",
+                    priceDelta: "0",
+                    stock: "0",
+                    isActive: true,
+                  },
                 ],
               }))
             }
@@ -447,8 +461,11 @@ export function ProductForm({
             + Add an option
           </button>
           <p className="text-xs text-sr-muted">
-            Stock here caps at the overall stock above; a choice sells until either runs out. The
-            customer picks on the product page and the price updates live.
+            Options with the <strong>same Group</strong> name become one set the customer picks one
+            from (e.g. all sizes under “Size”), and only that choice’s price is added. A different
+            Group name makes a separate pick-one set. Stock here caps at the overall stock above; a
+            choice sells until either runs out. The customer picks on the product page and the price
+            updates live.
           </p>
         </Card>
 
