@@ -46,7 +46,7 @@ export type StorefrontSettings = {
 /** Header logo height bounds (px). */
 export const LOGO_HEIGHT_MIN = 24;
 export const LOGO_HEIGHT_MAX = 96;
-export const LOGO_HEIGHT_DEFAULT = 44;
+export const LOGO_HEIGHT_DEFAULT = 56;
 
 /** Labels for the admin UI, and the canonical order the homepage ships with. */
 export const HOME_SECTION_META: { id: HomeSectionId; label: string; hint: string }[] = [

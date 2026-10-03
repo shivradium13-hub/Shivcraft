@@ -96,7 +96,7 @@ const UserIcon = () => (
 
 export function Header({
   categories = [],
-  logoHeight = 44,
+  logoHeight = 56,
 }: {
   categories?: CategoryNode[];
   logoHeight?: number;
