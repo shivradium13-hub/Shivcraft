@@ -100,7 +100,7 @@ export function PromoPopup({ config }: { config: PromoPopupConfig }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative grid w-full max-w-2xl overflow-hidden rounded-2xl bg-paper shadow-2xl transition-all duration-300 ease-out sm:grid-cols-2 ${
+        className={`relative grid max-h-[90vh] w-full max-w-md overflow-hidden rounded-2xl bg-paper shadow-2xl transition-all duration-300 ease-out sm:max-w-2xl sm:grid-cols-2 ${
           visible ? "translate-y-0 scale-100 opacity-100" : "translate-y-3 scale-95 opacity-0"
         }`}
       >
@@ -116,19 +116,19 @@ export function PromoPopup({ config }: { config: PromoPopupConfig }) {
         </button>
 
         {config.imageUrl ? (
-          <div className="relative hidden min-h-[220px] bg-soft sm:block">
+          /* A banner on top on phones, a full-height side panel from `sm` up. */
+          <div className="relative h-32 w-full overflow-hidden bg-soft sm:h-auto sm:min-h-[260px]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={config.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            {config.offerText ? (
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/70 to-transparent p-4">
-                <p className="font-display text-xl font-semibold text-white">{config.offerText}</p>
-              </div>
-            ) : null}
+            <img src={config.imageUrl} alt="" className="h-full w-full object-cover" />
           </div>
         ) : null}
 
-        <div className={`p-6 sm:p-7 ${config.imageUrl ? "" : "sm:col-span-2"}`}>
-          {config.offerText && !config.imageUrl ? (
+        <div
+          className={`flex min-h-0 flex-col overflow-y-auto p-6 sm:p-7 ${
+            config.imageUrl ? "" : "sm:col-span-2"
+          }`}
+        >
+          {config.offerText ? (
             <p className="mb-1 font-display text-2xl font-semibold text-brand-600">{config.offerText}</p>
           ) : null}
           <h2 className="font-display text-xl font-semibold text-ink">{config.heading}</h2>
