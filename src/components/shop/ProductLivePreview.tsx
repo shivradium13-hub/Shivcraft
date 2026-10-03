@@ -40,25 +40,32 @@ export function ProductLivePreview({
 }) {
   const snap = useCustomizerSnapshot(productId);
   const overlayRef = useRef<HTMLDivElement>(null);
-  /* "live" shows the editable design; a number shows that uploaded photo. */
-  const [selected, setSelected] = useState<"live" | number>("live");
+  /* "live" shows the editable design; a number shows that uploaded photo.
+     Open on the admin's main product image (images come primary-first) so the
+     customer first sees the chosen photo, exactly like a non-customizer product.
+     With no admin photos, the live template is all there is. */
+  const [selected, setSelected] = useState<"live" | number>(images.length > 0 ? 0 : "live");
 
-  /* If the customer is looking at one of the uploaded photos and then starts
-     customising — selects a field (activeZoneId changes) or edits the design
-     (design reference changes) — snap the main image back to the live "Design"
-     so they see their change immediately. These only change on an actual
-     selection/edit, not on idle re-publishes, so a photo the customer chose
-     stays put until they customise. Adjusted during render (React's recommended
-     alternative to an effect) so the switch happens before paint. */
+  /* The controls island always publishes a snapshot (there is no "Customize Now"
+     gate), so its FIRST publish only records a baseline — it must not move off the
+     admin's photo. After that, any real change (the customer types, uploads,
+     repositions, or selects a different field) switches the main image to the live
+     design so the edit is visible. design's reference and activeZoneId only change
+     on those real edits/selections, not on idle re-publishes, so a photo the
+     customer is viewing stays put until they actually customise. Adjusted during
+     render (React's recommended alternative to an effect) so the switch happens
+     before paint. */
   const activeZoneId = snap?.activeZoneId ?? null;
   const design = snap?.design ?? null;
-  const [seen, setSeen] = useState<{ az: string | null; d: CustomerDesign | null }>({
-    az: activeZoneId,
-    d: design,
+  const [seen, setSeen] = useState<{ ready: boolean; az: string | null; d: CustomerDesign | null }>({
+    ready: false,
+    az: null,
+    d: null,
   });
-  if (seen.az !== activeZoneId || seen.d !== design) {
-    setSeen({ az: activeZoneId, d: design });
-    if (design) setSelected("live");
+  if (snap && (!seen.ready || seen.az !== activeZoneId || seen.d !== design)) {
+    const changedSinceBaseline = seen.ready && (seen.az !== activeZoneId || seen.d !== design);
+    setSeen({ ready: true, az: activeZoneId, d: design });
+    if (changedSinceBaseline) setSelected("live");
   }
 
   /* Feature 2 — a very light hover zoom, pointer devices only.
