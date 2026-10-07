@@ -180,10 +180,11 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
         <span className="line-clamp-1 font-medium text-ink">{product.name}</span>
       </nav>
 
-      {/* The media column is capped so the (square) image fits on screen with its
-          thumbnails, like a typical marketplace gallery, instead of growing to half
-          the page width and pushing the thumbnails below the fold on desktop. */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)]">
+      {/* The media column is capped so the (square) image stays a sensible gallery
+          size, like a marketplace, instead of growing to half the page width. The
+          thumbnails sit beside it (not below), so this can be fairly large and still
+          fit the viewport on desktop. */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,600px)_minmax(0,1fr)]">
         <div className="min-w-0 lg:sticky lg:top-[88px] lg:self-start">
           {customizerConfig.enabled ? (
             <ProductLivePreview
