@@ -1452,6 +1452,7 @@ function withStarterText(design: CustomerDesign, config: CustomizerConfig): Cust
 function withDefaultOptions(design: CustomerDesign, config: CustomizerConfig): CustomerDesign {
   const options = { ...design.options };
   for (const group of config.optionGroups) {
+    if (group.enabled === false) continue;
     if (options[group.id]) continue;
     const first = resolveOption(group, undefined);
     if (first) options[group.id] = first.id;

@@ -1978,7 +1978,21 @@ function OptionsTab({
       </p>
 
       {config.optionGroups.map((group) => (
-        <div key={group.id} className="rounded-lg border border-sr-line p-3">
+        <div
+          key={group.id}
+          className={`rounded-lg border border-sr-line p-3 ${group.enabled === false ? "opacity-60" : ""}`}
+        >
+          <label className="mb-3 flex items-center gap-2 text-xs font-semibold text-sr-body">
+            <input
+              type="checkbox"
+              checked={group.enabled !== false}
+              onChange={(e) => patch(group.id, { enabled: e.target.checked })}
+            />
+            Show this group to customers
+            {group.enabled === false ? (
+              <span className="font-normal text-muted">— hidden: not shown, not priced, not required</span>
+            ) : null}
+          </label>
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Group name">
               <input
@@ -2134,6 +2148,7 @@ function OptionsTab({
                 id: newId("grp"),
                 label: "Colour",
                 kind: "SWATCH",
+                enabled: true,
                 required: true,
                 helpText: "",
                 visibleWhen: null,

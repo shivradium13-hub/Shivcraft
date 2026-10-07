@@ -283,6 +283,11 @@ export const optionGroupSchema = z.object({
   /** SWATCH shows colour circles, CHOICE shows labelled pills, LED does both
    *  and tints the glow layer of any lit view. */
   kind: optionGroupKindSchema.default("CHOICE"),
+  /** An admin switch, per product: when false the group is hidden from the
+   *  customer, never priced and never required — but its full configuration is
+   *  kept, so turning it back on restores it exactly. Defaults true, so every
+   *  existing config keeps showing all its groups unchanged. */
+  enabled: z.boolean().default(true),
   required: z.boolean().default(true),
   helpText: z.string().trim().max(160).default(""),
   /** Shown only for certain choices in another group; null means always. */
@@ -493,6 +498,8 @@ export function isGroupVisible(
   selections: Record<string, string>,
   seen: Set<string> = new Set(),
 ): boolean {
+  // Turned off by the admin: hidden, so neither priced nor required.
+  if (group.enabled === false) return false;
   if (!group.visibleWhen) return true;
   if (seen.has(group.id)) return true;
   seen.add(group.id);
@@ -560,7 +567,7 @@ export function ledTint(
   selections: Record<string, string>,
 ): string | null {
   for (const group of config.optionGroups) {
-    if (group.kind !== "LED") continue;
+    if (group.kind !== "LED" || group.enabled === false) continue;
     const option = resolveOption(group, selections[group.id]);
     if (option?.hex) return option.hex;
   }
