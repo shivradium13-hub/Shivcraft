@@ -66,8 +66,54 @@ export const EMPTY_PRODUCT: ProductFormValues = {
   images: [], customizationFields: [], variants: [],
 };
 
-const input =
-  "w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
+/* A variant attribute (e.g. "Size") and its options (e.g. S, M, L). It is stored
+   flat in product_variants — one row per option, keyed by the attribute name —
+   and grouped here only so the editor can nest options under their attribute. */
+type OptionRow = { id?: string; value: string; priceDelta: string; stock: string; sku: string; isActive: boolean };
+type AttributeRow = { key: string; name: string; options: OptionRow[] };
+
+let attrKeySeq = 0;
+const newAttrKey = () => `attr-${attrKeySeq++}`;
+const blankOption = (): OptionRow => ({ value: "", priceDelta: "0", stock: "0", sku: "", isActive: true });
+
+/** Group the flat variant rows into attributes, preserving first-seen order. */
+function groupVariantsToAttributes(variants: VariantRow[]): AttributeRow[] {
+  const byName = new Map<string, AttributeRow>();
+  const order: AttributeRow[] = [];
+  for (const v of variants) {
+    let a = byName.get(v.name);
+    if (!a) {
+      a = { key: newAttrKey(), name: v.name, options: [] };
+      byName.set(v.name, a);
+      order.push(a);
+    }
+    a.options.push({ id: v.id, value: v.value, priceDelta: v.priceDelta, stock: v.stock, sku: v.sku, isActive: v.isActive });
+  }
+  return order;
+}
+
+/** Flatten attributes back to the variant rows the save payload expects. */
+function flattenAttributesToVariants(attributes: AttributeRow[]): VariantRow[] {
+  const out: VariantRow[] = [];
+  for (const a of attributes) {
+    for (const o of a.options) {
+      out.push({
+        ...(o.id ? { id: o.id } : {}),
+        name: a.name,
+        value: o.value,
+        sku: o.sku,
+        priceDelta: o.priceDelta,
+        stock: o.stock,
+        isActive: o.isActive,
+      });
+    }
+  }
+  return out;
+}
+
+const inputBase =
+  "rounded-lg border border-field bg-field-bg px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
+const input = `w-full ${inputBase}`;
 
 export function ProductForm({
   productId,
@@ -135,6 +181,35 @@ export function ProductForm({
     });
   }
 
+  /* Variant attributes/options, edited as a nested list and flattened on save.
+     Seeded from the product's saved variants, grouped by attribute name. */
+  const [attributes, setAttributes] = useState<AttributeRow[]>(() =>
+    groupVariantsToAttributes(initial.variants),
+  );
+
+  const addAttribute = () =>
+    setAttributes((prev) => [...prev, { key: newAttrKey(), name: "", options: [blankOption()] }]);
+  const removeAttribute = (key: string) =>
+    setAttributes((prev) => prev.filter((a) => a.key !== key));
+  const setAttributeName = (key: string, name: string) =>
+    setAttributes((prev) => prev.map((a) => (a.key === key ? { ...a, name } : a)));
+  const addOption = (key: string) =>
+    setAttributes((prev) =>
+      prev.map((a) => (a.key === key ? { ...a, options: [...a.options, blankOption()] } : a)),
+    );
+  const setOption = (key: string, index: number, patch: Partial<OptionRow>) =>
+    setAttributes((prev) =>
+      prev.map((a) =>
+        a.key === key
+          ? { ...a, options: a.options.map((o, i) => (i === index ? { ...o, ...patch } : o)) }
+          : a,
+      ),
+    );
+  const removeOption = (key: string, index: number) =>
+    setAttributes((prev) =>
+      prev.map((a) => (a.key === key ? { ...a, options: a.options.filter((_, i) => i !== index) } : a)),
+    );
+
   async function uploadImages(files: FileList) {
     setUploading(true);
     setError(null);
@@ -198,9 +273,10 @@ export function ProductForm({
       metaDescription: values.metaDescription,
       images: values.images,
       customizationFields: thenDesign ? [] : values.customizationFields,
-      variants: values.variants
-        // Drop wholly-blank rows so an empty row left behind is not an error.
-        .filter((v) => v.name.trim() || v.value.trim())
+      variants: flattenAttributesToVariants(attributes)
+        // Only complete options are saved: an unnamed attribute, or an option
+        // with no label, is dropped rather than persisted as a broken row.
+        .filter((v) => v.name.trim() && v.value.trim())
         .map((v) => ({
           ...(v.id ? { id: v.id } : {}),
           name: v.name.trim(),
@@ -339,6 +415,113 @@ export function ProductForm({
               <input type="number" min="0" className={input} value={values.lowStockThreshold} onChange={(e) => set("lowStockThreshold", e.target.value)} />
             </Field>
           </Row>
+        </Card>
+
+        {/* -------------------------------------------- options / variants */}
+        <Card
+          title="Options / variants"
+          subtitle="Attributes like Size or Colour, each with its own options. The customer picks one option per attribute; each option can change the price and carry its own stock. Leave empty for a single-version product."
+        >
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={values.variantPriceAbsolute}
+              onChange={(e) => set("variantPriceAbsolute", e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-sr-600"
+            />
+            <span>
+              <span className="block text-sm font-medium text-sr-ink">Option price is the full price</span>
+              <span className="block text-xs text-sr-muted">
+                When on, each option’s price is used as-is as the final price (no base added, no “+”).
+                Off: the price is added to the base price.
+              </span>
+            </span>
+          </label>
+
+          {attributes.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-sr-line-strong px-4 py-6 text-center text-sm text-sr-muted">
+              No attributes. Add one like “Size” and give it options.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {attributes.map((attr) => (
+                <div key={attr.key} className="rounded-xl border border-sr-line bg-sr-canvas p-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      className={`${input} font-medium`}
+                      value={attr.name}
+                      placeholder="Attribute name (e.g. Size)"
+                      onChange={(e) => setAttributeName(attr.key, e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeAttribute(attr.key)}
+                      className="shrink-0 rounded-lg border border-danger px-2.5 py-1.5 text-xs font-semibold text-danger hover:bg-danger-soft"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex items-center gap-2 pl-1 text-[11px] font-semibold text-sr-muted">
+                      <span className="min-w-0 flex-1">Option</span>
+                      <span className="w-24 text-right">{values.variantPriceAbsolute ? "Price ₹" : "± ₹"}</span>
+                      <span className="w-16 text-right">Stock</span>
+                      <span className="w-6" />
+                    </div>
+                    {attr.options.map((opt, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <input
+                          className={`${inputBase} min-w-0 flex-1`}
+                          value={opt.value}
+                          placeholder="Option (e.g. M)"
+                          onChange={(e) => setOption(attr.key, i, { value: e.target.value })}
+                        />
+                        <input
+                          type="number"
+                          step="1"
+                          className={`${inputBase} w-24 shrink-0`}
+                          value={opt.priceDelta}
+                          onChange={(e) => setOption(attr.key, i, { priceDelta: e.target.value })}
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          className={`${inputBase} w-16 shrink-0`}
+                          value={opt.stock}
+                          onChange={(e) => setOption(attr.key, i, { stock: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          aria-label="Remove option"
+                          onClick={() => removeOption(attr.key, i)}
+                          className="flex h-8 w-6 shrink-0 items-center justify-center rounded-lg text-sr-muted transition hover:bg-danger-soft hover:text-danger"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => addOption(attr.key)}
+                    className="mt-2 text-xs font-semibold text-sr-600 hover:underline"
+                  >
+                    + Add option
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={addAttribute}
+            className="w-full rounded-lg border border-dashed border-sr-line-strong px-4 py-2.5 text-sm font-medium text-sr-body hover:border-sr-400 hover:text-sr-700"
+          >
+            + Add attribute
+          </button>
         </Card>
 
         {/* ------------------------------------------------------- images */}
