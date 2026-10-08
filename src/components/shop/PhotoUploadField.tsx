@@ -2,8 +2,6 @@
 
 import { useRef, useState } from "react";
 
-import { CropModal } from "./CropModal";
-
 type Uploaded = { id: string; url: string; name: string };
 
 type Status =
@@ -32,9 +30,10 @@ export function PhotoUploadField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Status>({ phase: "idle" });
   const [dragging, setDragging] = useState(false);
-  const [cropFile, setCropFile] = useState<File | null>(null);
 
-  /** Validate, then open the crop step; the upload happens on Apply. */
+  /** Validate, then upload the photo exactly as the customer chose it — no crop
+   *  step, so the original image (its own size and aspect ratio) is what the
+   *  workshop receives. */
   function pick(file: File) {
     if (!ACCEPTED.includes(file.type)) {
       setStatus({ phase: "error", message: "Use a JPG, PNG or WebP image." });
@@ -48,7 +47,7 @@ export function PhotoUploadField({
       return;
     }
     setStatus({ phase: "idle" });
-    setCropFile(file);
+    void send(file);
   }
 
   async function send(file: File) {
@@ -161,25 +160,11 @@ export function PhotoUploadField({
         className="sr-only"
         onChange={(e) => {
           const file = e.target.files?.[0];
+          // Clear it so picking the same file again still fires a change.
+          e.target.value = "";
           if (file) pick(file);
         }}
       />
-
-      {cropFile ? (
-        <CropModal
-          file={cropFile}
-          title="Crop image"
-          onCancel={() => {
-            setCropFile(null);
-            if (inputRef.current) inputRef.current.value = "";
-          }}
-          onCropped={(cropped) => {
-            setCropFile(null);
-            if (inputRef.current) inputRef.current.value = "";
-            void send(cropped);
-          }}
-        />
-      ) : null}
 
       {helpText ? <p className="mt-1.5 text-xs text-muted">{helpText}</p> : null}
       {status.phase === "error" ? (
