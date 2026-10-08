@@ -116,8 +116,11 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
   const offSeed = mrpSeedP > unitSeedP ? Math.round(((mrpSeedP - unitSeedP) / mrpSeedP) * 100) : 0;
 
   /* A Frame-Designer product shows the live personalization preview as the
-     product image itself; every other product keeps the normal photo gallery. */
+     product image itself; every other product keeps the normal photo gallery.
+     When the admin switches a product to the plain photo + text upload, the
+     designer is hidden (config untouched) and the normal gallery is shown. */
   const customizerConfig = readConfig(product.customizer);
+  const showDesigner = customizerConfig.enabled && !product.simpleUploadMode;
 
   const specs = [
     ["Material", product.material],
@@ -186,7 +189,7 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
           fit the viewport on desktop. */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,600px)_minmax(0,1fr)]">
         <div className="min-w-0 lg:sticky lg:top-[88px] lg:self-start">
-          {customizerConfig.enabled ? (
+          {showDesigner ? (
             <ProductLivePreview
               productId={product.id}
               config={customizerConfig}

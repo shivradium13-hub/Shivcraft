@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "simple_upload_mode" boolean DEFAULT false NOT NULL;

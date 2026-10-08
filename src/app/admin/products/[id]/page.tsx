@@ -57,6 +57,7 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
     videoUrl: product.videoUrl ?? "",
     isPersonalizable: product.isPersonalizable,
     variantPriceAbsolute: product.variantPriceAbsolute,
+    simpleUploadMode: product.simpleUploadMode,
     isActive: product.isActive,
     isBestSeller: product.isBestSeller,
     isTrending: product.isTrending,

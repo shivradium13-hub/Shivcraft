@@ -138,13 +138,18 @@ export function ProductPurchase({
   /* A product with no configuration returns the disabled default, so every
      existing product renders exactly as it did before. */
   const customizerConfig = useMemo(() => readConfig(product.customizer), [product.customizer]);
+  /* When the admin switches a product to the plain photo + text upload, the
+     Frame Designer is hidden on the storefront even though its template is still
+     configured and enabled — the customizer config is left untouched, so the
+     designer comes back exactly if this is turned off again. */
+  const showDesigner = customizerConfig.enabled && !product.simpleUploadMode;
   const [design, setDesign] = useState<CustomerDesign | null>(null);
 
   /* Whether the personalisation is complete — every required, visible area has
      content. Mirrors the customizer's own "ready to add to cart" check, so the
      "Buy Now" button only appears once the design is done. */
   const designReady = useMemo(() => {
-    if (!customizerConfig.enabled || !design) return false;
+    if (!showDesigner || !design) return false;
     const required = customizerConfig.zones.filter(
       (z) =>
         z.required &&
@@ -159,7 +164,7 @@ export function ProductPurchase({
           ? value.text.value.trim().length > 0
           : false;
     });
-  }, [customizerConfig, design]);
+  }, [showDesigner, customizerConfig, design]);
 
   async function addToCart(thenCheckout: boolean) {
     setBusy(true);
@@ -181,7 +186,7 @@ export function ProductPurchase({
           quantity,
           variantIds: selectedVariantIds,
           customization: product.isPersonalizable ? customization : undefined,
-          design: customizerConfig.enabled ? design : undefined,
+          design: showDesigner ? design : undefined,
         }),
       });
       const json = await res.json();
@@ -250,8 +255,8 @@ export function ProductPurchase({
       ))}
 
       {/* ---------------------------------------------------- customizer */}
-      {customizerConfig.enabled ? <CustomizerFonts config={customizerConfig} /> : null}
-      {customizerConfig.enabled ? (
+      {showDesigner ? <CustomizerFonts config={customizerConfig} /> : null}
+      {showDesigner ? (
         /* Always shown (Ritwika-style): the customer personalises right away —
            no "Customize Now" gate. The product image live-preview renders the
            design via the bridge. */
@@ -277,7 +282,10 @@ export function ProductPurchase({
       ) : null}
 
       {/* -------------------------------------------------- customization */}
-      {product.isPersonalizable && product.customizationFields.length > 0 ? (
+      {/* Never alongside the designer: the simple photo/text fields show only
+         when the Frame Designer is not being shown (a plain personalised product,
+         or one switched to photo + text upload mode). */}
+      {!showDesigner && product.isPersonalizable && product.customizationFields.length > 0 ? (
         <section className="rounded-card border border-brand-200 bg-brand-50/60 p-4">
           <h2 className="font-display text-lg font-semibold text-brand-800">Customize Your Gift</h2>
           <p className="mt-0.5 mb-4 text-xs text-ink-soft">
@@ -438,7 +446,7 @@ export function ProductPurchase({
       ) : null}
 
       {/* ------------------------------------------------ quantity + cart */}
-      {customizerConfig.enabled ? (
+      {showDesigner ? (
         /* Ritwika-style: a Preview button, then quantity + Add to Cart below it
            (no separate Buy Now). Add to Cart stays disabled until the required
            photo/text areas are filled. */

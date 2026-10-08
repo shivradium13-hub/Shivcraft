@@ -46,6 +46,7 @@ export type ProductFormValues = {
   videoUrl: string;
   isPersonalizable: boolean;
   variantPriceAbsolute: boolean;
+  simpleUploadMode: boolean;
   isActive: boolean;
   isBestSeller: boolean;
   isTrending: boolean;
@@ -64,7 +65,7 @@ export const EMPTY_PRODUCT: ProductFormValues = {
   // New products use full per-option prices (no "+"): the customer sees each
   // size's actual price, not an amount added to the base. Matches every
   // existing product; an admin can still switch to "+" (delta) per product.
-  isPersonalizable: false, variantPriceAbsolute: true, isActive: true, isBestSeller: false, isTrending: false,
+  isPersonalizable: false, variantPriceAbsolute: true, simpleUploadMode: false, isActive: true, isBestSeller: false, isTrending: false,
   metaTitle: "", metaDescription: "",
   images: [], customizationFields: [], variants: [],
 };
@@ -287,6 +288,7 @@ export function ProductForm({
       // admin builds the template in the designer instead.
       isPersonalizable: thenDesign ? false : values.isPersonalizable,
       variantPriceAbsolute: values.variantPriceAbsolute,
+      simpleUploadMode: thenDesign ? false : values.simpleUploadMode,
       isActive: values.isActive,
       isBestSeller: values.isBestSeller,
       isTrending: values.isTrending,
@@ -365,6 +367,25 @@ export function ProductForm({
 
   const err = (key: string) =>
     errors[key] ? <p className="mt-1 text-xs font-medium text-danger">{errors[key]}</p> : null;
+
+  /* "Photo + text upload only": hide the Frame Designer on the storefront and
+     let the customer just upload a photo and type text. Turning it on seeds a
+     photo + text field (if none yet) so the admin need not build them; the
+     Frame Designer template, if any, is left untouched and returns when this is
+     turned back off. */
+  function setSimpleUpload(on: boolean) {
+    setValues((prev) => {
+      if (!on) return { ...prev, simpleUploadMode: false };
+      const fields = [...prev.customizationFields];
+      if (!fields.some((f) => f.type === "IMAGE")) {
+        fields.push({ type: "IMAGE", label: "Upload your photo", helpText: "", isRequired: true, maxLength: null, options: [] });
+      }
+      if (!fields.some((f) => f.type === "TEXT")) {
+        fields.push({ type: "TEXT", label: "Your text / name", helpText: "", isRequired: false, maxLength: 60, options: [] });
+      }
+      return { ...prev, simpleUploadMode: true, isPersonalizable: true, customizationFields: fields };
+    });
+  }
 
   /* Options/variants guard, shown live: once there is more than one attribute,
      each must offer a real choice. A one-option attribute among several would be
@@ -738,6 +759,20 @@ export function ProductForm({
 
         {/* ------------------------------------------------ personalisation */}
         <Card title="Simple personalisation fields">
+          <Toggle
+            checked={values.simpleUploadMode}
+            onChange={setSimpleUpload}
+            label="Photo + text upload only (hide Frame Designer)"
+            hint="The customer just uploads a photo and types text — no live designer. Any Frame Designer template is kept and comes back if you switch this off."
+          />
+          {values.simpleUploadMode ? (
+            <p className="rounded-lg bg-sr-canvas px-3 py-2 text-xs text-sr-muted">
+              On the storefront this product shows a photo-upload box and a text box instead of the Frame
+              Designer. The photo &amp; text fields below were added automatically — edit their labels or add
+              more fields if you like.
+            </p>
+          ) : null}
+
           <Toggle
             checked={values.isPersonalizable}
             onChange={(v) => set("isPersonalizable", v)}

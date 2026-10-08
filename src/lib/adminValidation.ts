@@ -72,6 +72,9 @@ export const productSchema = z
     isPersonalizable: z.boolean().default(false),
     /** When true, each option's price is its full price, not added to the base. */
     variantPriceAbsolute: z.boolean().default(false),
+    /** When true, the storefront hides the Frame Designer and shows a plain
+     *  photo + text upload instead. The customizer config is left untouched. */
+    simpleUploadMode: z.boolean().default(false),
     isActive: z.boolean().default(true),
     isBestSeller: z.boolean().default(false),
     isTrending: z.boolean().default(false),

@@ -263,6 +263,11 @@ export const products = pgTable(
      *  (shown as-is, no base price added) rather than a delta. Used for things
      *  like photo prints where every size has its own flat price. */
     variantPriceAbsolute: boolean("variant_price_absolute").notNull().default(false),
+    /** When true, the storefront hides this product's Frame Designer (even if a
+     *  template is configured and enabled) and shows a plain photo-upload + text
+     *  flow instead. The customizer config itself is left untouched, so turning
+     *  this off restores the designer exactly. */
+    simpleUploadMode: boolean("simple_upload_mode").notNull().default(false),
     /** Versioned customizer configuration. NULL means this product is not
      *  customisable and behaves exactly as it always has. Shape and parsing
      *  live in src/lib/customizer/schema.ts. */
