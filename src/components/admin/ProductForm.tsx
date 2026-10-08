@@ -238,6 +238,24 @@ export function ProductForm({
   }
 
   async function save(thenDesign = false) {
+    // Block the price-summing trap before anything else: once there is more
+    // than one attribute, each must offer a real choice (2+ options). A size
+    // split into several one-option attributes would be auto-selected together
+    // and its prices would pile up on every order.
+    const activeGroups = attributes
+      .map((a) => ({ name: a.name.trim(), count: a.options.filter((o) => o.value.trim()).length }))
+      .filter((a) => a.name && a.count > 0);
+    if (activeGroups.length > 1) {
+      const bad = activeGroups.find((a) => a.count < 2);
+      if (bad) {
+        setError(
+          `"${bad.name}" has only one option. Put every choice of one thing — e.g. all the sizes — under a single attribute; a separate attribute for each adds their prices together.`,
+        );
+        setNotice(null);
+        return;
+      }
+    }
+
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -345,6 +363,14 @@ export function ProductForm({
   const err = (key: string) =>
     errors[key] ? <p className="mt-1 text-xs font-medium text-danger">{errors[key]}</p> : null;
 
+  /* Options/variants guard, shown live: once there is more than one attribute,
+     each must offer a real choice. A one-option attribute among several would be
+     auto-selected and pile its price onto every order. */
+  const completeOptions = (a: AttributeRow) => a.options.filter((o) => o.value.trim()).length;
+  const activeAttrCount = attributes.filter((a) => a.name.trim() && completeOptions(a) > 0).length;
+  const attrNeedsMoreOptions = (a: AttributeRow) =>
+    activeAttrCount > 1 && a.name.trim().length > 0 && completeOptions(a) === 1;
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
       <div className="space-y-4">
@@ -420,7 +446,7 @@ export function ProductForm({
         {/* -------------------------------------------- options / variants */}
         <Card
           title="Options / variants"
-          subtitle="Attributes like Size or Colour, each with its own options. The customer picks one option per attribute; each option can change the price and carry its own stock. Leave empty for a single-version product."
+          subtitle="Attributes like Size or Colour, each with its own options. The customer picks one option per attribute; each option can change the price and carry its own stock. Put all the choices of one thing (e.g. every size) under a single attribute — a separate attribute for each size would add their prices together. Leave empty for a single-version product."
         >
           <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
             <input
@@ -502,6 +528,14 @@ export function ProductForm({
                       </div>
                     ))}
                   </div>
+
+                  {attrNeedsMoreOptions(attr) ? (
+                    <p className="mt-2 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs font-medium text-danger">
+                      Add at least 2 options here, or remove this attribute. With just one option
+                      it is always selected and its price adds to every order — put all the sizes
+                      under a single “Size” attribute instead.
+                    </p>
+                  ) : null}
 
                   <button
                     type="button"

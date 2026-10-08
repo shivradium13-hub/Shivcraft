@@ -123,6 +123,33 @@ export const productSchema = z
         seenChoice.set(key, index);
       }
     }
+
+    // Guard the "A4 + A3 + A2" price-summing trap. The storefront auto-selects
+    // one option from EVERY attribute and adds up their prices — correct when
+    // the attributes are genuinely different (Size + Colour), wrong when one
+    // thing (the size) was split into several one-option attributes, because
+    // then all of them are always selected and their prices pile up. So once a
+    // product has more than one attribute, each must offer a real choice (two
+    // or more options); a single size belongs as one option under one "Size"
+    // attribute, not an attribute of its own.
+    const groupFirstIndex = new Map<string, { count: number; firstIndex: number; name: string }>();
+    value.variants.forEach((variant, index) => {
+      const key = variant.name.trim().toLowerCase();
+      const entry = groupFirstIndex.get(key);
+      if (entry) entry.count += 1;
+      else groupFirstIndex.set(key, { count: 1, firstIndex: index, name: variant.name.trim() });
+    });
+    if (groupFirstIndex.size > 1) {
+      for (const { count, firstIndex, name } of groupFirstIndex.values()) {
+        if (count < 2) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["variants", firstIndex, "value"],
+            message: `"${name}" has only one option. Put every choice of one thing — e.g. all the sizes — under a single attribute; a separate attribute for each adds their prices together.`,
+          });
+        }
+      }
+    }
   });
 
 export type ProductInput = z.infer<typeof productSchema>;
