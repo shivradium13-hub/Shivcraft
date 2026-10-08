@@ -3,9 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { OrderStatusControl } from "@/components/admin/OrderStatusControl";
+import { DelhiveryShipment } from "@/components/admin/DelhiveryShipment";
 import { formatPaise } from "@/lib/money";
 import { STATUS_LABEL, allowedNext, getAdminOrder } from "@/server/admin/orders";
 import { OrderDesignPanel } from "@/components/admin/OrderDesignPanel";
+import { delhiveryStatus, publicTrackingUrl } from "@/server/delivery/delhivery";
 import { requireAdmin } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
@@ -216,6 +218,14 @@ export default async function AdminOrderPage(props: PageProps<"/admin/orders/[or
               labels={STATUS_LABEL}
             />
           </section>
+
+          <DelhiveryShipment
+            orderNumber={order.orderNumber}
+            awb={order.delhiveryAwb}
+            trackingUrl={order.delhiveryAwb ? publicTrackingUrl(order.delhiveryAwb) : null}
+            configured={delhiveryStatus().configured}
+            canShip={order.status !== "DELIVERED" && order.status !== "CANCELLED"}
+          />
 
           <section className="rounded-2xl border border-sr-line bg-sr-surface p-5">
             <h2 className="font-display text-base font-semibold text-sr-ink">Customer</h2>

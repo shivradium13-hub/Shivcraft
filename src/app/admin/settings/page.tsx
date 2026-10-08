@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 
 import { ChangePasswordForm } from "@/components/admin/ChangePasswordForm";
 import { PaymentStatus } from "@/components/admin/PaymentStatus";
+import { DeliveryStatus } from "@/components/admin/DeliveryStatus";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { requireAdmin } from "@/server/auth/guards";
+import { delhiveryStatus } from "@/server/delivery/delhivery";
 import { razorpayStatus } from "@/server/payments/razorpay";
 import { getAllSettings } from "@/server/settings/shop";
 
@@ -15,6 +17,7 @@ export default async function AdminSettingsPage() {
   const { shipping, tax, support, business } = await getAllSettings();
   // Read on the server; only booleans and a test/live label reach the page.
   const payments = razorpayStatus();
+  const delivery = delhiveryStatus();
 
   return (
     <div>
@@ -24,8 +27,9 @@ export default async function AdminSettingsPage() {
         orders already placed keep the charges they were placed with.
       </p>
 
-      <div className="mb-6">
+      <div className="mb-6 grid gap-4">
         <PaymentStatus status={payments} />
+        <DeliveryStatus status={delivery} />
       </div>
 
       <SettingsForm

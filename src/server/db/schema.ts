@@ -455,6 +455,14 @@ export const orders = pgTable(
     customerBusinessName: varchar("customer_business_name", { length: 160 }),
 
     cancelReason: varchar("cancel_reason", { length: 300 }),
+
+    /** Courier integration. Null until a shipment is created with a partner.
+     *  provider is e.g. "DELHIVERY"; awb is the courier's tracking number;
+     *  shipmentStatus is the last status pulled from the courier. */
+    shippingProvider: varchar("shipping_provider", { length: 20 }),
+    delhiveryAwb: varchar("delhivery_awb", { length: 40 }),
+    shipmentStatus: varchar("shipment_status", { length: 60 }),
+
     placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

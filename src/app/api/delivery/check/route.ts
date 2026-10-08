@@ -1,4 +1,5 @@
 import { ApiError, ok, route } from "@/server/api/http";
+import { checkServiceability, getDelhiveryConfig } from "@/server/delivery/delhivery";
 import { getAllSettings } from "@/server/settings/shop";
 
 export const runtime = "nodejs";
@@ -78,10 +79,35 @@ export const GET = route(async (request: Request) => {
     });
   }
 
-  // 3 working days to make it, plus transit that grows with distance.
+  // 3 working days to make it, plus transit that grows with distance. The
+  // transit span is always an estimate; Delhivery, when configured, replaces the
+  // guesswork about *whether* we can deliver (and COD) with a real check.
   const distance = hops(originRegion, targetRegion);
   const minDays = 3 + Math.max(1, distance);
   const maxDays = minDays + 2 + distance;
+
+  // Real courier serviceability when Delhivery is wired up; otherwise the
+  // postal-zone estimate exactly as before. An API hiccup also falls back.
+  let codAvailable = shipping.codEnabled && distance <= 3;
+  let note =
+    "Estimated from postal zones, not a courier tracking check. We confirm the exact date on your artwork proof.";
+
+  if (getDelhiveryConfig()) {
+    const service = await checkServiceability(pincode);
+    if (service && !service.serviceable) {
+      return ok({
+        pincode,
+        serviceable: false,
+        message:
+          "Our courier does not deliver to this PIN code yet — call the workshop and we will arrange something.",
+      });
+    }
+    if (service) {
+      codAvailable = shipping.codEnabled && service.cod;
+      note =
+        "Delivery to this PIN code is confirmed with our courier (Delhivery). The exact date is confirmed on your artwork proof.";
+    }
+  }
 
   return ok({
     pincode,
@@ -90,9 +116,9 @@ export const GET = route(async (request: Request) => {
     minDays,
     maxDays,
     estimate: `${minDays}–${maxDays} working days`,
-    codAvailable: shipping.codEnabled && distance <= 3,
+    codAvailable,
     shippingP: shipping.flatRateP ?? 5900,
     freeAboveP: shipping.freeAboveP ?? 99900,
-    note: "Estimated from postal zones, not a courier tracking check. We confirm the exact date on your artwork proof.",
+    note,
   });
 });
