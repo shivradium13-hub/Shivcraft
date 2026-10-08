@@ -96,6 +96,16 @@ function groupVariantsToAttributes(variants: VariantRow[]): AttributeRow[] {
   return order;
 }
 
+/** Collapse saved variants into one option group for the flat editor. A legacy
+ *  product that had several attributes is merged into a single list, so nothing
+ *  is lost and the editor always shows exactly one group. */
+function toSingleGroup(variants: VariantRow[]): AttributeRow {
+  const groups = groupVariantsToAttributes(variants);
+  if (groups.length === 0) return { key: newAttrKey(), name: "Size", options: [] };
+  const name = groups.find((g) => g.name.trim())?.name ?? "Size";
+  return { key: newAttrKey(), name, options: groups.flatMap((g) => g.options) };
+}
+
 /** Flatten attributes back to the variant rows the save payload expects. */
 function flattenAttributesToVariants(attributes: AttributeRow[]): VariantRow[] {
   const out: VariantRow[] = [];
@@ -185,34 +195,18 @@ export function ProductForm({
     });
   }
 
-  /* Variant attributes/options, edited as a nested list and flattened on save.
-     Seeded from the product's saved variants, grouped by attribute name. */
-  const [attributes, setAttributes] = useState<AttributeRow[]>(() =>
-    groupVariantsToAttributes(initial.variants),
-  );
+  /* One option group (e.g. Size) with its options, edited as a flat list and
+     flattened to variant rows on save. A product has a single option type; the
+     old two-level "attribute vs option" model confused admins (sizes ended up as
+     attribute names with empty options and were dropped), so this is one list. */
+  const [group, setGroup] = useState<AttributeRow>(() => toSingleGroup(initial.variants));
 
-  const addAttribute = () =>
-    setAttributes((prev) => [...prev, { key: newAttrKey(), name: "", options: [blankOption()] }]);
-  const removeAttribute = (key: string) =>
-    setAttributes((prev) => prev.filter((a) => a.key !== key));
-  const setAttributeName = (key: string, name: string) =>
-    setAttributes((prev) => prev.map((a) => (a.key === key ? { ...a, name } : a)));
-  const addOption = (key: string) =>
-    setAttributes((prev) =>
-      prev.map((a) => (a.key === key ? { ...a, options: [...a.options, blankOption()] } : a)),
-    );
-  const setOption = (key: string, index: number, patch: Partial<OptionRow>) =>
-    setAttributes((prev) =>
-      prev.map((a) =>
-        a.key === key
-          ? { ...a, options: a.options.map((o, i) => (i === index ? { ...o, ...patch } : o)) }
-          : a,
-      ),
-    );
-  const removeOption = (key: string, index: number) =>
-    setAttributes((prev) =>
-      prev.map((a) => (a.key === key ? { ...a, options: a.options.filter((_, i) => i !== index) } : a)),
-    );
+  const setGroupName = (name: string) => setGroup((g) => ({ ...g, name }));
+  const addOption = () => setGroup((g) => ({ ...g, options: [...g.options, blankOption()] }));
+  const setOption = (index: number, patch: Partial<OptionRow>) =>
+    setGroup((g) => ({ ...g, options: g.options.map((o, i) => (i === index ? { ...o, ...patch } : o)) }));
+  const removeOption = (index: number) =>
+    setGroup((g) => ({ ...g, options: g.options.filter((_, i) => i !== index) }));
 
   async function uploadImages(files: FileList) {
     setUploading(true);
@@ -242,22 +236,18 @@ export function ProductForm({
   }
 
   async function save(thenDesign = false) {
-    // Block the price-summing trap before anything else: once there is more
-    // than one attribute, each must offer a real choice (2+ options). A size
-    // split into several one-option attributes would be auto-selected together
-    // and its prices would pile up on every order.
-    const activeGroups = attributes
-      .map((a) => ({ name: a.name.trim(), count: a.options.filter((o) => o.value.trim()).length }))
-      .filter((a) => a.name && a.count > 0);
-    if (activeGroups.length > 1) {
-      const bad = activeGroups.find((a) => a.count < 2);
-      if (bad) {
-        setError(
-          `"${bad.name}" has only one option. Put every choice of one thing — e.g. all the sizes — under a single attribute; a separate attribute for each adds their prices together.`,
-        );
-        setNotice(null);
-        return;
-      }
+    // Don't silently drop a half-filled option: a row with a price or stock but
+    // no name would be discarded on save (the admin's price would vanish). Tell
+    // them to name it instead.
+    const incompleteOption = group.options.find(
+      (o) => !o.value.trim() && (Number(o.priceDelta) !== 0 || Number(o.stock) !== 0),
+    );
+    if (incompleteOption) {
+      setError(
+        `Give every option a name (e.g. S, M, L). An option has a price or stock but no name, so it would not be saved.`,
+      );
+      setNotice(null);
+      return;
     }
 
     setBusy(true);
@@ -296,9 +286,9 @@ export function ProductForm({
       metaDescription: values.metaDescription,
       images: values.images,
       customizationFields: thenDesign ? [] : values.customizationFields,
-      variants: flattenAttributesToVariants(attributes)
-        // Only complete options are saved: an unnamed attribute, or an option
-        // with no label, is dropped rather than persisted as a broken row.
+      variants: flattenAttributesToVariants([{ ...group, name: group.name.trim() || "Size" }])
+        // Only complete options are saved: an option with no label is dropped
+        // rather than persisted as a broken row.
         .filter((v) => v.name.trim() && v.value.trim())
         .map((v) => ({
           ...(v.id ? { id: v.id } : {}),
@@ -387,14 +377,6 @@ export function ProductForm({
     });
   }
 
-  /* Options/variants guard, shown live: once there is more than one attribute,
-     each must offer a real choice. A one-option attribute among several would be
-     auto-selected and pile its price onto every order. */
-  const completeOptions = (a: AttributeRow) => a.options.filter((o) => o.value.trim()).length;
-  const activeAttrCount = attributes.filter((a) => a.name.trim() && completeOptions(a) > 0).length;
-  const attrNeedsMoreOptions = (a: AttributeRow) =>
-    activeAttrCount > 1 && a.name.trim().length > 0 && completeOptions(a) === 1;
-
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
       <div className="space-y-4">
@@ -470,8 +452,17 @@ export function ProductForm({
         {/* -------------------------------------------- options / variants */}
         <Card
           title="Options / variants"
-          subtitle="Attributes like Size or Colour, each with its own options. The customer picks one option per attribute; each option can change the price and carry its own stock. Put all the choices of one thing (e.g. every size) under a single attribute — a separate attribute for each size would add their prices together. Leave empty for a single-version product."
+          subtitle="Offer the product in a few options the customer picks one of — e.g. sizes S, M, L. Each option has its own price and stock. Leave this empty for a single-version product."
         >
+          <Field label="Option type" hint="What the customer is choosing, e.g. Size or Colour.">
+            <input
+              className={input}
+              value={group.name}
+              placeholder="Size"
+              onChange={(e) => setGroupName(e.target.value)}
+            />
+          </Field>
+
           <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
             <input
               type="checkbox"
@@ -488,85 +479,47 @@ export function ProductForm({
             </span>
           </label>
 
-          {attributes.length === 0 ? (
+          {group.options.length === 0 ? (
             <p className="rounded-lg border border-dashed border-sr-line-strong px-4 py-6 text-center text-sm text-sr-muted">
-              No attributes. Add one like “Size” and give it options.
+              No options yet. Add one like “S”, “M” or “8×12 in” with its price.
             </p>
           ) : (
-            <div className="space-y-3">
-              {attributes.map((attr) => (
-                <div key={attr.key} className="rounded-xl border border-sr-line bg-sr-canvas p-3">
-                  <div className="flex items-center gap-2">
-                    <input
-                      className={`${input} font-medium`}
-                      value={attr.name}
-                      placeholder="Attribute name (e.g. Size)"
-                      onChange={(e) => setAttributeName(attr.key, e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeAttribute(attr.key)}
-                      className="shrink-0 rounded-lg border border-danger px-2.5 py-1.5 text-xs font-semibold text-danger hover:bg-danger-soft"
-                    >
-                      Remove
-                    </button>
-                  </div>
-
-                  <div className="mt-2 space-y-1.5">
-                    <div className="flex items-center gap-2 pl-1 text-[11px] font-semibold text-sr-muted">
-                      <span className="min-w-0 flex-1">Option</span>
-                      <span className="w-24 text-right">{values.variantPriceAbsolute ? "Price ₹" : "± ₹"}</span>
-                      <span className="w-16 text-right">Stock</span>
-                      <span className="w-6" />
-                    </div>
-                    {attr.options.map((opt, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <input
-                          className={`${inputBase} min-w-0 flex-1`}
-                          value={opt.value}
-                          placeholder="Option (e.g. M)"
-                          onChange={(e) => setOption(attr.key, i, { value: e.target.value })}
-                        />
-                        <input
-                          type="number"
-                          step="1"
-                          className={`${inputBase} w-24 shrink-0`}
-                          value={opt.priceDelta}
-                          onChange={(e) => setOption(attr.key, i, { priceDelta: e.target.value })}
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          className={`${inputBase} w-16 shrink-0`}
-                          value={opt.stock}
-                          onChange={(e) => setOption(attr.key, i, { stock: e.target.value })}
-                        />
-                        <button
-                          type="button"
-                          aria-label="Remove option"
-                          onClick={() => removeOption(attr.key, i)}
-                          className="flex h-8 w-6 shrink-0 items-center justify-center rounded-lg text-sr-muted transition hover:bg-danger-soft hover:text-danger"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {attrNeedsMoreOptions(attr) ? (
-                    <p className="mt-2 rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs font-medium text-danger">
-                      Add at least 2 options here, or remove this attribute. With just one option
-                      it is always selected and its price adds to every order — put all the sizes
-                      under a single “Size” attribute instead.
-                    </p>
-                  ) : null}
-
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 pl-1 text-[11px] font-semibold text-sr-muted">
+                <span className="min-w-0 flex-1">{group.name.trim() || "Option"}</span>
+                <span className="w-24 text-right">{values.variantPriceAbsolute ? "Price ₹" : "± ₹"}</span>
+                <span className="w-16 text-right">Stock</span>
+                <span className="w-6" />
+              </div>
+              {group.options.map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    className={`${inputBase} min-w-0 flex-1`}
+                    value={opt.value}
+                    placeholder={`${group.name.trim() || "Option"} (e.g. M)`}
+                    onChange={(e) => setOption(i, { value: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    step="1"
+                    className={`${inputBase} w-24 shrink-0`}
+                    value={opt.priceDelta}
+                    onChange={(e) => setOption(i, { priceDelta: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    className={`${inputBase} w-16 shrink-0`}
+                    value={opt.stock}
+                    onChange={(e) => setOption(i, { stock: e.target.value })}
+                  />
                   <button
                     type="button"
-                    onClick={() => addOption(attr.key)}
-                    className="mt-2 text-xs font-semibold text-sr-600 hover:underline"
+                    aria-label="Remove option"
+                    onClick={() => removeOption(i)}
+                    className="flex h-8 w-6 shrink-0 items-center justify-center rounded-lg text-sr-muted transition hover:bg-danger-soft hover:text-danger"
                   >
-                    + Add option
+                    ✕
                   </button>
                 </div>
               ))}
@@ -575,10 +528,10 @@ export function ProductForm({
 
           <button
             type="button"
-            onClick={addAttribute}
+            onClick={addOption}
             className="w-full rounded-lg border border-dashed border-sr-line-strong px-4 py-2.5 text-sm font-medium text-sr-body hover:border-sr-400 hover:text-sr-700"
           >
-            + Add attribute
+            + Add option
           </button>
         </Card>
 
