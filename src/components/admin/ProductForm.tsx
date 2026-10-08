@@ -61,7 +61,10 @@ export const EMPTY_PRODUCT: ProductFormValues = {
   price: "", discountPrice: "", stock: "0", lowStockThreshold: "5",
   brand: "", material: "", color: "", size: "", weightGrams: "", occasion: "",
   tags: "", videoUrl: "",
-  isPersonalizable: false, variantPriceAbsolute: false, isActive: true, isBestSeller: false, isTrending: false,
+  // New products use full per-option prices (no "+"): the customer sees each
+  // size's actual price, not an amount added to the base. Matches every
+  // existing product; an admin can still switch to "+" (delta) per product.
+  isPersonalizable: false, variantPriceAbsolute: true, isActive: true, isBestSeller: false, isTrending: false,
   metaTitle: "", metaDescription: "",
   images: [], customizationFields: [], variants: [],
 };
