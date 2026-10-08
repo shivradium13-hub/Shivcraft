@@ -129,7 +129,7 @@ export type ShipmentInput = {
   /** Total weight in grams. */
   weightGrams: number;
   productsDesc: string;
-  /** Seller GSTIN (mandatory for Delhivery). */
+  /** Seller GSTIN — optional; sent only when the shop has set one. */
   sellerGstin?: string | null;
 };
 
@@ -160,8 +160,10 @@ export async function createShipment(input: ShipmentInput): Promise<CreatedShipm
     quantity: 1,
     products_desc: input.productsDesc.slice(0, 200),
     seller_name: config.client,
-    seller_gst_tin: input.sellerGstin ?? "",
     waybill: "",
+    // GST is optional: only sent when the shop has set a GSTIN, so a shipment
+    // can be created without one.
+    ...(input.sellerGstin ? { seller_gst_tin: input.sellerGstin } : {}),
   };
 
   const payload = {
