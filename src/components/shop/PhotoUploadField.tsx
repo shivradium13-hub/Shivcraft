@@ -30,10 +30,13 @@ export function PhotoUploadField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Status>({ phase: "idle" });
   const [dragging, setDragging] = useState(false);
+  /** The chosen photo, shown in a confirm pop-up so the customer can see exactly
+   *  which image they are about to upload before it is sent. */
+  const [preview, setPreview] = useState<{ file: File; url: string } | null>(null);
 
-  /** Validate, then upload the photo exactly as the customer chose it — no crop
-   *  step, so the original image (its own size and aspect ratio) is what the
-   *  workshop receives. */
+  /** Validate, then show the chosen photo in a confirm pop-up. The upload happens
+   *  as-is on confirm — no crop — so the original image (its own size and aspect
+   *  ratio) is what the workshop receives. */
   function pick(file: File) {
     if (!ACCEPTED.includes(file.type)) {
       setStatus({ phase: "error", message: "Use a JPG, PNG or WebP image." });
@@ -47,7 +50,21 @@ export function PhotoUploadField({
       return;
     }
     setStatus({ phase: "idle" });
+    setPreview({ file, url: URL.createObjectURL(file) });
+  }
+
+  function confirmUpload() {
+    if (!preview) return;
+    const file = preview.file;
+    URL.revokeObjectURL(preview.url);
+    setPreview(null);
     void send(file);
+  }
+
+  function cancelPreview() {
+    if (preview) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   async function send(file: File) {
@@ -165,6 +182,50 @@ export function PhotoUploadField({
           if (file) pick(file);
         }}
       />
+
+      {preview ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm your photo"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4"
+          onClick={cancelPreview}
+        >
+          <div
+            className="w-full max-w-md rounded-card bg-paper p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-semibold text-ink">Use this photo?</p>
+            <p className="mb-3 truncate text-xs text-muted">{preview.file.name}</p>
+            <div className="flex max-h-[60vh] items-center justify-center overflow-hidden rounded-lg border border-line bg-field-bg">
+              {/* A local preview of the customer's own file, shown before upload
+                  so they can confirm it is the right photo. Uploaded as-is. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={preview.url}
+                alt="Selected photo"
+                className="max-h-[60vh] w-auto max-w-full object-contain"
+              />
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={cancelPreview}
+                className="flex-1 rounded-full border border-line-strong px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-brand-400"
+              >
+                Choose another
+              </button>
+              <button
+                type="button"
+                onClick={confirmUpload}
+                className="flex-1 rounded-full bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+              >
+                Upload this photo
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {helpText ? <p className="mt-1.5 text-xs text-muted">{helpText}</p> : null}
       {status.phase === "error" ? (
