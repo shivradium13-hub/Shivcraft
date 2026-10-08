@@ -223,6 +223,7 @@ export default async function AdminOrderPage(props: PageProps<"/admin/orders/[or
             orderNumber={order.orderNumber}
             awb={order.delhiveryAwb}
             trackingUrl={order.delhiveryAwb ? publicTrackingUrl(order.delhiveryAwb) : null}
+            shipmentStatus={order.shipmentStatus}
             configured={delhiveryStatus().configured}
             canShip={order.status !== "DELIVERED" && order.status !== "CANCELLED"}
           />

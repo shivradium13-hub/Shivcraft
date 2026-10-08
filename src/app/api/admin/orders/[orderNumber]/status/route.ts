@@ -4,15 +4,16 @@ import { z } from "zod";
 import { ApiError, ok, readJson, route } from "@/server/api/http";
 import { requireAdmin } from "@/server/auth/guards";
 import { allowedNext, type OrderStatus } from "@/server/admin/orders";
+import { notifyOrderEvent, type OrderEvent } from "@/server/notify/orderNotify";
 import { db } from "@/server/db";
 import {
   inventoryMovements,
-  notifications,
   orderEvents,
   orderItems,
   orders,
   payments,
   products,
+  users,
 } from "@/server/db/schema";
 
 export const runtime = "nodejs";
@@ -32,28 +33,13 @@ const schema = z.object({
   note: z.string().trim().max(300).optional(),
 });
 
-/** What the customer is told for each step. */
-const CUSTOMER_MESSAGE: Partial<Record<OrderStatus, { title: string; body: string; type: "ORDER_CONFIRMED" | "ORDER_SHIPPED" | "ORDER_DELIVERED" | "ORDER_CANCELLED" }>> = {
-  CONFIRMED: {
-    type: "ORDER_CONFIRMED",
-    title: "Order confirmed",
-    body: "We are preparing your artwork proof.",
-  },
-  SHIPPED: {
-    type: "ORDER_SHIPPED",
-    title: "Order shipped",
-    body: "Your parcel is on its way.",
-  },
-  DELIVERED: {
-    type: "ORDER_DELIVERED",
-    title: "Order delivered",
-    body: "Hope you like it. A review would help other buyers.",
-  },
-  CANCELLED: {
-    type: "ORDER_CANCELLED",
-    title: "Order cancelled",
-    body: "Your order was cancelled. Contact us if this was unexpected.",
-  },
+/** Which status changes tell the customer (in-app + email + WhatsApp). */
+const EVENT_BY_STATUS: Partial<Record<OrderStatus, OrderEvent>> = {
+  CONFIRMED: "CONFIRMED",
+  SHIPPED: "SHIPPED",
+  OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
+  DELIVERED: "DELIVERED",
+  CANCELLED: "CANCELLED",
 };
 
 export const POST = route(
@@ -63,8 +49,15 @@ export const POST = route(
     const input = await readJson(request, schema);
 
     const rows = await db
-      .select({ id: orders.id, status: orders.status, userId: orders.userId })
+      .select({
+        id: orders.id,
+        status: orders.status,
+        userId: orders.userId,
+        email: users.email,
+        phone: users.phone,
+      })
       .from(orders)
+      .innerJoin(users, eq(users.id, orders.userId))
       .where(eq(orders.orderNumber, orderNumber))
       .limit(1);
 
@@ -142,18 +135,20 @@ export const POST = route(
         note: input.note ?? null,
         actorId: admin.id,
       });
-
-      const message = CUSTOMER_MESSAGE[input.status];
-      if (message) {
-        await tx.insert(notifications).values({
-          userId: order.userId,
-          type: message.type,
-          title: `${message.title} · ${orderNumber}`,
-          body: message.body,
-          href: `/order/${orderNumber}`,
-        });
-      }
     });
+
+    // Tell the customer (in-app always; email + WhatsApp when configured). Best
+    // effort and outside the transaction so a channel hiccup cannot undo the
+    // status change.
+    const event = EVENT_BY_STATUS[input.status];
+    if (event) {
+      await notifyOrderEvent(event, {
+        userId: order.userId,
+        orderNumber,
+        email: order.email,
+        phone: order.phone,
+      });
+    }
 
     /* A cancelled order that was already PAID needs a real refund in Razorpay.
        We do NOT mark it refunded here — saying so without moving money would be

@@ -7,18 +7,39 @@ export function DelhiveryShipment({
   orderNumber,
   awb,
   trackingUrl,
+  shipmentStatus,
   configured,
   canShip,
 }: {
   orderNumber: string;
   awb: string | null;
   trackingUrl: string | null;
+  shipmentStatus: string | null;
   configured: boolean;
   canShip: boolean;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<"ship" | "label" | null>(null);
+  const [busy, setBusy] = useState<"ship" | "label" | "track" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(shipmentStatus);
+
+  async function refreshTracking() {
+    setBusy("track");
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderNumber}/delhivery/track`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json?.error?.message ?? "Could not refresh tracking.");
+        return;
+      }
+      setStatus(json.data.status ?? status);
+    } catch {
+      setError("Network problem — try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function createShipment() {
     setBusy("ship");
@@ -66,7 +87,21 @@ export function DelhiveryShipment({
             <p className="text-xs text-sr-muted">Tracking number (AWB)</p>
             <p className="font-mono text-sm font-semibold text-sr-ink">{awb}</p>
           </div>
+          <div>
+            <p className="text-xs text-sr-muted">Latest courier status</p>
+            <p className="text-sm font-medium text-sr-ink">
+              {status ?? <span className="font-normal text-sr-muted">No scan yet — refresh to check.</span>}
+            </p>
+          </div>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={refreshTracking}
+              disabled={busy !== null}
+              className="rounded-full border border-sr-line-strong px-4 py-2 text-xs font-semibold text-sr-body transition hover:border-sr-400 disabled:opacity-50"
+            >
+              {busy === "track" ? "Refreshing…" : "Refresh tracking"}
+            </button>
             <button
               type="button"
               onClick={openLabel}

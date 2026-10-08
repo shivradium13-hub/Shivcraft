@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { OrderTracking } from "@/components/shop/OrderTracking";
 import { formatPaise } from "@/lib/money";
 import { getCurrentUser } from "@/server/auth/session";
 import { publicTrackingUrl } from "@/server/delivery/delhivery";
@@ -137,20 +138,12 @@ export default async function OrderPage(props: PageProps<"/order/[orderNumber]">
 
       {/* --------------------------------------------------- tracking */}
       {order.delhiveryAwb && !cancelled ? (
-        <section className="mt-4 rounded-card border border-brand-200 bg-brand-50/60 p-5">
-          <h2 className="font-display text-lg font-semibold text-brand-800">On its way with Delhivery</h2>
-          <p className="mt-1 text-sm text-ink-soft">
-            Tracking number <span className="font-mono font-semibold text-ink">{order.delhiveryAwb}</span>
-          </p>
-          <a
-            href={publicTrackingUrl(order.delhiveryAwb)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-block rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
-          >
-            Track your parcel
-          </a>
-        </section>
+        <OrderTracking
+          orderNumber={order.orderNumber}
+          awb={order.delhiveryAwb}
+          trackingUrl={publicTrackingUrl(order.delhiveryAwb)}
+          initialStatus={order.shipmentStatus ?? null}
+        />
       ) : null}
 
       {/* ------------------------------------------------------ items */}

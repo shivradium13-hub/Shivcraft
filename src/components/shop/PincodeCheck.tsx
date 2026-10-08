@@ -3,8 +3,28 @@
 import { useState } from "react";
 
 type Result =
-  | { ok: true; estimate: string; region: string; codAvailable: boolean; note: string }
+  | {
+      ok: true;
+      estimate: string;
+      region: string;
+      codAvailable: boolean;
+      note: string;
+      minDays: number;
+      maxDays: number;
+    }
   | { ok: false; message: string };
+
+/** A rough calendar date `days` working days out — Sundays skipped. An estimate
+ *  only; the copy says so and never promises a date. */
+function estimateDate(days: number): string {
+  const d = new Date();
+  let added = 0;
+  while (added < days) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() !== 0) added++;
+  }
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
 
 export function PincodeCheck() {
   const [pincode, setPincode] = useState("");
@@ -29,6 +49,8 @@ export function PincodeCheck() {
           region: json.data.region,
           codAvailable: json.data.codAvailable,
           note: json.data.note,
+          minDays: json.data.minDays,
+          maxDays: json.data.maxDays,
         });
       }
     } catch {
@@ -68,9 +90,22 @@ export function PincodeCheck() {
       {result ? (
         result.ok ? (
           <div className="mt-3 rounded-lg bg-success-soft px-3 py-2.5">
-            <p className="text-sm font-semibold text-success">Delivers in {result.estimate}</p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-sm font-semibold text-success">Delivers in {result.estimate}</p>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  result.codAvailable ? "bg-success/15 text-success" : "bg-line text-muted"
+                }`}
+              >
+                {result.codAvailable ? "COD available" : "Prepaid only"}
+              </span>
+            </div>
             <p className="mt-0.5 text-xs text-ink-soft">
-              {result.region} · {result.codAvailable ? "Cash on delivery available" : "Prepaid only"}
+              Estimated arrival{" "}
+              <strong className="text-ink">
+                {estimateDate(result.minDays)} – {estimateDate(result.maxDays)}
+              </strong>{" "}
+              · {result.region}
             </p>
             <p className="mt-1 text-xs text-muted">{result.note}</p>
           </div>

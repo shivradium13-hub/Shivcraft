@@ -4,7 +4,8 @@ import { ApiError, ok, route } from "@/server/api/http";
 import { requireAdmin } from "@/server/auth/guards";
 import { STATUS_FLOW, getAdminOrder } from "@/server/admin/orders";
 import { db } from "@/server/db";
-import { notifications, orderEvents, orders, products } from "@/server/db/schema";
+import { orderEvents, orders, products } from "@/server/db/schema";
+import { notifyOrderEvent } from "@/server/notify/orderNotify";
 import {
   createShipment,
   fetchLabel,
@@ -113,16 +114,18 @@ export const POST = route(
         actorId: admin.id,
       });
 
-      if (moveToShipped) {
-        await tx.insert(notifications).values({
-          userId: order.customer.id,
-          type: "ORDER_SHIPPED",
-          title: `Order shipped · ${orderNumber}`,
-          body: `Your parcel is on its way with Delhivery. Tracking number ${created.awb}.`,
-          href: `/order/${orderNumber}`,
-        });
-      }
     });
+
+    // Tell the customer it shipped (in-app + email + WhatsApp when configured).
+    if (moveToShipped) {
+      await notifyOrderEvent("SHIPPED", {
+        userId: order.customer.id,
+        orderNumber,
+        email: order.customer.email,
+        phone: order.customer.phone,
+        awb: created.awb,
+      });
+    }
 
     return ok({
       orderNumber,
