@@ -164,9 +164,10 @@ export function CheckoutClient({
         currency: razorpay.currency,
         order_id: razorpay.orderId,
         name: "Shiv Radium",
-        // The brand logo shown in the Razorpay payment popup. Razorpay loads it
-        // from a public URL, so point at the current origin's /logo.png.
-        image: `${window.location.origin}/logo.png`,
+        // The brand logo shown in the Razorpay payment popup. A square icon-only
+        // version reads best in Razorpay's small logo slot. Razorpay loads it
+        // from a public URL, so point at the current origin.
+        image: `${window.location.origin}/logo-square.png`,
         description: `Order ${orderNumber}`,
         prefill: {
           name: customer.name,
