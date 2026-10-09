@@ -19,7 +19,7 @@ export function DelhiveryShipment({
   canShip: boolean;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<"ship" | "label" | "track" | null>(null);
+  const [busy, setBusy] = useState<"ship" | "label" | "track" | "cancel" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(shipmentStatus);
 
@@ -49,6 +49,27 @@ export function DelhiveryShipment({
       const json = await res.json();
       if (!res.ok) {
         setError(json?.error?.message ?? "Could not create the shipment.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("Network problem — try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function cancelShipment() {
+    if (!window.confirm("Cancel this Delhivery shipment? The AWB will be voided and the order returns to Confirmed so you can ship it again.")) {
+      return;
+    }
+    setBusy("cancel");
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderNumber}/delhivery`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json?.error?.message ?? "Could not cancel the shipment.");
         return;
       }
       router.refresh();
@@ -120,6 +141,14 @@ export function DelhiveryShipment({
                 Track parcel
               </a>
             ) : null}
+            <button
+              type="button"
+              onClick={cancelShipment}
+              disabled={busy !== null}
+              className="rounded-full border border-danger/40 px-4 py-2 text-xs font-semibold text-danger transition hover:border-danger disabled:opacity-50"
+            >
+              {busy === "cancel" ? "Cancelling…" : "Cancel shipment"}
+            </button>
           </div>
         </div>
       ) : configured ? (

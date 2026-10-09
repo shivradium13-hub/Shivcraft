@@ -7,6 +7,7 @@ import { db } from "@/server/db";
 import { orderEvents, orders, products } from "@/server/db/schema";
 import { notifyOrderEvent } from "@/server/notify/orderNotify";
 import {
+  cancelShipment,
   createShipment,
   fetchLabel,
   getDelhiveryConfig,
@@ -149,5 +150,64 @@ export const GET = route(
     const label = await fetchLabel(order.delhiveryAwb);
     if (!label) throw new ApiError("BAD_REQUEST", "Delhivery did not return a label for this shipment.");
     return ok({ url: label.url });
+  },
+);
+
+/**
+ * Cancel the Delhivery shipment on an order: void the AWB with Delhivery, drop
+ * the shipment fields and move the order back to Confirmed so it can be shipped
+ * again. Admin-only. Delhivery refuses a cancel once the parcel is out for
+ * delivery or delivered, and that reason is passed back to the admin.
+ */
+export const DELETE = route(
+  async (_request: Request, context: RouteContext<"/api/admin/orders/[orderNumber]/delhivery">) => {
+    const admin = await requireAdmin();
+    const { orderNumber } = await context.params;
+
+    if (!getDelhiveryConfig()) {
+      throw new ApiError("BAD_REQUEST", "Delhivery is not set up.");
+    }
+
+    const order = await getAdminOrder(orderNumber);
+    if (!order) throw new ApiError("NOT_FOUND", "That order does not exist.");
+    if (!order.delhiveryAwb) throw new ApiError("BAD_REQUEST", "No Delhivery shipment on this order.");
+
+    const awb = order.delhiveryAwb;
+    try {
+      await cancelShipment(awb);
+    } catch (error) {
+      throw new ApiError(
+        "BAD_REQUEST",
+        error instanceof Error ? error.message : "Delhivery could not cancel the shipment.",
+      );
+    }
+
+    // Shipment voided: clear its fields. If the order was moved to SHIPPED by
+    // the create call, step it back to CONFIRMED (the ready-to-ship state) so a
+    // fresh shipment can be made. Anything past SHIPPED can't reach here anyway
+    // (Delhivery would have refused the cancel).
+    const backToConfirmed = order.status === "SHIPPED";
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(orders)
+        .set({
+          shippingProvider: null,
+          delhiveryAwb: null,
+          shipmentStatus: null,
+          ...(backToConfirmed ? { status: "CONFIRMED" as const } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, order.id));
+
+      await tx.insert(orderEvents).values({
+        orderId: order.id,
+        status: backToConfirmed ? "CONFIRMED" : order.status,
+        note: `Delhivery shipment cancelled · AWB ${awb}`,
+        actorId: admin.id,
+      });
+    });
+
+    return ok({ orderNumber, cancelledAwb: awb, movedToConfirmed: backToConfirmed });
   },
 );

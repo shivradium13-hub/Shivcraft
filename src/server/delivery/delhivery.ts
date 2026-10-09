@@ -194,6 +194,47 @@ export async function createShipment(input: ShipmentInput): Promise<CreatedShipm
   return { awb, raw: json };
 }
 
+/* ---------------------------------------------------------------- cancel */
+
+export type CancelResult = { ok: boolean; remark: string };
+
+/**
+ * Cancel a shipment by its AWB. POST /api/p/edit with the same
+ * `format=json&data=` form body the create call uses, carrying
+ * `{waybill, cancellation:"true"}`.
+ *
+ * Only works while the parcel has not left — Delhivery itself rejects a cancel
+ * once the shipment is out for delivery or delivered, and that rejection is
+ * surfaced to the admin. A freshly manifested ("Pending"/"Ready to ship")
+ * shipment cancels cleanly with a full freight refund.
+ */
+export async function cancelShipment(awb: string): Promise<CancelResult> {
+  const config = getDelhiveryConfig();
+  if (!config) throw new Error("Delhivery is not configured");
+
+  const body = `format=json&data=${encodeURIComponent(
+    JSON.stringify({ waybill: awb, cancellation: "true" }),
+  )}`;
+
+  const res = await fetch(`${config.baseUrl}/api/p/edit`, {
+    method: "POST",
+    headers: authHeaders(config, { "content-type": "application/x-www-form-urlencoded" }),
+    body,
+  });
+  const json = await res.json().catch(() => null);
+
+  // The edit endpoint answers with a `status` flag (boolean or "true") plus a
+  // `remark`. Treat anything that is not a clear success as a failure and pass
+  // Delhivery's own wording back to the admin.
+  const okFlag = json?.status === true || json?.status === "true" || json?.status === "Success";
+  if (!res.ok || !okFlag) {
+    console.error("[delhivery] cancel failed:", res.status, json);
+    const remark = json?.remark ?? json?.rmk ?? "Delhivery did not accept the cancellation";
+    throw new Error(typeof remark === "string" && remark ? remark : "Delhivery did not accept the cancellation");
+  }
+  return { ok: true, remark: typeof json?.remark === "string" ? json.remark : "Cancelled" };
+}
+
 /* ------------------------------------------------------------------ tracking */
 
 export type TrackResult = {
