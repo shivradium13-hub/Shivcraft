@@ -36,6 +36,7 @@ type RazorpayOptions = {
   currency: string;
   order_id: string;
   name: string;
+  image: string;
   description: string;
   handler: (response: RazorpayHandlerResponse) => void;
   prefill: { name: string; email: string; contact: string };
@@ -163,6 +164,9 @@ export function CheckoutClient({
         currency: razorpay.currency,
         order_id: razorpay.orderId,
         name: "Shiv Radium",
+        // The brand logo shown in the Razorpay payment popup. Razorpay loads it
+        // from a public URL, so point at the current origin's /logo.png.
+        image: `${window.location.origin}/logo.png`,
         description: `Order ${orderNumber}`,
         prefill: {
           name: customer.name,
