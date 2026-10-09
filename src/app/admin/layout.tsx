@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
+import { AdminLogin } from "@/components/admin/AdminLogin";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { getCurrentUser } from "@/server/auth/session";
 
@@ -10,14 +10,16 @@ export const dynamic = "force-dynamic";
  * The admin boundary.
  *
  * Checked on the SERVER for every request under /admin, so no admin markup is
- * ever sent to a customer. A signed-out visitor is sent to sign in; a signed-in
- * customer gets a 404, which does not confirm that an admin area exists here.
+ * ever sent to a non-admin. Anyone who is not a signed-in admin — a logged-out
+ * visitor or a customer — gets the admin's OWN sign-in screen here, separate
+ * from the storefront's customer sign-in at /login.
  */
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const user = await getCurrentUser();
 
-  if (!user) redirect("/login?next=/admin");
-  if (user.role !== "ADMIN") redirect("/");
+  if (!user || user.role !== "ADMIN") {
+    return <AdminLogin alreadyLoggedIn={Boolean(user)} />;
+  }
 
   return (
     <div className="min-h-dvh bg-sr-canvas">
