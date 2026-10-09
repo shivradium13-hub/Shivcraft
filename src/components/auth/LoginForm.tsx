@@ -1,22 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+
+import { AtIcon, AuthField, AuthPasswordField, LockIcon } from "./fields";
 
 /**
- * Posts to /api/auth/login, which sets the httpOnly session cookie. Where you
- * land is decided by the role the API returns, so a customer cannot reach the
- * dashboard by typing the URL — the /admin layout re-checks server-side.
+ * Posts to /api/auth/login, which sets the httpOnly session cookie. The
+ * identifier can be an email address or a mobile number — the server works out
+ * which. Where you land is decided by the role the API returns.
  */
 export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError(null);
@@ -26,7 +29,7 @@ export function LoginForm({ next }: { next?: string }) {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier, password }),
       });
       const json = await res.json();
 
@@ -46,49 +49,42 @@ export function LoginForm({ next }: { next?: string }) {
     }
   }
 
-  const field =
-    "w-full rounded-lg border border-field bg-field-bg px-3 py-2.5 text-sm text-sr-ink outline-none focus:border-sr-400 focus:ring-2 focus:ring-sr-100";
+  const forgotHref = identifier.includes("@")
+    ? `/forgot-password?email=${encodeURIComponent(identifier)}`
+    : "/forgot-password";
 
   return (
     <form onSubmit={submit} className="grid gap-4">
-      <div className="grid gap-1.5">
-        <label htmlFor="email" className="text-xs font-semibold text-sr-ink">
-          Email
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={field}
-          placeholder="you@example.com"
-        />
-        {fieldErrors.email ? (
-          <p className="text-xs font-medium text-danger">{fieldErrors.email}</p>
-        ) : null}
-      </div>
+      <AuthField
+        id="identifier"
+        label="Email or mobile number"
+        icon={<AtIcon />}
+        type="text"
+        autoComplete="username"
+        required
+        value={identifier}
+        onChange={(e) => setIdentifier(e.target.value)}
+        placeholder="you@example.com or 98765 43210"
+        error={fieldErrors.identifier}
+      />
 
-      <div className="grid gap-1.5">
-        <label htmlFor="password" className="text-xs font-semibold text-sr-ink">
-          Password
-        </label>
-        <input
+      <div>
+        <AuthPasswordField
           id="password"
-          name="password"
-          type="password"
+          label="Password"
+          icon={<LockIcon />}
           autoComplete="current-password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={field}
           placeholder="••••••••"
+          error={fieldErrors.password}
         />
-        {fieldErrors.password ? (
-          <p className="text-xs font-medium text-danger">{fieldErrors.password}</p>
-        ) : null}
+        <div className="mt-1.5 text-right">
+          <Link href={forgotHref} className="text-xs font-semibold text-sr-600 hover:underline">
+            Forgot password?
+          </Link>
+        </div>
       </div>
 
       {error ? (
@@ -100,7 +96,7 @@ export function LoginForm({ next }: { next?: string }) {
       <button
         type="submit"
         disabled={busy}
-        className="rounded-full bg-sr-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-700 disabled:opacity-60"
+        className="inline-flex items-center justify-center rounded-full bg-sr-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sr-700 active:scale-[.99] disabled:opacity-60"
       >
         {busy ? "Signing in…" : "Sign in"}
       </button>

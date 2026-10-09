@@ -33,9 +33,18 @@ export const registerSchema = z.object({
   password,
 });
 
+/** Sign in with either an email address or a mobile number. The server works
+ *  out which it is, so the field is kept loose here. */
 export const loginSchema = z.object({
-  email,
+  identifier: z.string().trim().min(1, "Enter your email or mobile number.").max(255),
   password: z.string().min(1, "Enter your password."),
+});
+
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetPasswordSchema = z.object({
+  token: z.string().trim().min(10, "This reset link is incomplete.").max(300),
+  password,
 });
 
 export const addressSchema = z.object({

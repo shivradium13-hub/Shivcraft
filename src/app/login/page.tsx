@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AuthShell } from "@/components/auth/AuthShell";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { getCurrentUser } from "@/server/auth/session";
 
@@ -20,25 +22,20 @@ export default async function LoginPage(props: PageProps<"/login">) {
   if (user) redirect(next ?? (user.role === "ADMIN" ? "/admin" : "/"));
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-sr-canvas px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sr-600 text-sm font-bold text-white">
-            SR
-          </span>
-          <span className="font-display text-xl font-semibold tracking-tight text-sr-ink">
-            SHIV <span className="text-sr-600">RADIUM</span>
-          </span>
-        </div>
-
-        <div className="rounded-2xl border border-sr-line bg-sr-surface p-6 shadow-sr-card">
-          <h1 className="font-display text-xl font-semibold text-sr-ink">Sign in</h1>
-          <p className="mt-1 mb-5 text-sm text-sr-muted">
-            Customers reach their orders here. Staff accounts land on the dashboard.
-          </p>
-          <LoginForm next={next} />
-        </div>
-      </div>
-    </main>
+    <AuthShell
+      title="Sign in"
+      subtitle="Use your email or mobile number. Customers reach their orders here; staff land on the dashboard."
+    >
+      <LoginForm next={next} />
+      <p className="mt-5 border-t border-sr-line pt-4 text-center text-sm text-sr-muted">
+        New to Shiv Radium?{" "}
+        <Link
+          href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"}
+          className="font-semibold text-sr-600 hover:underline"
+        >
+          Create account
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

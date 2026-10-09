@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+
+import { AuthField, AuthPasswordField, LockIcon, MailIcon, PhoneIcon, UserIcon } from "./fields";
 
 export function RegisterForm({ next }: { next?: string }) {
   const router = useRouter();
@@ -20,7 +22,7 @@ export function RegisterForm({ next }: { next?: string }) {
     });
   }
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError(null);
@@ -54,45 +56,54 @@ export function RegisterForm({ next }: { next?: string }) {
     }
   }
 
-  const input =
-    "w-full rounded-lg border border-field bg-field-bg px-3 py-2.5 text-sm text-sr-ink outline-none focus:border-sr-400 focus:ring-2 focus:ring-sr-100";
-
-  const fields = [
-    { key: "name", label: "Full name", type: "text", autoComplete: "name", required: true },
-    { key: "email", label: "Email", type: "email", autoComplete: "email", required: true },
-    { key: "phone", label: "Mobile (optional)", type: "tel", autoComplete: "tel", required: false },
-    {
-      key: "password",
-      label: "Password",
-      type: "password",
-      autoComplete: "new-password",
-      required: true,
-    },
-  ] as const;
-
   return (
     <form onSubmit={submit} className="grid gap-4">
-      {fields.map((field) => (
-        <div key={field.key} className="grid gap-1.5">
-          <label htmlFor={field.key} className="text-xs font-semibold text-sr-ink">
-            {field.label}
-          </label>
-          <input
-            id={field.key}
-            type={field.type}
-            autoComplete={field.autoComplete}
-            required={field.required}
-            value={values[field.key]}
-            onChange={(e) => set(field.key, e.target.value)}
-            className={input}
-          />
-          {fieldErrors[field.key] ? (
-            <p className="text-xs font-medium text-danger">{fieldErrors[field.key]}</p>
-          ) : null}
-        </div>
-      ))}
-
-      <p className="-mt-1 text-xs text-sr-muted">At least 8 characters.</p>
+      <AuthField
+        id="name"
+        label="Full name"
+        icon={<UserIcon />}
+        type="text"
+        autoComplete="name"
+        required
+        value={values.name}
+        onChange={(e) => set("name", e.target.value)}
+        error={fieldErrors.name}
+      />
+      <AuthField
+        id="email"
+        label="Email"
+        icon={<MailIcon />}
+        type="email"
+        autoComplete="email"
+        required
+        value={values.email}
+        onChange={(e) => set("email", e.target.value)}
+        placeholder="you@example.com"
+        error={fieldErrors.email}
+      />
+      <AuthField
+        id="phone"
+        label="Mobile number (optional)"
+        icon={<PhoneIcon />}
+        type="tel"
+        autoComplete="tel"
+        value={values.phone}
+        onChange={(e) => set("phone", e.target.value)}
+        placeholder="98765 43210"
+        hint="Add it to sign in with your mobile later."
+        error={fieldErrors.phone}
+      />
+      <AuthPasswordField
+        id="password"
+        label="Password"
+        icon={<LockIcon />}
+        autoComplete="new-password"
+        required
+        value={values.password}
+        onChange={(e) => set("password", e.target.value)}
+        hint="At least 8 characters."
+        error={fieldErrors.password}
+      />
 
       {error ? (
         <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
@@ -103,7 +114,7 @@ export function RegisterForm({ next }: { next?: string }) {
       <button
         type="submit"
         disabled={busy}
-        className="rounded-full bg-sr-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-sr-700 disabled:opacity-60"
+        className="inline-flex items-center justify-center rounded-full bg-sr-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sr-700 active:scale-[.99] disabled:opacity-60"
       >
         {busy ? "Creating account…" : "Create account"}
       </button>
