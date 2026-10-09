@@ -23,12 +23,16 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
     <div className="min-h-dvh bg-sr-canvas">
       <header className="bg-night">
         <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-3 px-4 py-3">
-          <Link href="/admin" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sr-600 text-xs font-bold tracking-tight text-white">
-              SR
-            </span>
-            <span className="font-display text-base font-semibold text-white">
-              Shiv Radium <span className="text-sr-300">Admin</span>
+          <Link href="/admin" className="flex items-center gap-2.5" aria-label="Shiv Radium admin">
+            {/* Light logo variant, legible on the dark admin header. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-footer.png"
+              alt="Shiv Radium"
+              className="h-10 w-auto object-contain"
+            />
+            <span className="rounded-md border border-white/15 px-2 py-0.5 text-[11px] font-semibold tracking-wider text-sr-200 uppercase">
+              Admin
             </span>
           </Link>
 
