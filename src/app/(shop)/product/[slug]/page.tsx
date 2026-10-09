@@ -162,7 +162,9 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
     <div className="pb-4">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        /* Escape `<` so a product name/description containing `</script>` cannot
+           break out of this inline JSON-LD block. */
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
 
       <nav aria-label="Breadcrumb" className="mb-4 flex flex-wrap items-center gap-1.5 text-xs text-muted">

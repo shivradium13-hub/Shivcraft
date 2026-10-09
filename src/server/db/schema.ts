@@ -538,6 +538,18 @@ export const payments = pgTable(
   ],
 );
 
+/**
+ * Fixed-window rate limiting. One row per bucket (e.g. "login:ip:1.2.3.4" or
+ * "login:email:a@b.com"), holding a hit counter and when the window resets.
+ * Backed by Postgres so no extra infrastructure is needed — see
+ * src/server/security/rateLimit.ts.
+ */
+export const rateLimits = pgTable("rate_limits", {
+  key: varchar("key", { length: 200 }).primaryKey(),
+  count: integer("count").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 /* ----------------------------------------------------------------- coupons */
 
 export const coupons = pgTable(

@@ -4,6 +4,7 @@ import { ApiError, created, route } from "@/server/api/http";
 import { db } from "@/server/db";
 import { uploads } from "@/server/db/schema";
 import { ensureShopper } from "@/server/shop/identity";
+import { clientIp, rateLimit } from "@/server/security/rateLimit";
 import {
   IMAGE_EXTENSION,
   IMAGE_REJECTION,
@@ -22,6 +23,15 @@ export const runtime = "nodejs";
  */
 export const POST = route(async (request: Request) => {
   const shopper = await ensureShopper();
+
+  // Cap how fast one visitor can fill the blob store.
+  const who = shopper.user ? `u:${shopper.user.id}` : `g:${shopper.guestToken ?? clientIp(request)}`;
+  await rateLimit(
+    `upload:${who}`,
+    50,
+    3600,
+    "You're uploading very quickly. Please wait a little and try again.",
+  );
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");

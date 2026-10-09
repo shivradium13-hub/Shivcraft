@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ApiError, created, readJson, route } from "@/server/api/http";
+import { clientIp, rateLimit } from "@/server/security/rateLimit";
 import { db } from "@/server/db";
 import { newsletterSubscribers } from "@/server/db/schema";
 
@@ -32,6 +33,7 @@ function normalisePhone(raw: string): string | null {
  * so the form cannot be used to probe who is already subscribed.
  */
 export const POST = route(async (request: Request) => {
+  await rateLimit(`newsletter:ip:${clientIp(request)}`, 20, 3600);
   const input = await readJson(request, schema);
 
   const rawEmail = (input.email ?? "").trim().toLowerCase();

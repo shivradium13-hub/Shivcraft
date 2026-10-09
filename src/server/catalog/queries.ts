@@ -2,7 +2,7 @@ import { and, asc, desc, eq, gte, inArray, lte, or, sql, type SQL } from "drizzl
 
 import type { ProductQuery } from "@/lib/validation";
 import { db } from "@/server/db";
-import { categories, productImages, products } from "@/server/db/schema";
+import { categories, products } from "@/server/db/schema";
 
 export type ProductCard = {
   id: string;

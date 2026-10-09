@@ -12,7 +12,21 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Session worktrees created by the desktop app hold stale copies of the
+    // source — never lint them, only the real tree.
+    ".claude/**",
+    // Local throwaway dev scripts (gitignored).
+    "scratch_*",
   ]),
+  {
+    rules: {
+      // Advisory (a possible extra render), not a correctness rule. This
+      // codebase intentionally uses effects to hydrate state from localStorage
+      // on mount and to reconcile state when props change — both valid uses of
+      // effects. Keep it visible as a warning instead of failing the lint.
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;

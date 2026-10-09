@@ -46,3 +46,6 @@ next-env.d.ts
 .agents/
 .claude/
 skills-lock.json
+
+# local scratch scripts / state (temporary dev helpers, never committed)
+scratch_*

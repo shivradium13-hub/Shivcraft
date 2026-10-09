@@ -5,12 +5,19 @@ import { ApiError, created, readJson, route } from "@/server/api/http";
 import { hashPassword } from "@/server/auth/password";
 import { createSession } from "@/server/auth/session";
 import { mergeGuestCart } from "@/server/cart/merge";
+import { clientIp, rateLimit } from "@/server/security/rateLimit";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
 
 export const runtime = "nodejs";
 
 export const POST = route(async (request: Request) => {
+  await rateLimit(
+    `register:ip:${clientIp(request)}`,
+    10,
+    3600,
+    "Too many sign-up attempts. Please try again later.",
+  );
   const input = await readJson(request, registerSchema);
 
   const existing = await db

@@ -5,6 +5,7 @@ import { ApiError, ok, readJson, route } from "@/server/api/http";
 import { verifyPassword } from "@/server/auth/password";
 import { createSession } from "@/server/auth/session";
 import { mergeGuestCart } from "@/server/cart/merge";
+import { clientIp, rateLimit } from "@/server/security/rateLimit";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
 
@@ -17,7 +18,20 @@ const DUMMY_HASH =
   "Y2Fubm90bWF0Y2hhbnl0aGluZ2V2ZXJiZWNhdXNldGhpc2lzbm90YXJlYWxrZXlhdGFsbA==";
 
 export const POST = route(async (request: Request) => {
+  // Throttle brute-force / credential-stuffing: per source IP, then per account.
+  await rateLimit(
+    `login:ip:${clientIp(request)}`,
+    40,
+    300,
+    "Too many sign-in attempts. Please wait a few minutes and try again.",
+  );
   const input = await readJson(request, loginSchema);
+  await rateLimit(
+    `login:email:${input.email}`,
+    10,
+    300,
+    "Too many sign-in attempts for this account. Please wait a few minutes and try again.",
+  );
 
   const rows = await db
     .select({
