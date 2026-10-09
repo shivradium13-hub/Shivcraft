@@ -46,6 +46,16 @@ export async function rateLimit(
     return;
   }
 
+  // Occasionally sweep expired rows so one-off IP/email buckets don't pile up
+  // forever (there is no TTL on the table). Best-effort; a failure is ignored.
+  if (Math.random() < 0.02) {
+    try {
+      await db.execute(sql`DELETE FROM rate_limits WHERE expires_at < now()`);
+    } catch {
+      /* ignore — cleanup is non-critical */
+    }
+  }
+
   if (count > limit) {
     throw new ApiError("RATE_LIMITED", message);
   }

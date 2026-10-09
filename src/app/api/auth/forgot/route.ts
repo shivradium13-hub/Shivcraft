@@ -61,6 +61,9 @@ export const POST = route(async (request: Request) => {
     .where(sql`lower(${users.email}) = ${input.email}`)
     .limit(1);
 
+  // Clear expired tokens left behind by abandoned requests (no TTL otherwise).
+  await db.execute(sql`DELETE FROM password_reset_tokens WHERE expires_at < now()`);
+
   if (user) {
     // One active token per user.
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));

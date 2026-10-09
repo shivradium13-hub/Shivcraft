@@ -118,6 +118,8 @@ export const users = pgTable(
   (t) => [
     uniqueIndex("users_email_unique").on(sql`lower(${t.email})`),
     index("users_role_idx").on(t.role),
+    // Backs sign-in by mobile number.
+    index("users_phone_idx").on(t.phone),
   ],
 );
 
