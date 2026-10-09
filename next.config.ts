@@ -28,6 +28,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  async redirects() {
+    return [
+      // Admin URLs that were never real routes (left in browser history /
+      // autocomplete) 404 otherwise — send them where they were meant to go.
+      { source: "/admin/login", destination: "/login?next=/admin", permanent: false },
+      { source: "/admin/dashboard", destination: "/admin", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;
