@@ -88,7 +88,16 @@ export default async function InvoicePage(props: PageProps<"/invoice/[orderNumbe
           {/* header */}
           <header className="flex flex-wrap items-start justify-between gap-4 border-b border-sr-line pb-5">
             <div>
-              <h1 className="font-display text-2xl font-semibold text-sr-ink">{sellerName}</h1>
+              {/* The brand logo, same asset as the storefront. Prints on the invoice. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.png"
+                alt="Shiv Radium — Custom Gifts & Printing"
+                className="h-12 w-auto max-w-[220px] object-contain"
+              />
+              {business.legalName ? (
+                <h1 className="mt-2 font-display text-base font-semibold text-sr-ink">{sellerName}</h1>
+              ) : null}
               {sellerAddress ? (
                 <p className="mt-1 max-w-xs text-xs text-sr-muted">{sellerAddress}</p>
               ) : null}
