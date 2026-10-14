@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Help & Support",
-  description: "Order help, delivery times, returns and how to reach us.",
+  description: "Order help, delivery times and how to reach us.",
   alternates: { canonical: "/support" },
 };
 
@@ -132,10 +132,8 @@ export default async function SupportPage() {
               On orders of {formatPaise(shipping.freeAboveP)} or more.
             </Fact>
           ) : null}
-          <Fact label="Cash on delivery">
-            {shipping.codEnabled
-              ? "Available on most PIN codes. The product page checks yours."
-              : "Not available — orders are paid online."}
+          <Fact label="Payment">
+            Paid online — UPI, card, net banking or wallet. Cash on delivery is not offered.
           </Fact>
           <Fact label="GST">
             {tax.pricesIncludeTax
@@ -165,17 +163,18 @@ export default async function SupportPage() {
             until it is packed. After that it is on its way and cancelling is no longer possible
             from the site.
           </Faq>
-          <Faq question="Something arrived damaged.">
-            Send a photo through whichever channel above is quickest. Damage in transit is on us
-            and we will remake or refund it.
+          <Faq question="Can I return or exchange an order?">
+            No. Every piece is made to order with your name, photo or message, so it cannot be
+            resold — we do not accept returns or exchanges, and all sales are final.
           </Faq>
-          <Faq question="Can a personalised item be returned?">
-            A piece made with your name, photo or message cannot be resold, so it is not returnable
-            unless it arrived damaged or does not match the proof you approved.
+          <Faq question="Something arrived damaged or wrong.">
+            That is the one exception. If an item reaches you damaged, or it does not match the
+            proof you approved, send a photo through whichever channel above is quickest and we will
+            remake it (or refund it where a remake is not possible).
           </Faq>
           <Faq question="When does a refund reach me?">
-            Once we have issued it, an online refund takes three to seven working days to appear,
-            depending on your bank. The order page shows when it was issued.
+            In the rare case one is issued, an online refund takes three to seven working days to
+            appear, depending on your bank. The order page shows when it was issued.
           </Faq>
         </div>
       </section>

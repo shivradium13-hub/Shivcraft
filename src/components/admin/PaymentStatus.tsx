@@ -34,8 +34,7 @@ export function PaymentStatus({ status }: { status: RazorpayStatus }) {
 
       {status.configured ? (
         <p className="mt-2 text-sm text-sr-body">
-          Razorpay is connected, so UPI, cards, net banking and wallets appear at checkout
-          alongside cash on delivery.
+          Razorpay is connected, so UPI, cards, net banking and wallets appear at checkout.
           {status.mode === "test" ? (
             <>
               {" "}
@@ -50,8 +49,8 @@ export function PaymentStatus({ status }: { status: RazorpayStatus }) {
       ) : (
         <p className="mt-2 text-sm text-sr-body">
           {half
-            ? "Only one of the two values is set, so online payment stays switched off. Both are needed."
-            : "Online payment is switched off. The checkout offers cash on delivery only — the card and UPI buttons are hidden rather than shown and then failing."}
+            ? "Only one of the two values is set, so online payment stays switched off — and the shop cannot take payment until both are set."
+            : "Online payment is switched off, so customers cannot pay at checkout. Add the Razorpay keys below to start taking orders."}
         </p>
       )}
 

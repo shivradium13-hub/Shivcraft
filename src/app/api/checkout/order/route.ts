@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({
   addressId: z.string().uuid("Choose a delivery address."),
-  method: z.enum(["UPI", "CARD", "NETBANKING", "WALLET", "COD"], {
+  method: z.enum(["UPI", "CARD", "NETBANKING", "WALLET"], {
     message: "Choose how you would like to pay.",
   }),
   /** Optional business-invoice details. Empty strings are treated as absent. */
@@ -38,10 +38,12 @@ export const POST = route(async (request: Request) => {
   const user = await requireUser();
   const input = await readJson(request, schema);
 
-  if (input.method !== "COD" && !isRazorpayConfigured()) {
+  // The shop is prepaid only — every order is paid online, so the gateway must
+  // be configured. (A ₹0 order, e.g. a full discount, is handled after placing.)
+  if (!isRazorpayConfigured()) {
     throw new ApiError(
       "BAD_REQUEST",
-      "Online payment is not available yet. Please choose Cash on Delivery.",
+      "Online payment is temporarily unavailable. Please try again shortly or contact us.",
     );
   }
 
@@ -63,11 +65,13 @@ export const POST = route(async (request: Request) => {
     businessName: input.businessName || null,
   });
 
-  if (input.method === "COD") {
+  // A fully-discounted order (₹0, e.g. a 100%-off coupon) has nothing to
+  // collect — confirm it without opening the gateway.
+  if (order.totalP === 0) {
     return created({
       orderNumber: order.orderNumber,
       totalP: order.totalP,
-      method: "COD" as const,
+      method: input.method,
       requiresPayment: false,
     });
   }

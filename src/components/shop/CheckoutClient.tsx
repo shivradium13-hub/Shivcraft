@@ -22,7 +22,7 @@ export type SavedAddress = {
   isDefault: boolean;
 };
 
-type Method = "UPI" | "CARD" | "NETBANKING" | "WALLET" | "COD";
+type Method = "UPI" | "CARD" | "NETBANKING" | "WALLET";
 
 type RazorpayHandlerResponse = {
   razorpay_payment_id: string;
@@ -82,7 +82,7 @@ export function CheckoutClient({
     initialAddresses.find((a) => a.isDefault)?.id ?? initialAddresses[0]?.id ?? "",
   );
   const [adding, setAdding] = useState(initialAddresses.length === 0);
-  const [method, setMethod] = useState<Method>(onlineEnabled ? "UPI" : "COD");
+  const [method, setMethod] = useState<Method>("UPI");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wantGst, setWantGst] = useState(false);
@@ -139,12 +139,14 @@ export function CheckoutClient({
 
       if (!res.ok) {
         setError(json?.error?.message ?? "We could not place your order.");
+        setBusy(false);
         return;
       }
 
       const { orderNumber, requiresPayment, razorpay } = json.data;
 
       if (!requiresPayment) {
+        // A fully-discounted (₹0) order needs no payment — straight to the order.
         notifyCartChanged();
         router.replace(`/order/${orderNumber}`);
         return;
@@ -155,6 +157,7 @@ export function CheckoutClient({
         setError(
           `Order ${orderNumber} was created but the payment window could not load. Open the order to pay again.`,
         );
+        setBusy(false);
         return;
       }
 
@@ -208,11 +211,12 @@ export function CheckoutClient({
         },
       });
 
+      // busy stays true while the Razorpay modal is open; its ondismiss and the
+      // verify handler reset it.
       checkout.open();
     } catch {
       setError("Network problem — check your connection and try again.");
-    } finally {
-      if (method === "COD") setBusy(false);
+      setBusy(false);
     }
   }
 
@@ -446,7 +450,7 @@ export function CheckoutClient({
             {!onlineEnabled ? (
               <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2.5 text-xs text-brand-800">
                 Online payment is not switched on yet — the Razorpay keys are not set on this
-                server. Cash on delivery works normally.
+                server.
               </p>
             ) : null}
 
@@ -457,10 +461,9 @@ export function CheckoutClient({
                   ["CARD", "Credit / Debit card", "Visa, Mastercard, RuPay, Amex"],
                   ["NETBANKING", "Net banking", "All major Indian banks"],
                   ["WALLET", "Wallet", "Paytm, Amazon Pay, Mobikwik"],
-                  ["COD", "Cash on delivery", "Pay the courier when it arrives"],
                 ] as const
               ).map(([value, label, hint]) => {
-                const disabled = value !== "COD" && !onlineEnabled;
+                const disabled = !onlineEnabled;
                 return (
                   <label
                     key={value}
@@ -498,11 +501,7 @@ export function CheckoutClient({
               onClick={payNow}
               className="mt-5 w-full gc-cta rounded-full px-6 py-3 text-sm font-semibold transition disabled:opacity-50"
             >
-              {busy
-                ? "Placing your order…"
-                : method === "COD"
-                  ? `Place order · ${formatPaise(cart.totals.totalP)}`
-                  : `Pay ${formatPaise(cart.totals.totalP)}`}
+              {busy ? "Placing your order…" : `Pay ${formatPaise(cart.totals.totalP)}`}
             </button>
             <p className="mt-2 text-center text-xs text-muted">
               Stock is reserved the moment your order is placed.

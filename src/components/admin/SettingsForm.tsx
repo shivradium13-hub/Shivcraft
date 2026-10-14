@@ -146,14 +146,6 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
           </Field>
         </div>
 
-        <label className="mt-3 flex items-center gap-2 text-sm text-sr-body">
-          <input
-            type="checkbox"
-            checked={values.shipping.codEnabled}
-            onChange={(e) => set("shipping", "codEnabled", e.target.checked)}
-          />
-          Offer cash on delivery
-        </label>
 
         {/* Says what the numbers mean together, so a combination that charges
             nobody anything is obvious before it is saved. */}

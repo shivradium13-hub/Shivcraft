@@ -115,7 +115,7 @@ const PRODUCT_IDS = PRODUCT_FEATURE_META.map((f) => f.id);
 export const DEFAULT_PROMISES: Promise_[] = [
   { title: "Premium quality", body: "Seasoned wood, SS304 and 3 mm acrylic — never thin board." },
   { title: "Personalised", body: "Your photo, your names, your spelling. Proof before we cut." },
-  { title: "Secure payments", body: "UPI, cards, net banking, wallets and cash on delivery." },
+  { title: "Secure payments", body: "UPI, cards, net banking and wallets — 100% prepaid." },
   { title: "Fast delivery", body: "Dispatched in 3–5 working days, tracked pan-India." },
   { title: "Easy ordering", body: "Pick, personalise, pay. Reorder a past gift in two taps." },
   { title: "Real support", body: "Talk to the workshop, not a script. Mon–Sat, 10–8." },
