@@ -2,8 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { readStoredDesign } from "@/lib/customizer/design";
-import { fontStack, fontsToLoad, readConfig, resolveTextStyle } from "@/lib/customizer/schema";
+import { readStoredDesign, type CustomerDesign } from "@/lib/customizer/design";
+import {
+  fontStack,
+  fontsToLoad,
+  isZoneVisible,
+  readConfig,
+  resolveTextStyle,
+  zonesForView,
+} from "@/lib/customizer/schema";
 import type { CustomizerConfig } from "@/lib/customizer/schema";
 import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas";
 import { CustomizerFonts } from "@/components/shop/customizer/CustomizerFonts";
@@ -63,6 +70,44 @@ async function buildFontEmbedCss(config: CustomizerConfig, glyphs: string): Prom
   return css;
 }
 
+/**
+ * A proof-sheet SVG wrapping the exact capture.
+ *
+ * The proof is a visual reference of the finished piece, so it uses the same
+ * pixel-exact capture as the print image (every font, size, colour and texture
+ * exactly as the customer approved) rather than a second, drifting renderer.
+ * On top of that it draws the workshop's safe-area guides — the margin printing
+ * is guaranteed to reach — as vector rectangles on their own, deletable layer.
+ * The SVG declares the capture's pixel size so a viewer opens it 1:1.
+ */
+function buildProofSvg(pngDataUrl: string, config: CustomizerConfig, design: CustomerDesign): string {
+  const S = EXPORT_SIDE * 2; // matches the capture's pixelRatio of 2
+  const r = (n: number) => Math.round(n * 100) / 100;
+  const view = config.views.find((v) => v.id === design.viewId) ?? config.views[0];
+
+  const guides = view
+    ? zonesForView(config, view.id)
+        .filter((z) => !z.hidden && z.safeInset > 0 && isZoneVisible(config, z, design.options))
+        .map((z) => {
+          const x = (z.x / 100) * S;
+          const y = (z.y / 100) * S;
+          const w = (z.width / 100) * S;
+          const h = (z.height / 100) * S;
+          const inset = (z.safeInset / 100) * Math.min(w, h);
+          return `<rect x="${r(x + inset)}" y="${r(y + inset)}" width="${r(w - inset * 2)}" height="${r(h - inset * 2)}" fill="none" stroke="#ff00ff" stroke-width="2" stroke-dasharray="14 10"/>`;
+        })
+        .join("")
+    : "";
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">
+<title>Proof sheet</title>
+<desc>Shiv Radium proof sheet — the finished piece exactly as approved. The dashed guides are the safe print margin and are not part of the artwork.</desc>
+<image x="0" y="0" width="${S}" height="${S}" xlink:href="${pngDataUrl}" href="${pngDataUrl}"/>
+<g data-print="false">${guides}</g>
+</svg>`;
+}
+
 /** Wait until every <img> inside a node has finished loading, so the capture
  *  never races the customer's photo or the product artwork. */
 function imagesReady(node: HTMLElement): Promise<void> {
@@ -108,15 +153,18 @@ export function OrderDesignPanel({
   const config = stored ? readConfig(stored.config) : null;
 
   const [showData, setShowData] = useState(false);
-  /* The high-resolution print snapshot. `exporting` mounts a large, off-screen
-     copy of the exact preview; the effect below captures it to a PNG once its
-     fonts and images are ready, then downloads it. */
-  const [exporting, setExporting] = useState(false);
+  /* The high-resolution capture. Setting a mode mounts a large, off-screen copy
+     of the exact preview; the effect below captures it once its fonts and images
+     are ready, then downloads it — as a PNG ("png") or wrapped in a proof-sheet
+     SVG with the safe-area guides ("proof"). */
+  const [exportMode, setExportMode] = useState<null | "png" | "proof">(null);
+  const exporting = exportMode !== null;
   const [exportError, setExportError] = useState<string | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!exporting) return;
+    if (!exportMode) return;
+    const mode = exportMode;
     let cancelled = false;
 
     (async () => {
@@ -161,16 +209,32 @@ export function OrderDesignPanel({
         });
         if (cancelled) return;
 
+        const viewId = stored?.design.viewId ?? "design";
         const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = `${orderNumber}-${stored?.design.viewId ?? "design"}-print.png`;
-        link.click();
+        if (mode === "proof" && config && stored) {
+          // Wrap the exact capture in a proof-sheet SVG with the print guides.
+          const svg = buildProofSvg(dataUrl, config, stored.design);
+          const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+          const objUrl = URL.createObjectURL(blob);
+          link.href = objUrl;
+          link.download = `${orderNumber}-${viewId}-proof.svg`;
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+        } else {
+          link.href = dataUrl;
+          link.download = `${orderNumber}-${viewId}-print.png`;
+          link.click();
+        }
       } catch {
         if (!cancelled) {
-          setExportError("The print image could not be created. Please try again.");
+          setExportError(
+            mode === "proof"
+              ? "The proof sheet could not be created. Please try again."
+              : "The print image could not be created. Please try again.",
+          );
         }
       } finally {
-        if (!cancelled) setExporting(false);
+        if (!cancelled) setExportMode(null);
       }
     })();
 
@@ -179,7 +243,7 @@ export function OrderDesignPanel({
     };
     // orderNumber and the frozen design are stable for a given order row.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exporting]);
+  }, [exportMode]);
 
   if (!stored || !config) return null;
 
@@ -219,21 +283,26 @@ export function OrderDesignPanel({
             type="button"
             onClick={() => {
               setExportError(null);
-              setExporting(true);
+              setExportMode("png");
             }}
             disabled={exporting}
             className="inline-flex rounded-lg bg-sr-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sr-700 disabled:opacity-60"
           >
-            {exporting ? "Preparing image…" : "Download exact image (for print)"}
+            {exportMode === "png" ? "Preparing image…" : "Download exact image (for print)"}
           </button>
-          {/* The vector proof sheet (resolution-independent, text stays text). */}
-          <a
-            href={`/api/admin/orders/${orderNumber}/production?item=${itemId}&sheet=${design.viewId}`}
-            download
-            className="inline-flex rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400"
+          {/* The proof sheet: the SAME exact capture, wrapped in an SVG with the
+              safe-area print guides for the workshop. */}
+          <button
+            type="button"
+            onClick={() => {
+              setExportError(null);
+              setExportMode("proof");
+            }}
+            disabled={exporting}
+            className="inline-flex rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400 disabled:opacity-60"
           >
-            Proof sheet (SVG)
-          </a>
+            {exportMode === "proof" ? "Preparing proof…" : "Proof sheet (SVG)"}
+          </button>
           {exportError ? (
             <span className="text-[11px] font-medium text-danger">{exportError}</span>
           ) : null}
