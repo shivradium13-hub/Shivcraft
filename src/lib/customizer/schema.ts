@@ -917,6 +917,29 @@ export function fontsToLoad(config: CustomizerConfig): FontDef[] {
   return out;
 }
 
+const GOOGLE_FAMILY_BY_LOWER = new Map(
+  Array.from(BUILTIN_GOOGLE_FONTS).map((n) => [n.toLowerCase(), n]),
+);
+
+/**
+ * The spelling Google Fonts expects for a family name.
+ *
+ * Google's css2 API is case-sensitive: `family=poppins` is rejected (400) and
+ * the font silently never loads, while `family=Poppins` works. Stored names are
+ * not always canonical, so map a known built-in to its real spelling, and
+ * otherwise title-case an all-lowercase name. A name that already carries
+ * capitals (e.g. "PT Sans", "DM Serif Display") is assumed deliberate and left
+ * as-is. CSS font-family matching is case-insensitive, so the loaded face still
+ * matches an element that asks for the lowercase name.
+ */
+export function googleFamilyName(name: string): string {
+  const trimmed = name.trim();
+  const canonical = GOOGLE_FAMILY_BY_LOWER.get(trimmed.toLowerCase());
+  if (canonical) return canonical;
+  if (trimmed !== trimmed.toLowerCase()) return trimmed;
+  return trimmed.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /** A CSS font-family stack for a family name, with sensible fallbacks. */
 export function fontStack(name: string): string {
   if (!name) return "inherit";

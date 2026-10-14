@@ -1,6 +1,6 @@
 "use client";
 
-import { fontsToLoad, type CustomizerConfig } from "@/lib/customizer/schema";
+import { fontsToLoad, googleFamilyName, type CustomizerConfig } from "@/lib/customizer/schema";
 
 /**
  * Loads the fonts a product's Frame Designer allows.
@@ -24,7 +24,7 @@ export function CustomizerFonts({ config }: { config: CustomizerConfig }) {
   const googleHref =
     google.length > 0
       ? `https://fonts.googleapis.com/css2?${google
-          .map((f) => `family=${encodeURIComponent(f.name).replace(/%20/g, "+")}`)
+          .map((f) => `family=${encodeURIComponent(googleFamilyName(f.name)).replace(/%20/g, "+")}`)
           .join("&")}&display=swap`
       : null;
 
