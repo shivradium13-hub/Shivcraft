@@ -439,6 +439,18 @@ function ZoneLayer({
         />
       ) : null}
 
+      {/* Admin only: a faint outline on every text box, so it is clear where
+          the wording must sit. The text is fitted to this box (ink included), so
+          it stays inside the outline rather than crossing it. Never shown to the
+          customer or in the print snapshot (showGuides is the builder only). */}
+      {showGuides && zone.kind === "TEXT" ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{ border: "1px dashed rgba(120,120,130,0.5)", borderRadius: "inherit" }}
+        />
+      ) : null}
+
       {/* Inner shadow sits above the photo so it reads as recessed. */}
       {photoInnerShadow ? (
         <span
@@ -503,6 +515,42 @@ function maskStyle(url: string): CSSProperties | undefined {
    while avoiding React's SSR warning. */
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
+/* One shared canvas for measuring glyph ink — created lazily, reused forever. */
+let inkCanvas: HTMLCanvasElement | null = null;
+
+/**
+ * The real ink bounds of the tallest line, in px, for a given CSS font.
+ *
+ * `scrollHeight` is only the line box (~font-size × line-height); a script or
+ * display font draws well above and below that, so sizing by the line box lets
+ * the glyphs spill out of the area — which both overflows the box and, when the
+ * letters are filled by a clipped background (a texture/gradient/acrylic),
+ * leaves the overflowing parts unpainted so the text looks cut off. Canvas
+ * `measureText` reports the actual ascent/descent of the drawn glyphs, which is
+ * what we need to fit and to size the paint box. Returns null when the browser
+ * does not expose the bounding-box metrics, so the caller can fall back.
+ */
+function measureInk(font: string, lines: string[]): { ascent: number; descent: number } | null {
+  if (typeof document === "undefined") return null;
+  try {
+    if (!inkCanvas) inkCanvas = document.createElement("canvas");
+    const ctx = inkCanvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.font = font;
+    let ascent = 0;
+    let descent = 0;
+    for (const line of lines) {
+      const m = ctx.measureText(line || " ");
+      if (m.actualBoundingBoxAscent == null || m.actualBoundingBoxDescent == null) return null;
+      ascent = Math.max(ascent, m.actualBoundingBoxAscent);
+      descent = Math.max(descent, m.actualBoundingBoxDescent);
+    }
+    return { ascent, descent };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Text that shrinks to fit its area.
  *
@@ -514,9 +562,14 @@ const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : use
  * The fit is measured as a ratio of the (unscaled) text box to the area, both of
  * which scale together with the preview, so the resulting size is a proportion
  * of the area — the same at a 320px phone preview and a 4000px print render, and
- * reproducible rather than pixel-dependent. `scrollWidth`/`scrollHeight` are the
- * pre-transform layout size, so applying the scale never feeds back into the
- * measurement.
+ * reproducible rather than pixel-dependent.
+ *
+ * Height is fitted to the glyphs' real ink (measured on a canvas), not the line
+ * box, so tall script/display letters stay inside the area instead of spilling
+ * over its edge. The same measurement sets a little vertical padding on the text
+ * box, so a texture/gradient/acrylic fill (painted by `background-clip:text`)
+ * covers the whole glyph — ascenders and descenders included — rather than being
+ * cut off at the line box.
  */
 function FitText({
   text,
@@ -532,6 +585,9 @@ function FitText({
   const outerRef = useRef<HTMLSpanElement>(null);
   const innerRef = useRef<HTMLSpanElement>(null);
   const [scale, setScale] = useState(1);
+  /* Vertical padding (in em) that extends the fill's paint box above and below
+     the line box to cover the glyph ink. 0 for ordinary fonts. */
+  const [padEm, setPadEm] = useState(0);
 
   useIsoLayoutEffect(() => {
     const outer = outerRef.current;
@@ -540,17 +596,48 @@ function FitText({
 
     // Measured synchronously (before paint) so the size is right on the first
     // frame — no flash of oversized text — and so it never depends on a rAF that
-    // a later render might cancel. `scrollWidth`/`scrollHeight` are the natural,
-    // pre-transform layout size, so applying the scale never feeds back in.
+    // a later render might cancel. Width uses `scrollWidth` (the natural, pre-
+    // transform layout width); height uses the glyphs' measured ink.
     const fit = () => {
       const ow = outer.clientWidth;
       const oh = outer.clientHeight;
       const iw = inner.scrollWidth;
-      const ih = inner.scrollHeight;
-      if (!ow || !oh || !iw || !ih) return;
+      const boxH = inner.scrollHeight; // line-box height, the fallback
+      if (!ow || !oh || !iw || !boxH) return;
+
+      let ih = boxH;
+      let pad = 0;
+
+      const cs = getComputedStyle(inner);
+      const fontSizePx = parseFloat(cs.fontSize) || 0;
+      if (fontSizePx > 0) {
+        const lines = text.split("\n");
+        const ink = measureInk(
+          `${cs.fontStyle} ${cs.fontWeight} ${fontSizePx}px ${cs.fontFamily}`,
+          lines,
+        );
+        if (ink) {
+          const lineGap = fontSizePx * 1.15; // matches line-height below
+          // Full ink height across the lines: the gaps between baselines, plus
+          // the top line's ascent and the bottom line's descent.
+          const inkHeight = (lines.length - 1) * lineGap + ink.ascent + ink.descent;
+          // Fit to the LARGER of the line box and the ink, so a tall script or
+          // display font (ink taller than the line box) is shrunk to stay inside
+          // the area, while ordinary text — whose ink fits the line box — keeps
+          // exactly the size it had before (no surprise resizing of old designs).
+          if (inkHeight > boxH) ih = inkHeight;
+          // How far the ink reaches past the line box on either side → padding
+          // so the clipped-background fill covers it. Small safety margin.
+          const half = lineGap / 2;
+          const over = Math.max(0, ink.ascent - half, ink.descent - half);
+          pad = (over / fontSizePx) * 1.04;
+        }
+      }
+
       const next = Math.min(1, ow / iw, oh / ih);
-      // A threshold stops a sub-pixel measurement wobble from re-rendering forever.
+      // Thresholds stop a sub-pixel measurement wobble from re-rendering forever.
       setScale((prev) => (Math.abs(prev - next) > 0.004 ? next : prev));
+      setPadEm((prev) => (Math.abs(prev - pad) > 0.01 ? pad : prev));
     };
 
     fit();
@@ -596,6 +683,11 @@ function FitText({
           // shrinks to fit rather than breaking onto another line.
           whiteSpace: "pre",
           textAlign: align,
+          // Extend the fill's paint box to cover the glyph ink (set above). The
+          // default `background-origin: padding-box` means the texture/gradient
+          // now paints over this taller box, so the letters are filled fully.
+          paddingTop: padEm ? `${padEm}em` : undefined,
+          paddingBottom: padEm ? `${padEm}em` : undefined,
           transform: `scale(${scale})`,
           transformOrigin:
             justify === "flex-start" ? "left center" : justify === "flex-end" ? "right center" : "center",
