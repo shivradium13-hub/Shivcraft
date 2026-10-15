@@ -349,6 +349,19 @@
       box-shadow: 0 10px 30px rgba(17, 24, 39, 0.22);
     }
   }
+  /* Per-device visibility driven by the admin switches (768px = phone / larger).
+     Explicit media queries, so show/hide never depends on a dynamically built
+     Tailwind utility (hidden / md:block) surviving into the compiled CSS. */
+  @media (max-width: 767.98px) {
+    .sr-banner-desktop-only {
+      display: none;
+    }
+  }
+  @media (min-width: 768px) {
+    .sr-banner-mobile-only {
+      display: none;
+    }
+  }
   .sr-banner-flip {
     position: relative;
     transform-style: preserve-3d;

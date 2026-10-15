@@ -29,9 +29,11 @@ export function ProductPromoBanner({
 }) {
   // Off everywhere → render nothing at all.
   if (!showDesktop && !showMobile) return null;
-  // Responsive visibility: hide on the device size that was switched off.
+  // Responsive visibility: hide on the device size that was switched off. Uses
+  // dedicated CSS classes (see globals.css) rather than Tailwind utilities, so
+  // the media queries are always compiled in.
   const visibility =
-    showDesktop && showMobile ? "" : showDesktop ? "hidden md:block" : "block md:hidden";
+    showDesktop && showMobile ? "" : showDesktop ? "sr-banner-desktop-only" : "sr-banner-mobile-only";
 
   const faces = (
     <>
