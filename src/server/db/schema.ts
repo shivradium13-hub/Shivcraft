@@ -294,6 +294,10 @@ export const products = pgTable(
     promoBannerUrl: text("promo_banner_url"),
     promoBannerHref: varchar("promo_banner_href", { length: 500 }),
     promoBannerLabel: varchar("promo_banner_label", { length: 120 }),
+    /** Whether the banner is shown on desktop / on mobile widths. Both default
+     *  on; turn one off to show the banner only on the other device size. */
+    promoBannerDesktop: boolean("promo_banner_desktop").notNull().default(true),
+    promoBannerMobile: boolean("promo_banner_mobile").notNull().default(true),
 
     metaTitle: varchar("meta_title", { length: 200 }),
     metaDescription: varchar("meta_description", { length: 320 }),

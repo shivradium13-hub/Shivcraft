@@ -73,6 +73,9 @@ export const productSchema = z
     promoBannerUrl: optionalText(1000),
     promoBannerHref: optionalText(500),
     promoBannerLabel: optionalText(120),
+    /** Which device widths the banner shows on. Both default on. */
+    promoBannerDesktop: z.boolean().default(true),
+    promoBannerMobile: z.boolean().default(true),
 
     isPersonalizable: z.boolean().default(false),
     /** When true, each option's price is its full price, not added to the base. */

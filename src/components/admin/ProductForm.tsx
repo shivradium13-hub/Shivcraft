@@ -47,6 +47,8 @@ export type ProductFormValues = {
   promoBannerUrl: string;
   promoBannerHref: string;
   promoBannerLabel: string;
+  promoBannerDesktop: boolean;
+  promoBannerMobile: boolean;
   isPersonalizable: boolean;
   variantPriceAbsolute: boolean;
   simpleUploadMode: boolean;
@@ -66,6 +68,7 @@ export const EMPTY_PRODUCT: ProductFormValues = {
   brand: "", material: "", color: "", size: "", weightGrams: "", occasion: "",
   tags: "", videoUrl: "",
   promoBannerUrl: "", promoBannerHref: "", promoBannerLabel: "",
+  promoBannerDesktop: true, promoBannerMobile: true,
   // New products use full per-option prices (no "+"): the customer sees each
   // size's actual price, not an amount added to the base. Matches every
   // existing product; an admin can still switch to "+" (delta) per product.
@@ -315,6 +318,8 @@ export function ProductForm({
       promoBannerUrl: values.promoBannerUrl,
       promoBannerHref: values.promoBannerHref,
       promoBannerLabel: values.promoBannerLabel,
+      promoBannerDesktop: values.promoBannerDesktop,
+      promoBannerMobile: values.promoBannerMobile,
       // The Frame Designer path does not use the simple personalisation fields,
       // so it is never blocked by their "add at least one field" rule — the
       // admin builds the template in the designer instead.
@@ -751,6 +756,33 @@ export function ProductForm({
               onChange={(e) => set("promoBannerLabel", e.target.value)}
             />
           </Field>
+
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-sr-body">Show the banner on</p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={values.promoBannerDesktop}
+                  onChange={(e) => set("promoBannerDesktop", e.target.checked)}
+                  className="h-4 w-4 shrink-0 accent-sr-600"
+                />
+                <span className="text-sm font-medium text-sr-ink">Desktop / laptop</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={values.promoBannerMobile}
+                  onChange={(e) => set("promoBannerMobile", e.target.checked)}
+                  className="h-4 w-4 shrink-0 accent-sr-600"
+                />
+                <span className="text-sm font-medium text-sr-ink">Mobile / phone</span>
+              </label>
+            </div>
+            <p className="mt-1.5 text-xs text-sr-muted">
+              Turn one off to show the banner only on the other. Both off hides it everywhere.
+            </p>
+          </div>
         </Card>
 
         {/* ---------------------------------------------------- attributes */}

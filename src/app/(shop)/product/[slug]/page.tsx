@@ -262,6 +262,8 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
               href={bannerHref}
               external={bannerExternal}
               label={bannerLabel}
+              showDesktop={product.promoBannerDesktop}
+              showMobile={product.promoBannerMobile}
             />
           ) : null}
 

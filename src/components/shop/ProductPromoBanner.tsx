@@ -16,12 +16,23 @@ export function ProductPromoBanner({
   href,
   external,
   label,
+  showDesktop,
+  showMobile,
 }: {
   url: string;
   href: string | null;
   external: boolean;
   label: string;
+  /** Device widths the admin chose to show the banner on (md = 768px split). */
+  showDesktop: boolean;
+  showMobile: boolean;
 }) {
+  // Off everywhere → render nothing at all.
+  if (!showDesktop && !showMobile) return null;
+  // Responsive visibility: hide on the device size that was switched off.
+  const visibility =
+    showDesktop && showMobile ? "" : showDesktop ? "hidden md:block" : "block md:hidden";
+
   const faces = (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -47,7 +58,9 @@ export function ProductPromoBanner({
   );
 
   return (
-    <div className="sr-banner-wrap mt-5 overflow-hidden rounded-card border border-line transition hover:shadow-card">
+    <div
+      className={`sr-banner-wrap mt-5 overflow-hidden rounded-card border border-line transition hover:shadow-card ${visibility}`}
+    >
       {inner}
     </div>
   );
