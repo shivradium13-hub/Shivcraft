@@ -59,7 +59,7 @@ export function ProductPromoBanner({
 
   return (
     <div
-      className={`sr-banner-wrap mt-5 overflow-hidden rounded-card border border-line transition hover:shadow-card ${visibility}`}
+      className={`sr-banner-wrap mt-5 overflow-hidden border border-line transition hover:shadow-card ${visibility}`}
     >
       {inner}
     </div>
