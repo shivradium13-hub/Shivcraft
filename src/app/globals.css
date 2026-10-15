@@ -304,4 +304,50 @@
       animation: none;
     }
   }
+
+  /* Promo "poster" banner — a gentle periodic 3D flip to draw the eye. Built as
+     a flip card whose front and back both carry the SAME banner image, so the
+     image always reads upright (the back face's own 180° cancels the card's), and
+     it never shows a mirrored or blank side. Perspective + clipping live on the
+     wrapper; the 3D context lives on the inner element (overflow-hidden on the
+     same element as preserve-3d would flatten it). */
+  .sr-banner-wrap {
+    perspective: 1200px;
+  }
+  .sr-banner-flip {
+    position: relative;
+    transform-style: preserve-3d;
+    animation: sr-banner-flip 7s ease-in-out infinite;
+    will-change: transform;
+  }
+  .sr-banner-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .sr-banner-back {
+    transform: rotateY(180deg);
+  }
+
+  @keyframes sr-banner-flip {
+    0%,
+    38% {
+      transform: rotateY(0deg);
+    }
+    50%,
+    88% {
+      transform: rotateY(180deg);
+    }
+    100% {
+      transform: rotateY(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sr-banner-flip {
+      animation: none;
+    }
+    .sr-banner-back {
+      display: none;
+    }
+  }
 }

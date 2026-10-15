@@ -7,6 +7,7 @@ import { PincodeCheck } from "@/components/shop/PincodeCheck";
 import { ProductGallery } from "@/components/shop/ProductGallery";
 import { ProductLivePreview } from "@/components/shop/ProductLivePreview";
 import { ProductPriceDisplay } from "@/components/shop/ProductPriceDisplay";
+import { ProductPromoBanner } from "@/components/shop/ProductPromoBanner";
 import { ProductPurchase } from "@/components/shop/ProductPurchase";
 import { ProductRail } from "@/components/shop/ProductCard";
 import { ReviewForm, type ReviewEligibility } from "@/components/shop/ReviewForm";
@@ -256,36 +257,12 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
           ) : null}
 
           {product.promoBannerUrl ? (
-            <div className="mt-5">
-              {bannerHref ? (
-                bannerExternal ? (
-                  <a
-                    href={bannerHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={bannerLabel}
-                    className="block overflow-hidden rounded-card border border-line transition hover:opacity-95 hover:shadow-card"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={product.promoBannerUrl} alt={product.promoBannerLabel ?? ""} className="w-full object-cover" />
-                  </a>
-                ) : (
-                  <Link
-                    href={bannerHref}
-                    aria-label={bannerLabel}
-                    className="block overflow-hidden rounded-card border border-line transition hover:opacity-95 hover:shadow-card"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={product.promoBannerUrl} alt={product.promoBannerLabel ?? ""} className="w-full object-cover" />
-                  </Link>
-                )
-              ) : (
-                <div className="overflow-hidden rounded-card border border-line">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={product.promoBannerUrl} alt={product.promoBannerLabel ?? ""} className="w-full object-cover" />
-                </div>
-              )}
-            </div>
+            <ProductPromoBanner
+              url={product.promoBannerUrl}
+              href={bannerHref}
+              external={bannerExternal}
+              label={bannerLabel}
+            />
           ) : null}
 
           <div className="mt-6">
