@@ -185,11 +185,11 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
         <span className="line-clamp-1 font-medium text-ink">{product.name}</span>
       </nav>
 
-      {/* The media column is capped so the (square) image stays a sensible gallery
-          size, like a marketplace, instead of growing to half the page width. The
-          thumbnails sit beside it (not below), so this can be fairly large and still
-          fit the viewport on desktop. */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,600px)_minmax(0,1fr)]">
+      {/* The media column is the hero on desktop: capped so the (square) image is
+          large and prominent, with the thumbnails beside it. It grows on wider
+          screens (xl) where there is room, while the lg breakpoint keeps a cap that
+          still leaves the purchase panel a usable width. */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,620px)_minmax(0,1fr)] xl:grid-cols-[minmax(0,780px)_minmax(0,1fr)]">
         <div className="min-w-0 lg:sticky lg:top-[88px] lg:self-start">
           {showDesigner ? (
             <ProductLivePreview
