@@ -318,8 +318,8 @@
   .sr-banner-wrap {
     position: relative;
     perspective: 1200px;
-    /* A soft, slightly rounded glass edge (not a full pill, not sharp). */
-    border-radius: 14px;
+    /* A soft, rounded glass edge (not a full pill, not sharp). */
+    border-radius: 20px;
     box-shadow: 0 6px 20px rgba(17, 24, 39, 0.14);
     transition:
       box-shadow 220ms ease,
