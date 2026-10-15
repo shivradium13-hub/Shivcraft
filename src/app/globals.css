@@ -321,6 +321,12 @@
     will-change: transform;
   }
   .sr-banner-face {
+    /* A wide, short banner strip (like a web promo banner), not a tall square.
+       object-cover fills the strip: a purpose-made wide banner shows in full, a
+       square/tall image is centre-cropped to the strip. */
+    aspect-ratio: 15 / 4;
+    width: 100%;
+    object-fit: cover;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
   }
