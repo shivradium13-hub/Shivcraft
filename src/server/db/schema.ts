@@ -303,6 +303,12 @@ export const products = pgTable(
      *  are the legacy one-banner form, migrated into this array. */
     promoBanners: jsonb("promo_banners"),
 
+    /** Product-card image preview: on hover (desktop) and on tap/swipe (mobile)
+     *  the card previews the product's other images. Both default on; they only
+     *  take effect when the product has more than one image. */
+    cardHoverPreview: boolean("card_hover_preview").notNull().default(true),
+    cardTouchPreview: boolean("card_touch_preview").notNull().default(true),
+
     metaTitle: varchar("meta_title", { length: 200 }),
     metaDescription: varchar("meta_description", { length: 320 }),
 

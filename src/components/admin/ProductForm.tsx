@@ -49,6 +49,8 @@ export type ProductFormValues = {
   promoBanners: BannerRow[];
   promoBannerDesktop: boolean;
   promoBannerMobile: boolean;
+  cardHoverPreview: boolean;
+  cardTouchPreview: boolean;
   isPersonalizable: boolean;
   variantPriceAbsolute: boolean;
   simpleUploadMode: boolean;
@@ -69,6 +71,7 @@ export const EMPTY_PRODUCT: ProductFormValues = {
   tags: "", videoUrl: "",
   promoBanners: [],
   promoBannerDesktop: true, promoBannerMobile: true,
+  cardHoverPreview: true, cardTouchPreview: true,
   // New products use full per-option prices (no "+"): the customer sees each
   // size's actual price, not an amount added to the base. Matches every
   // existing product; an admin can still switch to "+" (delta) per product.
@@ -259,6 +262,17 @@ export function ProductForm({
       promoBanners: prev.promoBanners.map((b, i) => (i === index ? { ...b, ...patch } : b)),
     }));
 
+  // Reorder product images; order drives the card preview (and the 2nd image
+  // used for the desktop hover). dir is -1 (earlier) or +1 (later).
+  const moveImage = (index: number, dir: -1 | 1) =>
+    setValues((prev) => {
+      const j = index + dir;
+      if (j < 0 || j >= prev.images.length) return prev;
+      const next = [...prev.images];
+      [next[index], next[j]] = [next[j], next[index]];
+      return { ...prev, images: next };
+    });
+
   async function uploadBanner(file: File) {
     const index = bannerTargetIndex.current;
     setUploadingBanner(true);
@@ -334,6 +348,8 @@ export function ProductForm({
         .map((b) => ({ url: b.url.trim(), href: b.href.trim(), label: b.label.trim() })),
       promoBannerDesktop: values.promoBannerDesktop,
       promoBannerMobile: values.promoBannerMobile,
+      cardHoverPreview: values.cardHoverPreview,
+      cardTouchPreview: values.cardTouchPreview,
       // The Frame Designer path does not use the simple personalisation fields,
       // so it is never blocked by their "add at least one field" rule — the
       // admin builds the template in the designer instead.
@@ -636,13 +652,21 @@ export function ProductForm({
         </Card>
 
         {/* ------------------------------------------------------- images */}
-        <Card title="Images" subtitle="The first image, or the one you mark, is used on cards.">
+        <Card
+          title="Images"
+          subtitle="The first image, or the one you mark as main, is used on cards. On a card the customer previews the other images by hovering (desktop) or tapping/swiping (mobile) — use ← → to set the order they appear in."
+        >
           {values.images.length > 0 ? (
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {values.images.map((image, i) => (
                 <li key={image.url} className="overflow-hidden rounded-xl border border-sr-line">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image.url} alt="" className="aspect-square w-full object-cover" />
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={image.url} alt="" className="aspect-square w-full object-cover" />
+                    <span className="absolute top-1 left-1 rounded bg-ink/60 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      {i + 1}
+                    </span>
+                  </div>
                   <div className="flex flex-col gap-1 p-1.5">
                     <button
                       type="button"
@@ -658,6 +682,26 @@ export function ProductForm({
                     >
                       {image.isPrimary ? "Main image" : "Make main"}
                     </button>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        aria-label="Move earlier"
+                        disabled={i === 0}
+                        onClick={() => moveImage(i, -1)}
+                        className="flex-1 rounded bg-sr-canvas px-1.5 py-1 text-[11px] font-semibold text-sr-body hover:bg-sr-100 disabled:opacity-40"
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Move later"
+                        disabled={i === values.images.length - 1}
+                        onClick={() => moveImage(i, 1)}
+                        className="flex-1 rounded bg-sr-canvas px-1.5 py-1 text-[11px] font-semibold text-sr-body hover:bg-sr-100 disabled:opacity-40"
+                      >
+                        →
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() =>
@@ -699,6 +743,33 @@ export function ProductForm({
               onChange={(e) => e.target.files && uploadImages(e.target.files)}
             />
             <p className="mt-1.5 text-xs text-sr-muted">JPG, PNG or WebP, up to 8 MB each.</p>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-sr-body">Card image preview</p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={values.cardHoverPreview}
+                  onChange={(e) => set("cardHoverPreview", e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-sr-600"
+                />
+                <span className="text-sm font-medium text-sr-ink">Hover preview (desktop)</span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={values.cardTouchPreview}
+                  onChange={(e) => set("cardTouchPreview", e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-sr-600"
+                />
+                <span className="text-sm font-medium text-sr-ink">Tap &amp; swipe (mobile)</span>
+              </label>
+            </div>
+            <p className="mt-1.5 text-xs text-sr-muted">
+              Only applies when the product has more than one image. Off on both shows just the main image on the card.
+            </p>
           </div>
 
           <Field label="Video URL" hint="YouTube, Vimeo or your own hosting. We do not host video.">

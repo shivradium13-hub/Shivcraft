@@ -19,6 +19,9 @@ export type ProductCard = {
   stock: number;
   isBestSeller: boolean;
   isPersonalizable: boolean;
+  /** Whether the card previews other images on hover / on tap+swipe. */
+  cardHoverPreview: boolean;
+  cardTouchPreview: boolean;
   categorySlug: string;
 };
 
@@ -177,6 +180,8 @@ export async function findProducts(
         stock: products.stock,
         isBestSeller: products.isBestSeller,
         isPersonalizable: products.isPersonalizable,
+        cardHoverPreview: products.cardHoverPreview,
+        cardTouchPreview: products.cardTouchPreview,
         categorySlug: categories.slug,
       })
       .from(products)
@@ -203,6 +208,8 @@ export async function findProducts(
       stock: row.stock,
       isBestSeller: row.isBestSeller,
       isPersonalizable: row.isPersonalizable,
+      cardHoverPreview: row.cardHoverPreview,
+      cardTouchPreview: row.cardTouchPreview,
       categorySlug: row.categorySlug,
     })),
   };

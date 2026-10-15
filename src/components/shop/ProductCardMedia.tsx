@@ -25,6 +25,8 @@ export function ProductCardMedia({
   bestSeller = false,
   personalizable = false,
   outOfStock = false,
+  hoverEnabled = true,
+  touchEnabled = true,
   sizes,
 }: {
   images: string[];
@@ -34,9 +36,13 @@ export function ProductCardMedia({
   bestSeller?: boolean;
   personalizable?: boolean;
   outOfStock?: boolean;
+  /** Admin switches: preview other images on hover (desktop) / on tap+swipe (mobile). */
+  hoverEnabled?: boolean;
+  touchEnabled?: boolean;
   sizes: string;
 }) {
   const n = images.length;
+  const interactive = n > 1 && (hoverEnabled || touchEnabled);
   const [index, setIndex] = useState(0);
 
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -66,8 +72,8 @@ export function ProductCardMedia({
     </>
   );
 
-  // Single image: unchanged behaviour (plain link, no gestures/dots).
-  if (n <= 1) {
+  // One image, or both previews switched off: plain link, no gestures/dots.
+  if (!interactive) {
     return (
       <Link href={`/product/${slug}`} className="relative block aspect-[4/5] overflow-hidden bg-brand-50">
         <ProductImage
@@ -93,17 +99,17 @@ export function ProductCardMedia({
       aria-label={name}
       className="relative block aspect-[4/5] touch-pan-y overflow-hidden bg-brand-50"
       onMouseEnter={() => {
-        if (hoverCapable()) setIndex(1);
+        if (hoverEnabled && hoverCapable()) setIndex(1);
       }}
       onMouseLeave={() => {
-        if (hoverCapable()) setIndex(0);
+        if (hoverEnabled && hoverCapable()) setIndex(0);
       }}
       onPointerDown={(e) => {
         isTouch.current = e.pointerType !== "mouse";
         start.current = { x: e.clientX, y: e.clientY };
       }}
       onPointerUp={(e) => {
-        if (!start.current) return;
+        if (!touchEnabled || !start.current) return;
         const dx = e.clientX - start.current.x;
         const dy = e.clientY - start.current.y;
         start.current = null;
@@ -121,8 +127,9 @@ export function ProductCardMedia({
           return;
         }
         // On touch, a tap cycles images instead of opening the product (the
-        // title and other controls still open it).
-        if (isTouch.current) {
+        // title and other controls still open it). When touch preview is off,
+        // the tap opens the product as normal.
+        if (touchEnabled && isTouch.current) {
           e.preventDefault();
           go(index + 1);
         }

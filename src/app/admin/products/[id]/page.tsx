@@ -64,6 +64,8 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
       : [],
     promoBannerDesktop: product.promoBannerDesktop,
     promoBannerMobile: product.promoBannerMobile,
+    cardHoverPreview: product.cardHoverPreview,
+    cardTouchPreview: product.cardTouchPreview,
     isPersonalizable: product.isPersonalizable,
     variantPriceAbsolute: product.variantPriceAbsolute,
     simpleUploadMode: product.simpleUploadMode,

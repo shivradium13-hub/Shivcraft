@@ -30,6 +30,8 @@ export function ProductCard({
         bestSeller={product.isBestSeller}
         personalizable={product.isPersonalizable}
         outOfStock={outOfStock}
+        hoverEnabled={product.cardHoverPreview}
+        touchEnabled={product.cardTouchPreview}
         sizes={CARD_SIZES}
       />
 

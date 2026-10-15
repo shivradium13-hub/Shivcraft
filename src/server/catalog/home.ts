@@ -25,6 +25,8 @@ const cardColumns = {
   stock: products.stock,
   isBestSeller: products.isBestSeller,
   isPersonalizable: products.isPersonalizable,
+  cardHoverPreview: products.cardHoverPreview,
+  cardTouchPreview: products.cardTouchPreview,
   categorySlug: categories.slug,
 };
 
@@ -41,6 +43,8 @@ type CardRow = {
   stock: number;
   isBestSeller: boolean;
   isPersonalizable: boolean;
+  cardHoverPreview: boolean;
+  cardTouchPreview: boolean;
   categorySlug: string;
 };
 
@@ -58,6 +62,8 @@ function toCard(row: CardRow): ProductCard {
     stock: row.stock,
     isBestSeller: row.isBestSeller,
     isPersonalizable: row.isPersonalizable,
+    cardHoverPreview: row.cardHoverPreview,
+    cardTouchPreview: row.cardTouchPreview,
     categorySlug: row.categorySlug,
   };
 }

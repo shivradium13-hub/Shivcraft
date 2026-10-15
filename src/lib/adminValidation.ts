@@ -85,6 +85,9 @@ export const productSchema = z
     /** Which device widths the banners show on. Both default on. */
     promoBannerDesktop: z.boolean().default(true),
     promoBannerMobile: z.boolean().default(true),
+    /** Product-card image preview on hover (desktop) / tap+swipe (mobile). */
+    cardHoverPreview: z.boolean().default(true),
+    cardTouchPreview: z.boolean().default(true),
 
     isPersonalizable: z.boolean().default(false),
     /** When true, each option's price is its full price, not added to the base. */

@@ -118,6 +118,8 @@ export async function getRelatedProducts(
       stock: products.stock,
       isBestSeller: products.isBestSeller,
       isPersonalizable: products.isPersonalizable,
+      cardHoverPreview: products.cardHoverPreview,
+      cardTouchPreview: products.cardTouchPreview,
       categorySlug: categories.slug,
     })
     .from(products)
@@ -141,6 +143,8 @@ export async function getRelatedProducts(
     stock: row.stock,
     isBestSeller: row.isBestSeller,
     isPersonalizable: row.isPersonalizable,
+    cardHoverPreview: row.cardHoverPreview,
+    cardTouchPreview: row.cardTouchPreview,
     categorySlug: row.categorySlug,
   }));
 }
