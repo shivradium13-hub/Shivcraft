@@ -319,7 +319,7 @@
     position: relative;
     perspective: 1200px;
     /* A soft, rounded glass edge (not a full pill, not sharp). */
-    border-radius: 20px;
+    border-radius: 10px;
     box-shadow: 0 6px 20px rgba(17, 24, 39, 0.14);
     transition:
       box-shadow 220ms ease,
