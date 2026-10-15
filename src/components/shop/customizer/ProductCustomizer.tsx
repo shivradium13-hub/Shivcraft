@@ -981,16 +981,19 @@ export function ProductCustomizer({
                       />
                     ) : (
                       <>
-                        {/* The admin's default image for this box, faded (70%). */}
+                        {/* The admin's sample image for this box, at full opacity;
+                            the "+" badge and "Choose Image" mark it to replace. */}
                         {zone.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={zone.imageUrl}
                             alt=""
-                            className="absolute inset-0 h-full w-full object-cover opacity-70"
+                            className="absolute inset-0 h-full w-full object-cover"
                           />
                         ) : null}
-                        <span className="relative text-5xl font-light leading-none text-muted">+</span>
+                        <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-3xl font-light leading-none text-brand-700 shadow-sm">
+                          +
+                        </span>
                       </>
                     )}
                   </button>
@@ -1075,17 +1078,19 @@ export function ProductCustomizer({
                       />
                     ) : (
                       <>
-                        {/* The admin's default image for this box, shown faded (70%)
-                            as a hint until the customer uploads their own. */}
+                        {/* The admin's sample image for this box, at full opacity;
+                            the "+" badge and "Choose Image" mark it to replace. */}
                         {activeZone.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={activeZone.imageUrl}
                             alt=""
-                            className="absolute inset-0 h-full w-full object-cover opacity-70"
+                            className="absolute inset-0 h-full w-full object-cover"
                           />
                         ) : null}
-                        <span className="relative text-5xl font-light leading-none text-muted">+</span>
+                        <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-3xl font-light leading-none text-brand-700 shadow-sm">
+                          +
+                        </span>
                       </>
                     )}
                   </button>
