@@ -96,15 +96,8 @@ function groupVariantsToAttributes(variants: VariantRow[]): AttributeRow[] {
   return order;
 }
 
-/** Collapse saved variants into one option group for the flat editor. A legacy
- *  product that had several attributes is merged into a single list, so nothing
- *  is lost and the editor always shows exactly one group. */
-function toSingleGroup(variants: VariantRow[]): AttributeRow {
-  const groups = groupVariantsToAttributes(variants);
-  if (groups.length === 0) return { key: newAttrKey(), name: "Size", options: [] };
-  const name = groups.find((g) => g.name.trim())?.name ?? "Size";
-  return { key: newAttrKey(), name, options: groups.flatMap((g) => g.options) };
-}
+/** A fresh, empty option type the admin can fill in (e.g. a new "Frame colour"). */
+const blankGroup = (): AttributeRow => ({ key: newAttrKey(), name: "", options: [blankOption()] });
 
 /** Flatten attributes back to the variant rows the save payload expects. */
 function flattenAttributesToVariants(attributes: AttributeRow[]): VariantRow[] {
@@ -195,18 +188,28 @@ export function ProductForm({
     });
   }
 
-  /* One option group (e.g. Size) with its options, edited as a flat list and
-     flattened to variant rows on save. A product has a single option type; the
-     old two-level "attribute vs option" model confused admins (sizes ended up as
-     attribute names with empty options and were dropped), so this is one list. */
-  const [group, setGroup] = useState<AttributeRow>(() => toSingleGroup(initial.variants));
+  /* The product's option types (e.g. Size, Frame colour), each with its own
+     options. Stored flat in product_variants keyed by the type name and grouped
+     back here for editing; flattened to variant rows on save. A product can have
+     several option types, each shown to the customer as its own row of choices. */
+  const [groups, setGroups] = useState<AttributeRow[]>(() => groupVariantsToAttributes(initial.variants));
 
-  const setGroupName = (name: string) => setGroup((g) => ({ ...g, name }));
-  const addOption = () => setGroup((g) => ({ ...g, options: [...g.options, blankOption()] }));
-  const setOption = (index: number, patch: Partial<OptionRow>) =>
-    setGroup((g) => ({ ...g, options: g.options.map((o, i) => (i === index ? { ...o, ...patch } : o)) }));
-  const removeOption = (index: number) =>
-    setGroup((g) => ({ ...g, options: g.options.filter((_, i) => i !== index) }));
+  const addGroup = () => setGroups((gs) => [...gs, blankGroup()]);
+  const removeGroup = (key: string) => setGroups((gs) => gs.filter((g) => g.key !== key));
+  const setGroupName = (key: string, name: string) =>
+    setGroups((gs) => gs.map((g) => (g.key === key ? { ...g, name } : g)));
+  const addOption = (key: string) =>
+    setGroups((gs) => gs.map((g) => (g.key === key ? { ...g, options: [...g.options, blankOption()] } : g)));
+  const setOption = (key: string, index: number, patch: Partial<OptionRow>) =>
+    setGroups((gs) =>
+      gs.map((g) =>
+        g.key === key ? { ...g, options: g.options.map((o, i) => (i === index ? { ...o, ...patch } : o)) } : g,
+      ),
+    );
+  const removeOption = (key: string, index: number) =>
+    setGroups((gs) =>
+      gs.map((g) => (g.key === key ? { ...g, options: g.options.filter((_, i) => i !== index) } : g)),
+    );
 
   async function uploadImages(files: FileList) {
     setUploading(true);
@@ -239,12 +242,23 @@ export function ProductForm({
     // Don't silently drop a half-filled option: a row with a price or stock but
     // no name would be discarded on save (the admin's price would vanish). Tell
     // them to name it instead.
-    const incompleteOption = group.options.find(
-      (o) => !o.value.trim() && (Number(o.priceDelta) !== 0 || Number(o.stock) !== 0),
-    );
+    const incompleteOption = groups
+      .flatMap((g) => g.options)
+      .find((o) => !o.value.trim() && (Number(o.priceDelta) !== 0 || Number(o.stock) !== 0));
     if (incompleteOption) {
       setError(
         `Give every option a name (e.g. S, M, L). An option has a price or stock but no name, so it would not be saved.`,
+      );
+      setNotice(null);
+      return;
+    }
+
+    // An option type with choices but no name of its own would also be dropped
+    // (we key variants by the type's name), so make the admin name it.
+    const unnamedGroup = groups.find((g) => !g.name.trim() && g.options.some((o) => o.value.trim()));
+    if (unnamedGroup) {
+      setError(
+        `Name every option type (e.g. "Size" or "Frame colour"). An option type has choices but no name, so they would not be saved.`,
       );
       setNotice(null);
       return;
@@ -286,9 +300,9 @@ export function ProductForm({
       metaDescription: values.metaDescription,
       images: values.images,
       customizationFields: thenDesign ? [] : values.customizationFields,
-      variants: flattenAttributesToVariants([{ ...group, name: group.name.trim() || "Size" }])
-        // Only complete options are saved: an option with no label is dropped
-        // rather than persisted as a broken row.
+      variants: flattenAttributesToVariants(groups.map((g) => ({ ...g, name: g.name.trim() })))
+        // Only complete options are saved: an option with no label, or one under
+        // an unnamed option type, is dropped rather than persisted as a broken row.
         .filter((v) => v.name.trim() && v.value.trim())
         .map((v) => ({
           ...(v.id ? { id: v.id } : {}),
@@ -452,86 +466,125 @@ export function ProductForm({
         {/* -------------------------------------------- options / variants */}
         <Card
           title="Options / variants"
-          subtitle="Offer the product in a few options the customer picks one of — e.g. sizes S, M, L. Each option has its own price and stock. Leave this empty for a single-version product."
+          subtitle="Offer the product in choices the customer picks from — e.g. a Size and a Frame colour. Add an option type for each thing they choose; each option has its own price and stock. Leave empty for a single-version product."
         >
-          <Field label="Option type" hint="What the customer is choosing, e.g. Size or Colour.">
-            <input
-              className={input}
-              value={group.name}
-              placeholder="Size"
-              onChange={(e) => setGroupName(e.target.value)}
-            />
-          </Field>
-
-          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
-            <input
-              type="checkbox"
-              checked={values.variantPriceAbsolute}
-              onChange={(e) => set("variantPriceAbsolute", e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-sr-600"
-            />
-            <span>
-              <span className="block text-sm font-medium text-sr-ink">Option price is the full price</span>
-              <span className="block text-xs text-sr-muted">
-                When on, each option’s price is used as-is as the final price (no base added, no “+”).
-                Off: the price is added to the base price.
+          {groups.length > 0 && (
+            <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={values.variantPriceAbsolute}
+                onChange={(e) => set("variantPriceAbsolute", e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-sr-600"
+              />
+              <span>
+                <span className="block text-sm font-medium text-sr-ink">Option price is the full price</span>
+                <span className="block text-xs text-sr-muted">
+                  When on, each option’s price is used as-is as the final price (no base added, no “+”).
+                  Off: the price is added to the base price.
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          )}
 
-          {group.options.length === 0 ? (
+          {groups.length === 0 ? (
             <p className="rounded-lg border border-dashed border-sr-line-strong px-4 py-6 text-center text-sm text-sr-muted">
-              No options yet. Add one like “S”, “M” or “8×12 in” with its price.
+              No options yet. Add an option type like “Size” or “Frame colour”, then list its choices.
             </p>
           ) : (
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 pl-1 text-[11px] font-semibold text-sr-muted">
-                <span className="min-w-0 flex-1">{group.name.trim() || "Option"}</span>
-                <span className="w-24 text-right">{values.variantPriceAbsolute ? "Price ₹" : "± ₹"}</span>
-                <span className="w-16 text-right">Stock</span>
-                <span className="w-6" />
-              </div>
-              {group.options.map((opt, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    className={`${inputBase} min-w-0 flex-1`}
-                    value={opt.value}
-                    placeholder={`${group.name.trim() || "Option"} (e.g. M)`}
-                    onChange={(e) => setOption(i, { value: e.target.value })}
-                  />
-                  <input
-                    type="number"
-                    step="1"
-                    className={`${inputBase} w-24 shrink-0`}
-                    value={opt.priceDelta}
-                    onChange={(e) => setOption(i, { priceDelta: e.target.value })}
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    className={`${inputBase} w-16 shrink-0`}
-                    value={opt.stock}
-                    onChange={(e) => setOption(i, { stock: e.target.value })}
-                  />
+            <div className="space-y-4">
+              {groups.map((grp) => (
+                <div key={grp.key} className="space-y-2.5 rounded-xl border border-sr-line bg-sr-canvas p-3">
+                  <div className="flex items-end gap-2">
+                    <div className="min-w-0 flex-1">
+                      <label className="mb-1 block text-xs font-medium text-sr-body">Option type</label>
+                      <input
+                        className={input}
+                        value={grp.name}
+                        placeholder="Size"
+                        onChange={(e) => setGroupName(grp.key, e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeGroup(grp.key)}
+                      className="shrink-0 rounded-lg border border-sr-line px-3 py-2 text-xs font-medium text-sr-muted transition hover:border-danger hover:bg-danger-soft hover:text-danger"
+                    >
+                      Remove type
+                    </button>
+                  </div>
+
+                  {grp.options.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-sr-line-strong px-4 py-5 text-center text-sm text-sr-muted">
+                      No options yet. Add one like “S”, “M” or “8×12 in” with its price.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 pl-1 text-[11px] font-semibold text-sr-muted">
+                        <span className="min-w-0 flex-1">{grp.name.trim() || "Option"}</span>
+                        <span className="w-24 text-right">{values.variantPriceAbsolute ? "Price ₹" : "± ₹"}</span>
+                        <span className="w-16 text-right">Stock</span>
+                        <span className="w-6" />
+                      </div>
+                      {grp.options.map((opt, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <input
+                            className={`${inputBase} min-w-0 flex-1`}
+                            value={opt.value}
+                            placeholder={`${grp.name.trim() || "Option"} (e.g. M)`}
+                            onChange={(e) => setOption(grp.key, i, { value: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            step="1"
+                            className={`${inputBase} w-24 shrink-0`}
+                            value={opt.priceDelta}
+                            onChange={(e) => setOption(grp.key, i, { priceDelta: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            className={`${inputBase} w-16 shrink-0`}
+                            value={opt.stock}
+                            onChange={(e) => setOption(grp.key, i, { stock: e.target.value })}
+                          />
+                          <button
+                            type="button"
+                            aria-label="Remove option"
+                            onClick={() => removeOption(grp.key, i)}
+                            className="flex h-8 w-6 shrink-0 items-center justify-center rounded-lg text-sr-muted transition hover:bg-danger-soft hover:text-danger"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <button
                     type="button"
-                    aria-label="Remove option"
-                    onClick={() => removeOption(i)}
-                    className="flex h-8 w-6 shrink-0 items-center justify-center rounded-lg text-sr-muted transition hover:bg-danger-soft hover:text-danger"
+                    onClick={() => addOption(grp.key)}
+                    className="w-full rounded-lg border border-dashed border-sr-line-strong px-4 py-2 text-sm font-medium text-sr-body hover:border-sr-400 hover:text-sr-700"
                   >
-                    ✕
+                    + Add option
                   </button>
                 </div>
               ))}
+
+              {groups.length > 1 && (
+                <p className="px-1 text-xs text-sr-muted">
+                  With more than one option type, give each at least two choices — the customer always has one
+                  from every type selected, so a type with a single choice just adds its price to every order.
+                </p>
+              )}
             </div>
           )}
 
           <button
             type="button"
-            onClick={addOption}
+            onClick={addGroup}
             className="w-full rounded-lg border border-dashed border-sr-line-strong px-4 py-2.5 text-sm font-medium text-sr-body hover:border-sr-400 hover:text-sr-700"
           >
-            + Add option
+            {groups.length === 0 ? "+ Add option type" : "+ Add another option type"}
           </button>
         </Card>
 
