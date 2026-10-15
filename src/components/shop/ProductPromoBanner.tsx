@@ -3,9 +3,9 @@ import Link from "next/link";
 /**
  * An optional admin-set promotional "poster" banner on the product page, shown
  * just above the options — e.g. "Also available as an Acrylic print — Explore
- * now". The whole image is the button. It flips gently on a loop (see the
- * `.sr-banner-*` rules in globals.css) to draw the eye; the front and back faces
- * are the same image, so it always reads upright.
+ * now". The whole image is the button. It does a 3D flip on hover (see the
+ * `.sr-banner-*` rules in globals.css); the front and back faces are the same
+ * image, so it always reads upright.
  *
  * `href` is already sanitised by the caller to an on-site path or a plain
  * http(s) URL (null = show the image unlinked), so no javascript: link can slip

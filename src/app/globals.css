@@ -305,19 +305,19 @@
     }
   }
 
-  /* Promo "poster" banner — a gentle periodic 3D flip to draw the eye. Built as
-     a flip card whose front and back both carry the SAME banner image, so the
-     image always reads upright (the back face's own 180° cancels the card's), and
-     it never shows a mirrored or blank side. Perspective + clipping live on the
-     wrapper; the 3D context lives on the inner element (overflow-hidden on the
-     same element as preserve-3d would flatten it). */
+  /* Promo "poster" banner — a 3D flip on hover. Built as a flip card whose front
+     and back both carry the SAME banner image, so the image always reads upright
+     (the back face's own 180° cancels the card's) and it never shows a mirrored
+     or blank side. Perspective + clipping live on the wrapper; the 3D context
+     lives on the inner element (overflow-hidden on the same element as
+     preserve-3d would flatten it). */
   .sr-banner-wrap {
     perspective: 1200px;
   }
   .sr-banner-flip {
     position: relative;
     transform-style: preserve-3d;
-    animation: sr-banner-flip 7s ease-in-out infinite;
+    transition: transform 0.7s ease;
     will-change: transform;
   }
   .sr-banner-face {
@@ -328,23 +328,20 @@
     transform: rotateY(180deg);
   }
 
-  @keyframes sr-banner-flip {
-    0%,
-    38% {
-      transform: rotateY(0deg);
-    }
-    50%,
-    88% {
+  /* Flip only on a real pointer (hover). Touch screens keep it static, and a tap
+     just follows the link — so it never gets stuck flipped on a phone. */
+  @media (hover: hover) {
+    .sr-banner-wrap:hover .sr-banner-flip {
       transform: rotateY(180deg);
-    }
-    100% {
-      transform: rotateY(360deg);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .sr-banner-flip {
-      animation: none;
+      transition: none;
+    }
+    .sr-banner-wrap:hover .sr-banner-flip {
+      transform: none;
     }
     .sr-banner-back {
       display: none;
