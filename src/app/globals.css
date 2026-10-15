@@ -311,8 +311,41 @@
      or blank side. Perspective + clipping live on the wrapper; the 3D context
      lives on the inner element (overflow-hidden on the same element as
      preserve-3d would flatten it). */
+  /* "Liquid glass" look: a glossy specular sheen and bright glass edges laid over
+     the banner image, with a soft float shadow. The overlay sits on the static
+     wrapper (above the flipping image) and ignores pointer events, so the link
+     underneath still works and the image keeps flipping beneath the glass. */
   .sr-banner-wrap {
+    position: relative;
     perspective: 1200px;
+    box-shadow: 0 6px 20px rgba(17, 24, 39, 0.14);
+    transition:
+      box-shadow 220ms ease,
+      transform 220ms ease;
+  }
+  .sr-banner-wrap::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        125deg,
+        rgba(255, 255, 255, 0.5) 0%,
+        rgba(255, 255, 255, 0.14) 18%,
+        rgba(255, 255, 255, 0) 44%
+      ),
+      linear-gradient(to top, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 32%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.25),
+      inset 0 -20px 34px -20px rgba(255, 255, 255, 0.2);
+  }
+  @media (hover: hover) {
+    .sr-banner-wrap:hover {
+      box-shadow: 0 10px 30px rgba(17, 24, 39, 0.22);
+    }
   }
   .sr-banner-flip {
     position: relative;
