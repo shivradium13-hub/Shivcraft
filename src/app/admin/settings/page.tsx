@@ -38,7 +38,6 @@ export default async function AdminSettingsPage() {
             flatRate: String(shipping.flatRateP / 100),
             freeAbove: String(shipping.freeAboveP / 100),
             originPincode: shipping.originPincode,
-            codEnabled: shipping.codEnabled,
           },
           tax: {
             gstPercent: String(tax.gstPercent),

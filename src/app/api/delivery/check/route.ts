@@ -86,9 +86,9 @@ export const GET = route(async (request: Request) => {
   const minDays = 3 + Math.max(1, distance);
   const maxDays = minDays + 2 + distance;
 
-  // Real courier serviceability when Delhivery is wired up; otherwise the
-  // postal-zone estimate exactly as before. An API hiccup also falls back.
-  let codAvailable = shipping.codEnabled && distance <= 3;
+  // The shop is prepaid-only — cash on delivery is never offered, so the PIN
+  // check always reports prepaid regardless of courier/COD serviceability.
+  const codAvailable = false;
   let note =
     "Estimated from postal zones, not a courier tracking check. We confirm the exact date on your artwork proof.";
 
@@ -103,7 +103,6 @@ export const GET = route(async (request: Request) => {
       });
     }
     if (service) {
-      codAvailable = shipping.codEnabled && service.cod;
       note =
         "Delivery to this PIN code is confirmed with our courier (Delhivery). The exact date is confirmed on your artwork proof.";
     }

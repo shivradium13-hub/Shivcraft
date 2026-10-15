@@ -19,7 +19,6 @@ export const PUT = route(async (request: Request) => {
     flatRateP: Math.round(input.shipping.flatRate * 100),
     freeAboveP: Math.round(input.shipping.freeAbove * 100),
     originPincode: input.shipping.originPincode,
-    codEnabled: input.shipping.codEnabled,
   });
 
   await writeSetting("tax", {

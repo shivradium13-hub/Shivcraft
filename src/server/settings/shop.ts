@@ -22,8 +22,6 @@ export type ShippingSettings = {
   freeAboveP: number;
   /** Where parcels leave from; the delivery estimate counts regions from here. */
   originPincode: string;
-  /** Whether cash on delivery is offered at all. */
-  codEnabled: boolean;
 };
 
 export type TaxSettings = {
@@ -72,7 +70,6 @@ export const DEFAULT_SHIPPING: ShippingSettings = {
   flatRateP: 5900,
   freeAboveP: 99900,
   originPincode: "390010",
-  codEnabled: true,
 };
 
 export const DEFAULT_TAX: TaxSettings = {
@@ -138,7 +135,6 @@ export async function getAllSettings(): Promise<{
       flatRateP: num(shipping.flatRateP, DEFAULT_SHIPPING.flatRateP),
       freeAboveP: num(shipping.freeAboveP, DEFAULT_SHIPPING.freeAboveP),
       originPincode: str(shipping.originPincode, DEFAULT_SHIPPING.originPincode),
-      codEnabled: shipping.codEnabled !== false,
     },
     tax: {
       gstPercent: num(tax.gstPercent, DEFAULT_TAX.gstPercent),

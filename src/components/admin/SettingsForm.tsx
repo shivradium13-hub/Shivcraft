@@ -8,7 +8,6 @@ export type SettingsValues = {
     flatRate: string;
     freeAbove: string;
     originPincode: string;
-    codEnabled: boolean;
   };
   tax: {
     gstPercent: string;
@@ -72,7 +71,6 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
             flatRate: Number(values.shipping.flatRate || 0),
             freeAbove: Number(values.shipping.freeAbove || 0),
             originPincode: values.shipping.originPincode,
-            codEnabled: values.shipping.codEnabled,
           },
           tax: {
             gstPercent: Number(values.tax.gstPercent || 0),

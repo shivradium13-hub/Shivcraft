@@ -277,7 +277,6 @@ export const settingsSchema = z.object({
       .string()
       .trim()
       .regex(/^[1-9]\d{5}$/, "Enter a valid 6-digit PIN code."),
-    codEnabled: z.boolean(),
   }),
   tax: z.object({
     gstPercent: z
