@@ -161,13 +161,23 @@ export function ProductCustomizer({
       ),
     [config, design.viewId, design.options],
   );
-  const activeZone = zones.find((z) => z.id === activeZoneId) ?? zones[0] ?? null;
+  /* Default the active zone to a photo when the product has one, so its uploader
+     shows straight away — the text wording is entered in the stacked form below,
+     which does not depend on the active zone. */
+  const activeZone =
+    zones.find((z) => z.id === activeZoneId) ??
+    zones.find((z) => z.kind === "PHOTO") ??
+    zones[0] ??
+    null;
   const activeValue = activeZone ? design.zones[activeZone.id] : undefined;
   const activePhoto = activeValue?.kind === "PHOTO" ? activeValue.photo : null;
   /* Every photo (image) box for this view. When there is more than one, the
      customer gets a grid of separate upload boxes (one "Choose Image" each),
      rather than editing a single box at a time. */
   const photoZones = zones.filter((z) => z.kind === "PHOTO");
+  /* Every text box for this view — shown together as a single form so the
+     customer fills them all in one place (not one box at a time). */
+  const textZones = zones.filter((z) => z.kind === "TEXT");
 
   /* ---------------------------------------------------------- persistence */
 
@@ -924,10 +934,12 @@ export function ProductCustomizer({
         </div>
       ) : null}
 
-      {/* ------------------------------------------------------------ zones */}
-      {zones.length > 1 ? (
+      {/* Photo selector chips — only when there are several photo boxes, to pick
+          which one to move/zoom/crop below. Text boxes are all shown together in
+          the form further down, so they need no chips. */}
+      {photoZones.length > 1 ? (
         <div className="mt-4 flex flex-wrap gap-1.5">
-          {zones.map((zone) => (
+          {photoZones.map((zone) => (
             <button
               key={zone.id}
               type="button"
@@ -1119,110 +1131,111 @@ export function ProductCustomizer({
                 </>
               ) : null}
             </>
-          ) : (
-            (() => {
-              const tv = activeValue?.kind === "TEXT" ? activeValue.text : null;
-              const hidden = hiddenZones.has(activeZone.id);
-              return (
-                <div className="grid gap-2.5">
-                  {/* Optional areas can be switched off entirely — the wording
-                      is kept so turning them back on restores it. */}
-                  {!activeZone.required ? (
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold text-ink">Show “{activeZone.label}”</span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={!hidden}
-                        aria-label={`Show ${activeZone.label}`}
-                        onClick={() => setZoneHidden(activeZone.id, !hidden)}
-                        className={`relative h-6 w-11 shrink-0 rounded-full transition ${!hidden ? "bg-brand-600" : "bg-field"}`}
-                      >
-                        <span
-                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${!hidden ? "left-[22px]" : "left-0.5"}`}
-                        />
-                      </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* -------------------------------------------------- your text (a form)
+          Every text box is shown together as a labelled form, so the customer
+          fills them all in one place rather than selecting one box at a time. */}
+      {textZones.length > 0 ? (
+        <div className="mt-4 grid gap-4">
+          <p className="text-xs font-semibold text-ink">Add your text</p>
+          {textZones.map((zone) => {
+            const v = design.zones[zone.id];
+            const tv = v?.kind === "TEXT" ? v.text : null;
+            const hidden = hiddenZones.has(zone.id);
+            const boxFonts = zoneFonts(config, zone);
+            const len = tv?.value.length ?? 0;
+            const max = zone.maxChars ?? 120;
+            return (
+              <div key={zone.id} className="grid gap-1.5">
+                {/* Optional areas can be switched off entirely — the wording is
+                    kept so turning them back on restores it. */}
+                {!zone.required ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs font-semibold text-ink">{zone.label}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={!hidden}
+                      aria-label={`Show ${zone.label}`}
+                      onClick={() => setZoneHidden(zone.id, !hidden)}
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition ${!hidden ? "bg-brand-600" : "bg-field"}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${!hidden ? "left-[22px]" : "left-0.5"}`}
+                      />
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-xs font-semibold text-ink">
+                    {zone.label}
+                    <span className="text-danger"> *</span>
+                  </span>
+                )}
+
+                {hidden ? (
+                  <p className="text-[11px] text-muted">
+                    This text is turned off and won’t appear on the product.
+                  </p>
+                ) : (
+                  <>
+                    <div className="relative">
+                      <input
+                        ref={activeZone?.id === zone.id ? textInputRef : undefined}
+                        value={tv?.value ?? ""}
+                        maxLength={max}
+                        onFocus={() => setActiveZoneId(zone.id)}
+                        onChange={(e) => setText(zone.id, e.target.value)}
+                        placeholder={zone.defaultText || "Type here"}
+                        className="w-full rounded-lg border border-field bg-field-bg py-2.5 pr-14 pl-3 text-sm outline-none focus:border-brand-500"
+                      />
+                      <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[11px] text-muted tabular-nums">
+                        {len}/{max}
+                      </span>
                     </div>
-                  ) : null}
-
-                  {hidden ? (
-                    <p className="text-[11px] text-muted">
-                      This text is turned off and won’t appear on the product.
+                    <p className="text-[11px] text-muted italic">
+                      *(Please note: if you leave this empty, we print the default text shown in the
+                      product image.)
                     </p>
-                  ) : (
-                    <>
-                      <label className="grid gap-1.5">
-                        <span className="text-xs font-semibold text-ink">
-                          {activeZone.label}
-                          {activeZone.required ? <span className="text-danger"> *</span> : null}
-                        </span>
-                        <input
-                          ref={textInputRef}
-                          value={tv?.value ?? ""}
-                          maxLength={activeZone.maxChars ?? 120}
-                          onChange={(e) => setText(activeZone.id, e.target.value)}
-                          placeholder={activeZone.defaultText || "Type here"}
-                          className="w-full rounded-lg border border-field bg-field-bg px-3 py-2.5 text-sm outline-none focus:border-brand-500"
-                        />
-                        {activeZone.maxChars ? (
-                          <span className="text-[11px] text-muted">
-                            {tv?.value.length ?? 0} of {activeZone.maxChars} characters
-                          </span>
-                        ) : null}
-                        <span className="text-xs text-muted italic">
-                          *If you leave this empty, we print the default text shown in the product image.
-                        </span>
-                      </label>
 
-                      {/* Per-box font picker — only the fonts the admin enabled for
-                          THIS text box, each previewed in its own style. Picking one
-                          applies to this box alone; the others are untouched. */}
-                      {(() => {
-                        const boxFonts = zoneFonts(config, activeZone);
-                        if (boxFonts.length <= 1) return null;
-                        const current = tv?.fontFamily ?? activeZone.fontFamily;
-                        return (
-                          <fieldset>
-                            <legend className="text-xs font-semibold text-ink">Font</legend>
-                            <div className="mt-1.5 grid grid-cols-4 gap-2">
-                              {boxFonts.map((f) => {
-                                const active = current === f.name;
-                                return (
-                                  <button
-                                    key={f.name}
-                                    type="button"
-                                    aria-pressed={active}
-                                    title={f.name}
-                                    onClick={() => setTextProps(activeZone.id, { fontFamily: f.name })}
-                                    className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border bg-paper transition ${
-                                      active
-                                        ? "border-brand-600 ring-1 ring-brand-200"
-                                        : "border-line-strong hover:border-brand-400"
-                                    }`}
-                                  >
-                                    <span style={{ fontFamily: fontStack(f.name) }} className="text-xl leading-none text-ink">
-                                      Abc
-                                    </span>
-                                    <span className="max-w-full truncate px-1 text-[9px] text-muted">{f.name}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </fieldset>
-                        );
-                      })()}
-
-                      {/* The per-field text formatting toolbar (alignment, B/I/U,
-                          mirror, size and reposition) is intentionally not shown to
-                          the customer: they only enter their wording, and the admin's
-                          size, alignment and position from the Frame Designer apply.
-                          Font is offered per box above. */}
-                    </>
-                  )}
-                </div>
-              );
-            })()
-          )}
+                    {/* Per-box font picker — only the fonts the admin enabled for
+                        THIS text box, each previewed in its own style. */}
+                    {boxFonts.length > 1 ? (
+                      <fieldset className="mt-0.5">
+                        <legend className="text-[11px] font-semibold text-ink">Select a font</legend>
+                        <div className="mt-1.5 grid grid-cols-5 gap-2 sm:grid-cols-6">
+                          {boxFonts.map((f) => {
+                            const current = tv?.fontFamily ?? zone.fontFamily;
+                            const active = current === f.name;
+                            return (
+                              <button
+                                key={f.name}
+                                type="button"
+                                aria-pressed={active}
+                                title={f.name}
+                                onClick={() => setTextProps(zone.id, { fontFamily: f.name })}
+                                className={`flex aspect-square items-center justify-center rounded-lg border bg-paper transition ${
+                                  active
+                                    ? "border-brand-600 ring-1 ring-brand-200"
+                                    : "border-line-strong hover:border-brand-400"
+                                }`}
+                              >
+                                <span style={{ fontFamily: fontStack(f.name) }} className="text-lg leading-none text-ink">
+                                  Abc
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </fieldset>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
