@@ -122,6 +122,14 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
   const customizerConfig = readConfig(product.customizer);
   const showDesigner = customizerConfig.enabled && !product.simpleUploadMode;
 
+  /* Optional admin-set promo "poster" banner shown above the options. The link
+     is sanitised to an on-site path or a plain http(s) URL so a bad value can
+     never inject a javascript: link; anything else shows the image unlinked. */
+  const bannerHrefRaw = (product.promoBannerHref ?? "").trim();
+  const bannerHref = /^(\/(?!\/)|https?:\/\/)/i.test(bannerHrefRaw) ? bannerHrefRaw : null;
+  const bannerExternal = /^https?:\/\//i.test(bannerHrefRaw);
+  const bannerLabel = product.promoBannerLabel?.trim() || "Explore";
+
   const specs = [
     ["Material", product.material],
     ["Colour", product.color],
@@ -244,6 +252,39 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
                   </li>
                 ))}
               </ul>
+            </div>
+          ) : null}
+
+          {product.promoBannerUrl ? (
+            <div className="mt-5">
+              {bannerHref ? (
+                bannerExternal ? (
+                  <a
+                    href={bannerHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={bannerLabel}
+                    className="block overflow-hidden rounded-card border border-line transition hover:opacity-95 hover:shadow-card"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={product.promoBannerUrl} alt={product.promoBannerLabel ?? ""} className="w-full object-cover" />
+                  </a>
+                ) : (
+                  <Link
+                    href={bannerHref}
+                    aria-label={bannerLabel}
+                    className="block overflow-hidden rounded-card border border-line transition hover:opacity-95 hover:shadow-card"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={product.promoBannerUrl} alt={product.promoBannerLabel ?? ""} className="w-full object-cover" />
+                  </Link>
+                )
+              ) : (
+                <div className="overflow-hidden rounded-card border border-line">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={product.promoBannerUrl} alt={product.promoBannerLabel ?? ""} className="w-full object-cover" />
+                </div>
+              )}
             </div>
           ) : null}
 

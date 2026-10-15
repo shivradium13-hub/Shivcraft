@@ -92,6 +92,13 @@
       "when": 1791541858689,
       "tag": "0012_special_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792069817466,
+      "tag": "0013_naive_red_hulk",
+      "breakpoints": true
     }
   ]
 }

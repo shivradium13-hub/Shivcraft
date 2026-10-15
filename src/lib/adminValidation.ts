@@ -68,6 +68,11 @@ export const productSchema = z
     occasion: optionalText(80),
     tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
     videoUrl: optionalText(500),
+    /** Optional cross-sell "poster" banner on the product page: an image that
+     *  links somewhere (an on-site path or a full URL) with an accessible label. */
+    promoBannerUrl: optionalText(1000),
+    promoBannerHref: optionalText(500),
+    promoBannerLabel: optionalText(120),
 
     isPersonalizable: z.boolean().default(false),
     /** When true, each option's price is its full price, not added to the base. */

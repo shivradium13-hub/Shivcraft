@@ -44,6 +44,9 @@ export type ProductFormValues = {
   occasion: string;
   tags: string;
   videoUrl: string;
+  promoBannerUrl: string;
+  promoBannerHref: string;
+  promoBannerLabel: string;
   isPersonalizable: boolean;
   variantPriceAbsolute: boolean;
   simpleUploadMode: boolean;
@@ -62,6 +65,7 @@ export const EMPTY_PRODUCT: ProductFormValues = {
   price: "", discountPrice: "", stock: "0", lowStockThreshold: "5",
   brand: "", material: "", color: "", size: "", weightGrams: "", occasion: "",
   tags: "", videoUrl: "",
+  promoBannerUrl: "", promoBannerHref: "", promoBannerLabel: "",
   // New products use full per-option prices (no "+"): the customer sees each
   // size's actual price, not an amount added to the base. Matches every
   // existing product; an admin can still switch to "+" (delta) per product.
@@ -177,6 +181,8 @@ export function ProductForm({
   // which some in-app browsers suppress, making the button seem dead.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const bannerFileRef = useRef<HTMLInputElement>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   function set<K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -238,6 +244,25 @@ export function ProductForm({
     }
   }
 
+  async function uploadBanner(file: File) {
+    setUploadingBanner(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json?.error?.message ?? "That image could not be uploaded.");
+        return;
+      }
+      set("promoBannerUrl", json.data.url);
+    } finally {
+      setUploadingBanner(false);
+      if (bannerFileRef.current) bannerFileRef.current.value = "";
+    }
+  }
+
   async function save(thenDesign = false) {
     // Don't silently drop a half-filled option: a row with a price or stock but
     // no name would be discarded on save (the admin's price would vanish). Tell
@@ -287,6 +312,9 @@ export function ProductForm({
       occasion: values.occasion,
       tags: values.tags.split(",").map((t) => t.trim()).filter(Boolean),
       videoUrl: values.videoUrl,
+      promoBannerUrl: values.promoBannerUrl,
+      promoBannerHref: values.promoBannerHref,
+      promoBannerLabel: values.promoBannerLabel,
       // The Frame Designer path does not use the simple personalisation fields,
       // so it is never blocked by their "add at least one field" rule — the
       // admin builds the template in the designer instead.
@@ -656,6 +684,72 @@ export function ProductForm({
 
           <Field label="Video URL" hint="YouTube, Vimeo or your own hosting. We do not host video.">
             <input className={input} value={values.videoUrl} onChange={(e) => set("videoUrl", e.target.value)} />
+          </Field>
+        </Card>
+
+        {/* ------------------------------------------------- promo banner */}
+        <Card
+          title="Promo banner"
+          subtitle="An optional clickable banner shown on the product page, just above the options — e.g. “Also available as an Acrylic print — Explore now”. Upload a wide banner image and set where it links. Leave empty for no banner."
+        >
+          {values.promoBannerUrl ? (
+            <div className="overflow-hidden rounded-xl border border-sr-line">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={values.promoBannerUrl} alt="" className="w-full object-cover" />
+              <div className="flex justify-end p-1.5">
+                <button
+                  type="button"
+                  onClick={() => set("promoBannerUrl", "")}
+                  className="rounded px-2 py-1 text-[11px] font-semibold text-danger hover:bg-danger-soft"
+                >
+                  Remove banner
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-lg border border-dashed border-sr-line-strong px-4 py-6 text-center text-sm text-sr-muted">
+              No banner yet. Upload a wide image (the whole banner is the button).
+            </p>
+          )}
+
+          <div>
+            <button
+              type="button"
+              disabled={uploadingBanner}
+              onClick={() => bannerFileRef.current?.click()}
+              className="rounded-full bg-sr-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {uploadingBanner ? "Uploading…" : values.promoBannerUrl ? "Replace banner" : "Upload banner"}
+            </button>
+            <input
+              ref={bannerFileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(e) => e.target.files?.[0] && uploadBanner(e.target.files[0])}
+            />
+            <p className="mt-1.5 text-xs text-sr-muted">A wide banner reads best. JPG, PNG or WebP, up to 8 MB.</p>
+          </div>
+
+          <Field
+            label="Banner link"
+            hint="Where tapping the banner goes — another product on this site (e.g. /product/acrylic-heart-collage) or a full URL (https://…)."
+          >
+            <input
+              className={input}
+              value={values.promoBannerHref}
+              placeholder="/product/…"
+              onChange={(e) => set("promoBannerHref", e.target.value)}
+            />
+          </Field>
+
+          <Field label="Banner text (for accessibility)" hint="A short description of the banner, read by screen readers. Optional.">
+            <input
+              className={input}
+              value={values.promoBannerLabel}
+              placeholder="Also available as an Acrylic print"
+              onChange={(e) => set("promoBannerLabel", e.target.value)}
+            />
           </Field>
         </Card>
 

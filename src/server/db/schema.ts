@@ -286,6 +286,15 @@ export const products = pgTable(
      *  page. We do not host video ourselves. */
     videoUrl: text("video_url"),
 
+    /** Optional promotional "poster" banner shown on the product page, above the
+     *  options — e.g. "Also available as an Acrylic print — Explore now". The
+     *  image IS the clickable poster; promoBannerHref is where it links (an
+     *  on-site path like /product/… or a full URL), and promoBannerLabel is its
+     *  accessible text. All null means no banner. */
+    promoBannerUrl: text("promo_banner_url"),
+    promoBannerHref: varchar("promo_banner_href", { length: 500 }),
+    promoBannerLabel: varchar("promo_banner_label", { length: 120 }),
+
     metaTitle: varchar("meta_title", { length: 200 }),
     metaDescription: varchar("meta_description", { length: 320 }),
 
