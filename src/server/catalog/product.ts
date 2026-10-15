@@ -11,7 +11,7 @@ import {
   users,
 } from "@/server/db/schema";
 
-import type { ProductCard } from "./queries";
+import { cardImagesSql, toCardImages, type ProductCard } from "./queries";
 
 export type ProductDetail = NonNullable<Awaited<ReturnType<typeof getProductBySlug>>>;
 
@@ -112,6 +112,7 @@ export async function getRelatedProducts(
         WHERE pi.product_id = ${products.id}
         ORDER BY pi.is_primary DESC, pi.position ASC LIMIT 1
       )`,
+      images: cardImagesSql,
       ratingSum: products.ratingSum,
       ratingCount: products.ratingCount,
       stock: products.stock,
@@ -134,6 +135,7 @@ export async function getRelatedProducts(
     priceP: row.priceP,
     discountPriceP: row.discountPriceP,
     imageUrl: row.imageUrl,
+    images: toCardImages(row.images, row.imageUrl),
     rating: row.ratingCount > 0 ? Number((row.ratingSum / row.ratingCount).toFixed(1)) : 0,
     ratingCount: row.ratingCount,
     stock: row.stock,

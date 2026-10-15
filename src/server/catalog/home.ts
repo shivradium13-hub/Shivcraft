@@ -3,7 +3,7 @@ import { and, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import { banners, categories, products, reviews, users } from "@/server/db/schema";
 
-import type { ProductCard } from "./queries";
+import { cardImagesSql, toCardImages, type ProductCard } from "./queries";
 
 const primaryImage = sql<string | null>`(
   SELECT pi.url FROM product_images pi
@@ -19,6 +19,7 @@ const cardColumns = {
   priceP: products.priceP,
   discountPriceP: products.discountPriceP,
   imageUrl: primaryImage,
+  images: cardImagesSql,
   ratingSum: products.ratingSum,
   ratingCount: products.ratingCount,
   stock: products.stock,
@@ -34,6 +35,7 @@ type CardRow = {
   priceP: number;
   discountPriceP: number | null;
   imageUrl: string | null;
+  images: unknown;
   ratingSum: number;
   ratingCount: number;
   stock: number;
@@ -50,6 +52,7 @@ function toCard(row: CardRow): ProductCard {
     priceP: row.priceP,
     discountPriceP: row.discountPriceP,
     imageUrl: row.imageUrl,
+    images: toCardImages(row.images, row.imageUrl),
     rating: row.ratingCount > 0 ? Number((row.ratingSum / row.ratingCount).toFixed(1)) : 0,
     ratingCount: row.ratingCount,
     stock: row.stock,

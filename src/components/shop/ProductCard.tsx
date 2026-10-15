@@ -3,7 +3,8 @@ import Link from "next/link";
 import { discountPercent, effectivePriceP, formatPaise } from "@/lib/money";
 import type { ProductCard as ProductCardData } from "@/server/catalog/queries";
 
-import { Badge, ProductImage, Stars } from "../ui/primitives";
+import { Stars } from "../ui/primitives";
+import { ProductCardMedia } from "./ProductCardMedia";
 import { WishlistButton } from "./WishlistButton";
 
 const CARD_SIZES = "(min-width: 1280px) 220px, (min-width: 1024px) 20vw, (min-width: 640px) 30vw, 45vw";
@@ -21,26 +22,16 @@ export function ProductCard({
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-card border border-line bg-paper shadow-card transition hover:shadow-lift">
-      <Link href={`/product/${product.slug}`} className="relative block aspect-[4/5] overflow-hidden bg-brand-50">
-        <ProductImage
-          src={product.imageUrl}
-          alt={product.name}
-          sizes={CARD_SIZES}
-          priority={priority}
-          className="transition duration-300 group-hover:scale-[1.04]"
-        />
-        <span className="absolute top-2 left-2 flex flex-col items-start gap-1">
-          {product.isBestSeller ? <Badge tone="marigold">Best Seller</Badge> : null}
-          {product.isPersonalizable ? <Badge tone="brand">Personalise</Badge> : null}
-        </span>
-        {outOfStock ? (
-          <span className="absolute inset-0 flex items-center justify-center bg-ink/55">
-            <span className="rounded-full bg-paper px-3 py-1 text-xs font-semibold text-ink">
-              Out of stock
-            </span>
-          </span>
-        ) : null}
-      </Link>
+      <ProductCardMedia
+        images={product.images}
+        name={product.name}
+        slug={product.slug}
+        priority={priority}
+        bestSeller={product.isBestSeller}
+        personalizable={product.isPersonalizable}
+        outOfStock={outOfStock}
+        sizes={CARD_SIZES}
+      />
 
       <WishlistButton productId={product.id} name={product.name} />
 

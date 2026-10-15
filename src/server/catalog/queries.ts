@@ -11,6 +11,9 @@ export type ProductCard = {
   priceP: number;
   discountPriceP: number | null;
   imageUrl: string | null;
+  /** Up to the first few product images (primary first) for the card's
+   *  hover/tap preview. Always starts with imageUrl when present. */
+  images: string[];
   rating: number;
   ratingCount: number;
   stock: number;
@@ -18,6 +21,26 @@ export type ProductCard = {
   isPersonalizable: boolean;
   categorySlug: string;
 };
+
+/** First few images of a product (primary first) as a JSON array, for the card
+ *  preview. Correlated so a product never duplicates its row. */
+export const cardImagesSql = sql<string[]>`(
+  SELECT coalesce(json_agg(u.url ORDER BY u.is_primary DESC, u.position ASC), '[]'::json)
+  FROM (
+    SELECT pi.url, pi.is_primary, pi.position
+    FROM product_images pi
+    WHERE pi.product_id = ${products.id}
+    ORDER BY pi.is_primary DESC, pi.position ASC
+    LIMIT 6
+  ) u
+)`;
+
+/** Normalise the aggregated images into a clean string[] (primary first). */
+export function toCardImages(images: unknown, imageUrl: string | null): string[] {
+  const list = Array.isArray(images) ? images.filter((u): u is string => typeof u === "string" && u.length > 0) : [];
+  if (list.length > 0) return list;
+  return imageUrl ? [imageUrl] : [];
+}
 
 /** A category slug plus every descendant id, so browsing "Photo Frames"
  *  returns products filed under "LED Photo Frames" too. */
@@ -148,6 +171,7 @@ export async function findProducts(
         priceP: products.priceP,
         discountPriceP: products.discountPriceP,
         imageUrl: primaryImage,
+        images: cardImagesSql,
         ratingSum: products.ratingSum,
         ratingCount: products.ratingCount,
         stock: products.stock,
@@ -173,6 +197,7 @@ export async function findProducts(
       priceP: row.priceP,
       discountPriceP: row.discountPriceP,
       imageUrl: row.imageUrl,
+      images: toCardImages(row.images, row.imageUrl),
       rating: row.ratingCount > 0 ? Number((row.ratingSum / row.ratingCount).toFixed(1)) : 0,
       ratingCount: row.ratingCount,
       stock: row.stock,
