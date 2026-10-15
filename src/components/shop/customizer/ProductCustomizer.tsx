@@ -17,7 +17,6 @@ import {
   isGroupVisible,
   isZoneVisible,
   resolveOption,
-  resolveTextStyle,
   zoneFonts,
   zonesForView,
   type CustomizerConfig,
@@ -762,27 +761,6 @@ export function ProductCustomizer({
         </div>
       ) : null}
 
-      {steps.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {steps.map((step) => (
-            <button
-              key={step.id}
-              type="button"
-              onClick={() => setActiveZoneId(step.id)}
-              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
-                step.done ? "bg-brand-50 text-brand-700" : "bg-paper text-muted ring-1 ring-line-strong"
-              }`}
-            >
-              {step.done ? "✓ " : ""}
-              {step.label}
-            </button>
-          ))}
-          <span className="text-[11px] text-muted">
-            {remaining === 0 ? "Ready to add to cart" : `${remaining} left`}
-          </span>
-        </div>
-      ) : null}
-
       {/* When integrated into the product page, the purchase panel shows its own
           "Preview" button, so this inline one is hidden to avoid a duplicate. */}
       {!integrated && config.tools.fullscreenPreview && Object.keys(design.zones).length > 0 ? (
@@ -1140,7 +1118,12 @@ export function ProductCustomizer({
           fills them all in one place rather than selecting one box at a time. */}
       {textZones.length > 0 ? (
         <div className="mt-4 grid gap-4">
-          <p className="text-xs font-semibold text-ink">Add your text</p>
+          <div>
+            <p className="text-xs font-semibold text-ink">Add your text</p>
+            <p className="mt-0.5 text-[11px] text-muted italic">
+              *If you leave a field empty, we print the default text shown in the product image.
+            </p>
+          </div>
           {textZones.map((zone) => {
             const v = design.zones[zone.id];
             const tv = v?.kind === "TEXT" ? v.text : null;
@@ -1195,10 +1178,6 @@ export function ProductCustomizer({
                         {len}/{max}
                       </span>
                     </div>
-                    <p className="text-[11px] text-muted italic">
-                      *(Please note: if you leave this empty, we print the default text shown in the
-                      product image.)
-                    </p>
 
                     {/* Per-box font picker — only the fonts the admin enabled for
                         THIS text box, each previewed in its own style. */}
@@ -1360,17 +1339,6 @@ export function ProductCustomizer({
         </div>
       ) : null}
 
-      {/* ------------------------------------------------ your customisation */}
-      {personalised ? (
-        <CustomizationSummary
-          config={config}
-          design={design}
-          onEdit={(id) => {
-            setReposition(null);
-            setActiveZoneId(id);
-          }}
-        />
-      ) : null}
 
       {config.customizationFeeP > 0 || config.optionGroups.length > 0 ? (
         <dl className="mt-4 space-y-1 border-t border-line pt-3 text-sm">
@@ -1848,85 +1816,6 @@ function ProgressSteps({ current }: { current: number }) {
 
 /** A plain-language recap of everything the customer has set, each row linking
  *  back to the area it describes. */
-function CustomizationSummary({
-  config,
-  design,
-  onEdit,
-}: {
-  config: CustomizerConfig;
-  design: CustomerDesign;
-  onEdit: (zoneId: string) => void;
-}) {
-  const items = config.zones
-    .map((z) => {
-      const v = design.zones[z.id];
-      if (!v) return null;
-      if (z.kind === "TEXT" && v.kind === "TEXT" && v.text.value.trim()) {
-        const style = resolveTextStyle(config, z, design);
-        return {
-          id: z.id,
-          label: z.label,
-          kind: "TEXT" as const,
-          value: v.text.value,
-          color: v.text.color ?? style.color,
-          font: v.text.fontFamily ?? style.fontFamily,
-          size: Math.round(v.text.fontSizePct ?? style.fontSizePct),
-          moved: Boolean(v.text.offsetX || v.text.offsetY || v.text.rotation),
-        };
-      }
-      if (z.kind === "PHOTO" && v.kind === "PHOTO" && v.photo.uploadId) {
-        return { id: z.id, label: z.label, kind: "PHOTO" as const };
-      }
-      return null;
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
-
-  if (items.length === 0) return null;
-
-  return (
-    <div className="mt-4 rounded-card border border-line bg-paper p-3">
-      <p className="text-xs font-semibold text-ink">Your customisation</p>
-      <dl className="mt-2 grid gap-2">
-        {items.map((it) => (
-          <div key={it.id} className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <dt className="text-[11px] font-semibold text-ink-soft">{it.label}</dt>
-              {it.kind === "TEXT" ? (
-                <dd className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
-                  <span
-                    className="max-w-[14rem] truncate font-medium text-ink"
-                    style={{ fontFamily: fontStack(it.font) }}
-                  >
-                    “{it.value}”
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <span
-                      className="inline-block h-3 w-3 rounded-full border border-line-strong"
-                      style={{ background: it.color }}
-                    />
-                    {it.font}
-                  </span>
-                  <span>· size {it.size}</span>
-                  {it.moved ? <span>· moved</span> : null}
-                </dd>
-              ) : (
-                <dd className="mt-0.5 text-[11px] text-muted">Photo added</dd>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => onEdit(it.id)}
-              className="shrink-0 rounded-lg border border-line-strong px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:border-brand-400 hover:text-brand-700"
-            >
-              Edit
-            </button>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
-}
-
 function normaliseAngle(angle: number) {
   const wrapped = ((angle + 180) % 360 + 360) % 360 - 180;
   return wrapped;
