@@ -55,9 +55,13 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
     occasion: product.occasion ?? "",
     tags: product.tags.join(", "),
     videoUrl: product.videoUrl ?? "",
-    promoBannerUrl: product.promoBannerUrl ?? "",
-    promoBannerHref: product.promoBannerHref ?? "",
-    promoBannerLabel: product.promoBannerLabel ?? "",
+    promoBanners: Array.isArray(product.promoBanners)
+      ? (product.promoBanners as Array<{ url?: string; href?: string; label?: string }>).map((b) => ({
+          url: b?.url ?? "",
+          href: b?.href ?? "",
+          label: b?.label ?? "",
+        }))
+      : [],
     promoBannerDesktop: product.promoBannerDesktop,
     promoBannerMobile: product.promoBannerMobile,
     isPersonalizable: product.isPersonalizable,

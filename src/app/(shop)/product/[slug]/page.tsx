@@ -123,13 +123,23 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
   const customizerConfig = readConfig(product.customizer);
   const showDesigner = customizerConfig.enabled && !product.simpleUploadMode;
 
-  /* Optional admin-set promo "poster" banner shown above the options. The link
-     is sanitised to an on-site path or a plain http(s) URL so a bad value can
-     never inject a javascript: link; anything else shows the image unlinked. */
-  const bannerHrefRaw = (product.promoBannerHref ?? "").trim();
-  const bannerHref = /^(\/(?!\/)|https?:\/\/)/i.test(bannerHrefRaw) ? bannerHrefRaw : null;
-  const bannerExternal = /^https?:\/\//i.test(bannerHrefRaw);
-  const bannerLabel = product.promoBannerLabel?.trim() || "Explore";
+  /* Optional admin-set promo "poster" banners shown above the options; the page
+     flips through them. Each link is sanitised to an on-site path or a plain
+     http(s) URL so a bad value can never inject a javascript: link; anything
+     else shows the image unlinked. */
+  type PromoBanner = { url: string; href: string | null; external: boolean; label: string };
+  const promoBanners: PromoBanner[] = (Array.isArray(product.promoBanners) ? product.promoBanners : [])
+    .map((b): PromoBanner | null => {
+      const raw = b as { url?: unknown; href?: unknown; label?: unknown };
+      const url = typeof raw.url === "string" ? raw.url.trim() : "";
+      if (!url) return null;
+      const hrefRaw = typeof raw.href === "string" ? raw.href.trim() : "";
+      const href = /^(\/(?!\/)|https?:\/\/)/i.test(hrefRaw) ? hrefRaw : null;
+      const external = /^https?:\/\//i.test(hrefRaw);
+      const label = (typeof raw.label === "string" ? raw.label.trim() : "") || "Explore";
+      return { url, href, external, label };
+    })
+    .filter((b): b is PromoBanner => b !== null);
 
   const specs = [
     ["Material", product.material],
@@ -256,12 +266,9 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
             </div>
           ) : null}
 
-          {product.promoBannerUrl ? (
+          {promoBanners.length > 0 ? (
             <ProductPromoBanner
-              url={product.promoBannerUrl}
-              href={bannerHref}
-              external={bannerExternal}
-              label={bannerLabel}
+              banners={promoBanners}
               showDesktop={product.promoBannerDesktop}
               showMobile={product.promoBannerMobile}
             />

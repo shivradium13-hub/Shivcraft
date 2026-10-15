@@ -70,10 +70,19 @@ export const productSchema = z
     videoUrl: optionalText(500),
     /** Optional cross-sell "poster" banner on the product page: an image that
      *  links somewhere (an on-site path or a full URL) with an accessible label. */
-    promoBannerUrl: optionalText(1000),
-    promoBannerHref: optionalText(500),
-    promoBannerLabel: optionalText(120),
-    /** Which device widths the banner shows on. Both default on. */
+    /** Ordered promo banners, each an image + optional link + accessible label.
+     *  The product page rotates through them with a flip. */
+    promoBanners: z
+      .array(
+        z.object({
+          url: z.string().trim().min(1).max(1000),
+          href: optionalText(500),
+          label: optionalText(120),
+        }),
+      )
+      .max(10)
+      .default([]),
+    /** Which device widths the banners show on. Both default on. */
     promoBannerDesktop: z.boolean().default(true),
     promoBannerMobile: z.boolean().default(true),
 

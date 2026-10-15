@@ -25,6 +25,8 @@ type VariantRow = {
   stock: string;
   isActive: boolean;
 };
+/** One promo banner the product page rotates through: an image + optional link. */
+type BannerRow = { url: string; href: string; label: string };
 
 export type ProductFormValues = {
   name: string;
@@ -44,9 +46,7 @@ export type ProductFormValues = {
   occasion: string;
   tags: string;
   videoUrl: string;
-  promoBannerUrl: string;
-  promoBannerHref: string;
-  promoBannerLabel: string;
+  promoBanners: BannerRow[];
   promoBannerDesktop: boolean;
   promoBannerMobile: boolean;
   isPersonalizable: boolean;
@@ -67,7 +67,7 @@ export const EMPTY_PRODUCT: ProductFormValues = {
   price: "", discountPrice: "", stock: "0", lowStockThreshold: "5",
   brand: "", material: "", color: "", size: "", weightGrams: "", occasion: "",
   tags: "", videoUrl: "",
-  promoBannerUrl: "", promoBannerHref: "", promoBannerLabel: "",
+  promoBanners: [],
   promoBannerDesktop: true, promoBannerMobile: true,
   // New products use full per-option prices (no "+"): the customer sees each
   // size's actual price, not an amount added to the base. Matches every
@@ -185,6 +185,8 @@ export function ProductForm({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
+  // Which banner row a pending image upload belongs to.
+  const bannerTargetIndex = useRef<number>(0);
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
   function set<K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) {
@@ -247,7 +249,18 @@ export function ProductForm({
     }
   }
 
+  const addBanner = () =>
+    setValues((prev) => ({ ...prev, promoBanners: [...prev.promoBanners, { url: "", href: "", label: "" }] }));
+  const removeBanner = (index: number) =>
+    setValues((prev) => ({ ...prev, promoBanners: prev.promoBanners.filter((_, i) => i !== index) }));
+  const setBanner = (index: number, patch: Partial<BannerRow>) =>
+    setValues((prev) => ({
+      ...prev,
+      promoBanners: prev.promoBanners.map((b, i) => (i === index ? { ...b, ...patch } : b)),
+    }));
+
   async function uploadBanner(file: File) {
+    const index = bannerTargetIndex.current;
     setUploadingBanner(true);
     setError(null);
     try {
@@ -259,7 +272,7 @@ export function ProductForm({
         setError(json?.error?.message ?? "That image could not be uploaded.");
         return;
       }
-      set("promoBannerUrl", json.data.url);
+      setBanner(index, { url: json.data.url });
     } finally {
       setUploadingBanner(false);
       if (bannerFileRef.current) bannerFileRef.current.value = "";
@@ -315,9 +328,10 @@ export function ProductForm({
       occasion: values.occasion,
       tags: values.tags.split(",").map((t) => t.trim()).filter(Boolean),
       videoUrl: values.videoUrl,
-      promoBannerUrl: values.promoBannerUrl,
-      promoBannerHref: values.promoBannerHref,
-      promoBannerLabel: values.promoBannerLabel,
+      // Only banners with an image are saved; label/link alone are dropped.
+      promoBanners: values.promoBanners
+        .filter((b) => b.url.trim())
+        .map((b) => ({ url: b.url.trim(), href: b.href.trim(), label: b.label.trim() })),
       promoBannerDesktop: values.promoBannerDesktop,
       promoBannerMobile: values.promoBannerMobile,
       // The Frame Designer path does not use the simple personalisation fields,
@@ -694,71 +708,93 @@ export function ProductForm({
 
         {/* ------------------------------------------------- promo banner */}
         <Card
-          title="Promo banner"
-          subtitle="An optional clickable banner shown on the product page, just above the options — e.g. “Also available as an Acrylic print — Explore now”. Upload a wide banner image and set where it links. Leave empty for no banner."
+          title="Promo banners"
+          subtitle="Optional clickable banners shown on the product page, just above the options. Add one or more — with several, the page flips through them automatically. Leave empty for none."
         >
-          {values.promoBannerUrl ? (
-            <div className="overflow-hidden rounded-xl border border-sr-line">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={values.promoBannerUrl} alt="" className="w-full object-cover" />
-              <div className="flex justify-end p-1.5">
-                <button
-                  type="button"
-                  onClick={() => set("promoBannerUrl", "")}
-                  className="rounded px-2 py-1 text-[11px] font-semibold text-danger hover:bg-danger-soft"
-                >
-                  Remove banner
-                </button>
-              </div>
-            </div>
-          ) : (
+          {values.promoBanners.length === 0 ? (
             <p className="rounded-lg border border-dashed border-sr-line-strong px-4 py-6 text-center text-sm text-sr-muted">
-              No banner yet. Upload a wide image (the whole banner is the button).
+              No banners yet. Add one, upload a wide image and set where it links (the whole banner is the button).
             </p>
+          ) : (
+            <div className="space-y-3">
+              {values.promoBanners.map((banner, i) => (
+                <div key={i} className="space-y-2.5 rounded-xl border border-sr-line bg-sr-canvas p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-sr-muted">Banner {i + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeBanner(i)}
+                      className="rounded px-2 py-1 text-[11px] font-semibold text-danger hover:bg-danger-soft"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  {banner.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={banner.url} alt="" className="w-full rounded-lg border border-sr-line object-cover" />
+                  ) : (
+                    <p className="rounded-lg border border-dashed border-sr-line-strong px-4 py-5 text-center text-sm text-sr-muted">
+                      No image yet — upload a wide banner.
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={uploadingBanner}
+                    onClick={() => {
+                      bannerTargetIndex.current = i;
+                      bannerFileRef.current?.click();
+                    }}
+                    className="rounded-full bg-sr-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {uploadingBanner ? "Uploading…" : banner.url ? "Replace image" : "Upload image"}
+                  </button>
+
+                  <Field label="Link" hint="Another product on this site (e.g. /product/acrylic-…) or a full URL (https://…).">
+                    <input
+                      className={input}
+                      value={banner.href}
+                      placeholder="/product/…"
+                      onChange={(e) => setBanner(i, { href: e.target.value })}
+                    />
+                  </Field>
+
+                  <Field label="Banner text (for accessibility)" hint="Short description read by screen readers. Optional.">
+                    <input
+                      className={input}
+                      value={banner.label}
+                      placeholder="Also available as an Acrylic print"
+                      onChange={(e) => setBanner(i, { label: e.target.value })}
+                    />
+                  </Field>
+                </div>
+              ))}
+            </div>
           )}
 
-          <div>
-            <button
-              type="button"
-              disabled={uploadingBanner}
-              onClick={() => bannerFileRef.current?.click()}
-              className="rounded-full bg-sr-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {uploadingBanner ? "Uploading…" : values.promoBannerUrl ? "Replace banner" : "Upload banner"}
-            </button>
-            <input
-              ref={bannerFileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="sr-only"
-              onChange={(e) => e.target.files?.[0] && uploadBanner(e.target.files[0])}
-            />
-            <p className="mt-1.5 text-xs text-sr-muted">A wide banner reads best. JPG, PNG or WebP, up to 8 MB.</p>
-          </div>
-
-          <Field
-            label="Banner link"
-            hint="Where tapping the banner goes — another product on this site (e.g. /product/acrylic-heart-collage) or a full URL (https://…)."
+          {/* Shared hidden file input; the clicked banner sets bannerTargetIndex. */}
+          <input
+            ref={bannerFileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            onChange={(e) => e.target.files?.[0] && uploadBanner(e.target.files[0])}
+          />
+          <button
+            type="button"
+            onClick={addBanner}
+            className="w-full rounded-lg border border-dashed border-sr-line-strong px-4 py-2.5 text-sm font-medium text-sr-body hover:border-sr-400 hover:text-sr-700"
           >
-            <input
-              className={input}
-              value={values.promoBannerHref}
-              placeholder="/product/…"
-              onChange={(e) => set("promoBannerHref", e.target.value)}
-            />
-          </Field>
-
-          <Field label="Banner text (for accessibility)" hint="A short description of the banner, read by screen readers. Optional.">
-            <input
-              className={input}
-              value={values.promoBannerLabel}
-              placeholder="Also available as an Acrylic print"
-              onChange={(e) => set("promoBannerLabel", e.target.value)}
-            />
-          </Field>
+            + Add banner
+          </button>
+          <p className="text-xs text-sr-muted">
+            A wide banner reads best. JPG, PNG or WebP, up to 8 MB. With more than one, they flip automatically on the
+            product page.
+          </p>
 
           <div>
-            <p className="mb-1.5 text-xs font-medium text-sr-body">Show the banner on</p>
+            <p className="mb-1.5 text-xs font-medium text-sr-body">Show the banners on</p>
             <div className="grid grid-cols-2 gap-2">
               <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
                 <input

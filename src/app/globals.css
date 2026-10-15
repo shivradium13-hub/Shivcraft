@@ -362,10 +362,11 @@
       display: none;
     }
   }
+  /* The element the carousel flips (transform + transition applied inline by the
+     client component). A single banner just sits still. */
   .sr-banner-flip {
     position: relative;
     transform-style: preserve-3d;
-    transition: transform 0.7s ease;
     will-change: transform;
   }
   .sr-banner-face {
@@ -375,30 +376,5 @@
     aspect-ratio: 15 / 4;
     width: 100%;
     object-fit: cover;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-  }
-  .sr-banner-back {
-    transform: rotateY(180deg);
-  }
-
-  /* Flip only on a real pointer (hover). Touch screens keep it static, and a tap
-     just follows the link — so it never gets stuck flipped on a phone. */
-  @media (hover: hover) {
-    .sr-banner-wrap:hover .sr-banner-flip {
-      transform: rotateY(180deg);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .sr-banner-flip {
-      transition: none;
-    }
-    .sr-banner-wrap:hover .sr-banner-flip {
-      transform: none;
-    }
-    .sr-banner-back {
-      display: none;
-    }
   }
 }

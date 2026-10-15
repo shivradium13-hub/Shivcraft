@@ -298,6 +298,10 @@ export const products = pgTable(
      *  on; turn one off to show the banner only on the other device size. */
     promoBannerDesktop: boolean("promo_banner_desktop").notNull().default(true),
     promoBannerMobile: boolean("promo_banner_mobile").notNull().default(true),
+    /** Ordered list of promo banners, each `{ url, href, label }`. The product
+     *  page rotates through them with a flip. The single promoBanner* fields above
+     *  are the legacy one-banner form, migrated into this array. */
+    promoBanners: jsonb("promo_banners"),
 
     metaTitle: varchar("meta_title", { length: 200 }),
     metaDescription: varchar("meta_description", { length: 320 }),
