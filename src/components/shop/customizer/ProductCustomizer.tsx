@@ -396,9 +396,13 @@ export function ProductCustomizer({
     [commit, design, config.views, config.zones],
   );
 
+  // The customer cannot drag/move (or pinch) the photo inside its box — the
+  // placement is set by the admin in the Frame Designer and is fixed for the
+  // customer. (Zoom/rotate/flip/crop buttons remain where the admin enabled
+  // them; only the free drag is locked off.)
   const gestures = usePhotoGestures({
     placement: activePhoto,
-    enabled: Boolean(activeZone && activePhoto),
+    enabled: false,
     onChange: (patch) => {
       if (activeZone) setPhoto(activeZone.id, patch, true);
     },
@@ -981,14 +985,14 @@ export function ProductCustomizer({
                       />
                     ) : (
                       <>
-                        {/* The admin's sample image for this box, at full opacity;
+                        {/* The admin's sample image for this box, faded as a hint;
                             the "+" badge and "Choose Image" mark it to replace. */}
                         {zone.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={zone.imageUrl}
                             alt=""
-                            className="absolute inset-0 h-full w-full object-cover"
+                            className="absolute inset-0 h-full w-full object-cover opacity-50"
                           />
                         ) : null}
                         <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-3xl font-light leading-none text-brand-700 shadow-sm">
@@ -1009,7 +1013,7 @@ export function ProductCustomizer({
             })}
           </div>
           <p className="mt-2 text-[11px] text-muted">
-            Tap a box to upload its photo. Select one to move, zoom or crop it below.
+            Tap a box to upload its photo. Select one to zoom or crop it below.
           </p>
         </div>
       ) : null}
@@ -1078,14 +1082,14 @@ export function ProductCustomizer({
                       />
                     ) : (
                       <>
-                        {/* The admin's sample image for this box, at full opacity;
+                        {/* The admin's sample image for this box, faded as a hint;
                             the "+" badge and "Choose Image" mark it to replace. */}
                         {activeZone.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={activeZone.imageUrl}
                             alt=""
-                            className="absolute inset-0 h-full w-full object-cover"
+                            className="absolute inset-0 h-full w-full object-cover opacity-50"
                           />
                         ) : null}
                         <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-3xl font-light leading-none text-brand-700 shadow-sm">
@@ -1115,7 +1119,7 @@ export function ProductCustomizer({
                     Edit image (crop)
                   </button>
                   <p className="mt-2 text-center text-[11px] text-muted">
-                    Drag the photo to move it. Pinch, or hold ⌘/Ctrl and scroll, to zoom.
+                    Use the buttons below to zoom, rotate or crop your photo.
                   </p>
                   <div className="mt-2 flex flex-wrap justify-center gap-1.5">
                     {config.tools.zoom ? (

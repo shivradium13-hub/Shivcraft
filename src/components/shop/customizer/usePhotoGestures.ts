@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, type CSSProperties } from "react";
 
 import type { PhotoPlacement } from "@/lib/customizer/design";
 
@@ -121,7 +121,9 @@ export function usePhotoGestures({
       onPointerUp,
       onPointerCancel: onPointerUp,
       onWheel,
-      style: { touchAction: "none" as const },
+      // Only hold the touch surface (blocking page scroll) while dragging is
+      // actually enabled; when it is off, the preview scrolls like normal page.
+      style: (enabled ? { touchAction: "none" } : {}) as CSSProperties,
     },
   };
 }
