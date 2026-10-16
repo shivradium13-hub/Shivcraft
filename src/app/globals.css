@@ -317,6 +317,9 @@
      underneath still works and the image keeps flipping beneath the glass. */
   .sr-banner-wrap {
     position: relative;
+    /* A wide, short banner strip; fixes the height so the slide/fade tracks have
+       something to fill and clip to. */
+    aspect-ratio: 15 / 4;
     perspective: 1200px;
     /* A soft, rounded glass edge (not a full pill, not sharp). */
     border-radius: 10px;
@@ -370,10 +373,10 @@
     will-change: transform;
   }
   .sr-banner-face {
-    /* A wide, short banner strip (like a web promo banner), not a tall square.
-       object-cover fills the strip: a purpose-made wide banner shows in full, a
-       square/tall image is centre-cropped to the strip. */
-    aspect-ratio: 15 / 4;
+    /* Fills the strip set by the wrapper. object-cover: a purpose-made wide
+       banner shows in full, a square/tall image is centre-cropped. */
+    display: block;
+    height: 100%;
     width: 100%;
     object-fit: cover;
   }

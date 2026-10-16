@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "promo_banner_transition" varchar(20) DEFAULT 'flip' NOT NULL;

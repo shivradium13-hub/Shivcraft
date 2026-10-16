@@ -120,6 +120,13 @@
       "when": 1792089074378,
       "tag": "0016_lowly_gwen_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792161373861,
+      "tag": "0017_thick_xorn",
+      "breakpoints": true
     }
   ]
 }

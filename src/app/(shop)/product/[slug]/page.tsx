@@ -140,6 +140,11 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
       return { url, href, external, label };
     })
     .filter((b): b is PromoBanner => b !== null);
+  const bannerTransition = (["flip", "fade", "slide", "slide-up"] as const).includes(
+    product.promoBannerTransition as "flip" | "fade" | "slide" | "slide-up",
+  )
+    ? (product.promoBannerTransition as "flip" | "fade" | "slide" | "slide-up")
+    : "flip";
 
   const specs = [
     ["Material", product.material],
@@ -269,6 +274,7 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
           {promoBanners.length > 0 ? (
             <ProductPromoBanner
               banners={promoBanners}
+              transition={bannerTransition}
               showDesktop={product.promoBannerDesktop}
               showMobile={product.promoBannerMobile}
             />

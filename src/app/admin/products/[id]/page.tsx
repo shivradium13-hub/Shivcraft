@@ -62,6 +62,12 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
           label: b?.label ?? "",
         }))
       : [],
+    promoBannerTransition:
+      product.promoBannerTransition === "fade" ||
+      product.promoBannerTransition === "slide" ||
+      product.promoBannerTransition === "slide-up"
+        ? product.promoBannerTransition
+        : "flip",
     promoBannerDesktop: product.promoBannerDesktop,
     promoBannerMobile: product.promoBannerMobile,
     cardHoverPreview: product.cardHoverPreview,

@@ -27,6 +27,8 @@ type VariantRow = {
 };
 /** One promo banner the product page rotates through: an image + optional link. */
 type BannerRow = { url: string; href: string; label: string };
+/** How the promo banners animate between each other. */
+type BannerTransition = "flip" | "fade" | "slide" | "slide-up";
 
 export type ProductFormValues = {
   name: string;
@@ -47,6 +49,7 @@ export type ProductFormValues = {
   tags: string;
   videoUrl: string;
   promoBanners: BannerRow[];
+  promoBannerTransition: BannerTransition;
   promoBannerDesktop: boolean;
   promoBannerMobile: boolean;
   cardHoverPreview: boolean;
@@ -70,6 +73,7 @@ export const EMPTY_PRODUCT: ProductFormValues = {
   brand: "", material: "", color: "", size: "", weightGrams: "", occasion: "",
   tags: "", videoUrl: "",
   promoBanners: [],
+  promoBannerTransition: "flip",
   promoBannerDesktop: true, promoBannerMobile: true,
   cardHoverPreview: true, cardTouchPreview: true,
   // New products use full per-option prices (no "+"): the customer sees each
@@ -346,6 +350,7 @@ export function ProductForm({
       promoBanners: values.promoBanners
         .filter((b) => b.url.trim())
         .map((b) => ({ url: b.url.trim(), href: b.href.trim(), label: b.label.trim() })),
+      promoBannerTransition: values.promoBannerTransition,
       promoBannerDesktop: values.promoBannerDesktop,
       promoBannerMobile: values.promoBannerMobile,
       cardHoverPreview: values.cardHoverPreview,
@@ -860,9 +865,22 @@ export function ProductForm({
             + Add banner
           </button>
           <p className="text-xs text-sr-muted">
-            A wide banner reads best. JPG, PNG or WebP, up to 8 MB. With more than one, they flip automatically on the
+            A wide banner reads best. JPG, PNG or WebP, up to 8 MB. With more than one, they rotate automatically on the
             product page.
           </p>
+
+          <Field label="Transition" hint="How the banners animate between each other (with two or more banners).">
+            <select
+              className={input}
+              value={values.promoBannerTransition}
+              onChange={(e) => set("promoBannerTransition", e.target.value as BannerTransition)}
+            >
+              <option value="flip">Flip</option>
+              <option value="fade">Fade</option>
+              <option value="slide">Slide (sideways)</option>
+              <option value="slide-up">Slide up</option>
+            </select>
+          </Field>
 
           <div>
             <p className="mb-1.5 text-xs font-medium text-sr-body">Show the banners on</p>

@@ -299,9 +299,12 @@ export const products = pgTable(
     promoBannerDesktop: boolean("promo_banner_desktop").notNull().default(true),
     promoBannerMobile: boolean("promo_banner_mobile").notNull().default(true),
     /** Ordered list of promo banners, each `{ url, href, label }`. The product
-     *  page rotates through them with a flip. The single promoBanner* fields above
-     *  are the legacy one-banner form, migrated into this array. */
+     *  page rotates through them. The single promoBanner* fields above are the
+     *  legacy one-banner form, migrated into this array. */
     promoBanners: jsonb("promo_banners"),
+    /** How the banners transition between each other: flip | fade | slide |
+     *  slide-up. */
+    promoBannerTransition: varchar("promo_banner_transition", { length: 20 }).notNull().default("flip"),
 
     /** Product-card image preview: on hover (desktop) and on tap/swipe (mobile)
      *  the card previews the product's other images. Both default on; they only

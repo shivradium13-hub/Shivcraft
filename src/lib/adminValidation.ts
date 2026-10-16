@@ -82,6 +82,8 @@ export const productSchema = z
       )
       .max(10)
       .default([]),
+    /** How the banners animate between each other. */
+    promoBannerTransition: z.enum(["flip", "fade", "slide", "slide-up"]).default("flip"),
     /** Which device widths the banners show on. Both default on. */
     promoBannerDesktop: z.boolean().default(true),
     promoBannerMobile: z.boolean().default(true),
