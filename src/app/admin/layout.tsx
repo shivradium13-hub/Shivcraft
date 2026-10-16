@@ -24,14 +24,15 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
     <div className="min-h-dvh bg-sr-canvas">
       <header className="bg-night">
-        <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:py-3">
           <Link href="/admin" className="flex items-center gap-2.5" aria-label="Shiv Radium admin">
-            {/* Light logo variant, legible on the dark admin header. */}
+            {/* Light logo variant, legible on the dark admin header. Smaller on a
+                phone to keep the header compact. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-footer.png"
               alt="Shiv Radium"
-              className="h-10 w-auto object-contain"
+              className="h-8 w-auto object-contain sm:h-10"
             />
             <span className="rounded-md border border-white/15 px-2 py-0.5 text-[11px] font-semibold tracking-wider text-sr-200 uppercase">
               Admin
