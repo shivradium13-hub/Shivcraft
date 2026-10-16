@@ -910,24 +910,10 @@ export function ProductForm({
           </div>
         </Card>
 
-        {/* ---------------------------------------------------- attributes */}
-        <Card title="Attributes">
-          <Row>
-            <Field label="Brand"><input className={input} value={values.brand} onChange={(e) => set("brand", e.target.value)} /></Field>
-            <Field label="Material"><input className={input} value={values.material} onChange={(e) => set("material", e.target.value)} /></Field>
-          </Row>
-          <Row>
-            <Field label="Colour"><input className={input} value={values.color} onChange={(e) => set("color", e.target.value)} /></Field>
-            <Field label="Size"><input className={input} value={values.size} onChange={(e) => set("size", e.target.value)} /></Field>
-          </Row>
-          <Row>
-            <Field label="Weight (grams)"><input type="number" min="0" className={input} value={values.weightGrams} onChange={(e) => set("weightGrams", e.target.value)} /></Field>
-            <Field label="Occasion"><input className={input} value={values.occasion} onChange={(e) => set("occasion", e.target.value)} /></Field>
-          </Row>
-          <Field label="Tags" hint="Comma separated. These are matched by search.">
-            <input className={input} value={values.tags} onChange={(e) => set("tags", e.target.value)} />
-          </Field>
-        </Card>
+        {/* The "Attributes" card (brand/material/colour/size/weight/occasion/tags)
+            was removed from the form on request — the values are still kept in
+            state and saved, so existing products keep theirs; new ones just leave
+            them blank. */}
 
         {/* -------------------------------------------------- frame designer */}
         <Card title="Frame Designer">
