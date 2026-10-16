@@ -86,8 +86,11 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             </Link>
           </nav>
 
-          <div className="ml-auto flex items-center gap-3">
-            <span className="text-xs text-sr-200">{user.email}</span>
+          <div className="ml-auto flex min-w-0 items-center gap-3">
+            {/* The email is useful but bulky on a phone, so it is shown from sm
+                up; on mobile the header stays a tidy two rows (logo + sign out,
+                then the nav strip). */}
+            <span className="hidden min-w-0 truncate text-xs text-sr-200 sm:inline">{user.email}</span>
             <LogoutButton />
           </div>
         </div>

@@ -455,8 +455,8 @@ export function ProductForm({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-      <div className="space-y-4">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+      <div className="min-w-0 space-y-4">
         {/* ------------------------------------------------------ basics */}
         <Card title="Basics">
           <Row>
@@ -1132,7 +1132,7 @@ export function ProductForm({
       </div>
 
       {/* --------------------------------------------------------- sidebar */}
-      <div className="space-y-4 lg:sticky lg:top-4">
+      <div className="min-w-0 space-y-4 lg:sticky lg:top-4">
         <Card title="Visibility">
           <Toggle checked={values.isActive} onChange={(v) => set("isActive", v)} label="Live on the storefront" hint="Turn this off to hide it without deleting." />
           <Toggle checked={values.isBestSeller} onChange={(v) => set("isBestSeller", v)} label="Best seller" />
@@ -1221,7 +1221,10 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
     <section className="rounded-2xl border border-sr-line bg-sr-surface p-5">
       <h2 className="font-display text-base font-semibold text-sr-ink">{title}</h2>
       {subtitle ? <p className="mt-0.5 text-xs text-sr-muted">{subtitle}</p> : null}
-      <div className="mt-3 grid gap-3">{children}</div>
+      {/* grid-cols-1 (minmax(0,1fr)) rather than an implicit auto column, so wide
+          children shrink instead of forcing the card — and the page — wider than
+          a phone. */}
+      <div className="mt-3 grid grid-cols-1 gap-3">{children}</div>
     </section>
   );
 }
