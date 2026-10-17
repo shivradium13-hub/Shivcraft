@@ -813,6 +813,68 @@ export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/* --------------------------------------------------------------- whatsapp */
+
+/**
+ * One-time passwords for WhatsApp login. Only a SHA-256 of the code is stored
+ * (like sessions and password-reset tokens), so a database leak cannot reveal a
+ * live code. One active OTP per phone — a resend replaces the row. `attempts`
+ * caps brute force; `consumedAt` makes a code single-use.
+ */
+export const otpCodes = pgTable(
+  "otp_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The mobile number, normalised to its last 10 digits. */
+    phone: varchar("phone", { length: 20 }).notNull(),
+    codeHash: varchar("code_hash", { length: 64 }).notNull(),
+    purpose: varchar("purpose", { length: 20 }).notNull().default("login"),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    /** When the current code was last sent — backs the resend cooldown. */
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("otp_codes_phone_unique").on(t.phone)],
+);
+
+/**
+ * Audit log for every WhatsApp message the system sends (OTP and order
+ * updates), plus a `mock` flag for messages that were only simulated while the
+ * sender is restricted. Backs the admin message logs, delivery-status tracking
+ * (updated by the webhook via `providerMessageId`), and the cost estimate.
+ * No message body or OTP code is stored here.
+ */
+export const whatsappMessages = pgTable(
+  "whatsapp_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** "otp" or "order". */
+    kind: varchar("kind", { length: 20 }).notNull(),
+    /** Meta billing category: "AUTHENTICATION" or "UTILITY" (for the cost view). */
+    category: varchar("category", { length: 20 }),
+    /** Recipient, last 10 digits; masked when shown in the admin. */
+    toPhone: varchar("to_phone", { length: 20 }).notNull(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
+    orderNumber: varchar("order_number", { length: 32 }),
+    template: varchar("template", { length: 80 }),
+    /** queued | mock | sent | delivered | read | failed */
+    status: varchar("status", { length: 20 }).notNull().default("queued"),
+    providerMessageId: varchar("provider_message_id", { length: 128 }),
+    error: varchar("error", { length: 400 }),
+    mock: boolean("mock").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("whatsapp_messages_created_idx").on(t.createdAt),
+    index("whatsapp_messages_provider_idx").on(t.providerMessageId),
+    index("whatsapp_messages_order_idx").on(t.orderId),
+  ],
+);
+
 /* ------------------------------------------------------------------ types */
 
 export type CustomizationAnswer = {
