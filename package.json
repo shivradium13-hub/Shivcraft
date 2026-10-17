@@ -15,7 +15,8 @@
     "db:seed": "tsx --env-file=.env.local src/server/db/seed.ts",
     "db:seed:frames": "tsx --env-file=.env.local scripts/seed-frame-designer-products.ts",
     "typecheck": "tsc --noEmit",
-    "verify:security": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/verify-security.ts"
+    "verify:security": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/verify-security.ts",
+    "test:whatsapp": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-whatsapp-webhook.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
