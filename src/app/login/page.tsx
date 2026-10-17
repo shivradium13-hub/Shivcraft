@@ -3,8 +3,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AuthShell } from "@/components/auth/AuthShell";
-import { LoginForm } from "@/components/auth/LoginForm";
+import { LoginTabs } from "@/components/auth/LoginTabs";
 import { getCurrentUser } from "@/server/auth/session";
+import { getWhatsappSettings } from "@/server/whatsapp/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +22,14 @@ export default async function LoginPage(props: PageProps<"/login">) {
   const user = await getCurrentUser();
   if (user) redirect(next ?? (user.role === "ADMIN" ? "/admin" : "/"));
 
+  const otpEnabled = (await getWhatsappSettings()).otpEnabled;
+
   return (
     <AuthShell
       title="Sign in"
       subtitle="Use your email or mobile number. Customers reach their orders here; staff land on the dashboard."
     >
-      <LoginForm next={next} />
+      <LoginTabs next={next} whatsappEnabled={otpEnabled} />
       <p className="mt-5 border-t border-sr-line pt-4 text-center text-sm text-sr-muted">
         New to Shiv Radium?{" "}
         <Link
