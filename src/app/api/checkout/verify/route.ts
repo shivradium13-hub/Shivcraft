@@ -3,9 +3,10 @@ import { z } from "zod";
 
 import { ApiError, ok, readJson, route } from "@/server/api/http";
 import { requireUser } from "@/server/auth/guards";
+import { notifyOrderEvent } from "@/server/notify/orderNotify";
 import { verifyRazorpaySignature } from "@/server/payments/razorpay";
 import { db } from "@/server/db";
-import { notifications, orderEvents, orders, payments } from "@/server/db/schema";
+import { orderEvents, orders, payments } from "@/server/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,12 +102,14 @@ export const POST = route(async (request: Request) => {
     note: "Payment received",
   });
 
-  await db.insert(notifications).values({
+  // In-app + email + WhatsApp (gated by admin settings), after the payment is
+  // verified — never on a failed/forged one. Best-effort; cannot break confirm.
+  await notifyOrderEvent("CONFIRMED", {
     userId: user.id,
-    type: "ORDER_CONFIRMED",
-    title: `Order ${order.number} confirmed`,
-    body: "Payment received. We will send your artwork proof within one working day.",
-    href: `/order/${order.number}`,
+    orderId: order.id,
+    orderNumber: order.number,
+    email: user.email,
+    phone: user.phone,
   });
 
   return ok({ orderNumber: order.number, confirmed: true });

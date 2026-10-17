@@ -121,6 +121,7 @@ export const POST = route(
     if (moveToShipped) {
       await notifyOrderEvent("SHIPPED", {
         userId: order.customer.id,
+        orderId: order.id,
         orderNumber,
         email: order.customer.email,
         phone: order.customer.phone,

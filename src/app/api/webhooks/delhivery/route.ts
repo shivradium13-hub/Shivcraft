@@ -114,6 +114,7 @@ export const POST = route(async (request: Request) => {
   if (event) {
     await notifyOrderEvent(event, {
       userId: order.userId,
+      orderId: order.id,
       orderNumber: order.orderNumber,
       email: order.email,
       phone: order.phone,

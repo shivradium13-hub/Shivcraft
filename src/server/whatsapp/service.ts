@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { and, eq, inArray } from "drizzle-orm";
+
 import { normalisePhone10 } from "@/lib/whatsapp";
 import { db } from "@/server/db";
 import { whatsappMessages } from "@/server/db/schema";
@@ -242,6 +244,43 @@ export async function sendOrderTemplate(args: {
     mock: false,
   });
   return { ok: result.ok, mock: false, logId };
+}
+
+/**
+ * Whether an order-update message for this order + template has already been
+ * recorded (in any non-failed state), so a repeated status event or webhook
+ * retry does not send a duplicate.
+ */
+export async function orderMessageAlreadySent(orderId: string, template: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: whatsappMessages.id })
+    .from(whatsappMessages)
+    .where(
+      and(
+        eq(whatsappMessages.orderId, orderId),
+        eq(whatsappMessages.template, template),
+        inArray(whatsappMessages.status, ["queued", "mock", "sent", "delivered", "read"]),
+      ),
+    )
+    .limit(1);
+  return Boolean(rows[0]);
+}
+
+/**
+ * Apply a delivery-status update from the webhook to the matching log row
+ * (keyed by the provider's message id). Only advances to a more final state.
+ */
+export async function applyStatusUpdate(providerMessageId: string, status: string): Promise<void> {
+  const allowed = ["sent", "delivered", "read", "failed"];
+  if (!allowed.includes(status)) return;
+  try {
+    await db
+      .update(whatsappMessages)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(whatsappMessages.providerMessageId, providerMessageId));
+  } catch (error) {
+    console.error("[whatsapp] status update failed:", error);
+  }
 }
 
 /* --------------------------------------------------------------- webhook */
