@@ -53,6 +53,10 @@ export function OtpLoginForm({ next }: { next?: string }) {
         setError(json?.error?.message ?? "Could not send the code. Please try again.");
         return;
       }
+      if (!json?.data || (json.data.sent !== true && json.data.mock !== true)) {
+        setError("Could not send the code. Please try again or sign in with your password.");
+        return;
+      }
       setStep("code");
       setResendIn(json?.data?.resendSeconds ?? 45);
       setDevCode(json?.data?.devCode ?? null);
