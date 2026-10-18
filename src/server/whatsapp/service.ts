@@ -151,7 +151,14 @@ async function postTemplate(
       console.error("[whatsapp] send failed:", res.status, msg);
       return { ok: false, error: msg.slice(0, 400) };
     }
-    return { ok: true, messageId: json?.messages?.[0]?.id };
+    // A 2xx response without an accepted message ID is not confirmation that
+    // Meta accepted the OTP. Never show "code sent" without that evidence.
+    const messageId = json?.messages?.[0]?.id;
+    if (!messageId) {
+      console.error("[whatsapp] Meta returned no message id");
+      return { ok: false, error: "No message ID returned by WhatsApp" };
+    }
+    return { ok: true, messageId };
   } catch (error) {
     console.error("[whatsapp] send error:", error);
     return { ok: false, error: "network error" };

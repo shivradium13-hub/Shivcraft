@@ -55,6 +55,13 @@ export async function issueOtp(
     enabled: settings.enabled,
     userId: userId ?? null,
   });
+  // A failed delivery must not leave a usable code in the database.
+  // Match the exact hash so a concurrent, newer OTP is never deleted.
+  if (!result.ok) {
+    await db.delete(otpCodes).where(
+      and(eq(otpCodes.phone, normalisePhone10(phone)), eq(otpCodes.codeHash, hashOtp(normalisePhone10(phone), code))),
+    );
+  }
   return { code, mock: result.mock, ok: result.ok };
 }
 

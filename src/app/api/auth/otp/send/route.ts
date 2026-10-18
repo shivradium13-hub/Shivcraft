@@ -5,6 +5,7 @@ import { ApiError, ok, readJson, route } from "@/server/api/http";
 import { issueOtp } from "@/server/auth/otp";
 import { clientIp, rateLimit } from "@/server/security/rateLimit";
 import { getWhatsappSettings } from "@/server/whatsapp/settings";
+import { isLiveMode } from "@/server/whatsapp/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,11 +40,20 @@ export const POST = route(async (request: Request) => {
     throw new ApiError("FORBIDDEN", "WhatsApp login isn’t available right now. Please sign in with your password.");
   }
 
+  // Do not create a non-deliverable OTP in production: the customer cannot log in
+  // and the UI must not pretend a WhatsApp message was sent.
+  if (process.env.NODE_ENV === "production" && !isLiveMode(settings.enabled)) {
+    throw new ApiError("SERVICE_UNAVAILABLE", "WhatsApp codes are temporarily unavailable. Please sign in with your password.");
+  }
+
   const issued = await issueOtp(phone, settings);
+  if (!issued.ok || (process.env.NODE_ENV === "production" && issued.mock)) {
+    throw new ApiError("SERVICE_UNAVAILABLE", "We couldn't send your WhatsApp code. Please try again later or sign in with your password.");
+  }
   const devCode = process.env.NODE_ENV !== "production" ? issued.code : undefined;
 
   return ok({
-    sent: true,
+    sent: issued.ok && !issued.mock,
     mock: issued.mock,
     ttlMinutes: settings.otpTtlMinutes,
     resendSeconds: settings.otpResendSeconds,
