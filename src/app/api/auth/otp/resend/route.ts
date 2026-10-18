@@ -5,6 +5,7 @@ import { ApiError, ok, readJson, route } from "@/server/api/http";
 import { issueOtp, resendWaitSeconds } from "@/server/auth/otp";
 import { clientIp, rateLimit } from "@/server/security/rateLimit";
 import { getWhatsappSettings } from "@/server/whatsapp/settings";
+import { isLiveMode } from "@/server/whatsapp/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,16 +31,23 @@ export const POST = route(async (request: Request) => {
     throw new ApiError("FORBIDDEN", "WhatsApp login isn’t available right now.");
   }
 
+  if (process.env.NODE_ENV === "production" && !isLiveMode(settings.enabled)) {
+    throw new ApiError("SERVICE_UNAVAILABLE", "WhatsApp codes are temporarily unavailable. Please sign in with your password.");
+  }
+
   const wait = await resendWaitSeconds(phone, settings.otpResendSeconds);
   if (wait > 0) {
     throw new ApiError("RATE_LIMITED", `Please wait ${wait}s before requesting another code.`);
   }
 
   const issued = await issueOtp(phone, settings);
+  if (!issued.ok || (process.env.NODE_ENV === "production" && issued.mock)) {
+    throw new ApiError("SERVICE_UNAVAILABLE", "We couldn't resend your WhatsApp code. Please try again later or sign in with your password.");
+  }
   const devCode = process.env.NODE_ENV !== "production" ? issued.code : undefined;
 
   return ok({
-    sent: true,
+    sent: issued.ok && !issued.mock,
     mock: issued.mock,
     ttlMinutes: settings.otpTtlMinutes,
     resendSeconds: settings.otpResendSeconds,
