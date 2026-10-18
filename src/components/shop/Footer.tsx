@@ -31,6 +31,14 @@ const columns = [
       { label: "Help & Support", href: "/support" },
     ],
   },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy Policy", href: "/privacy-policy" },
+      { label: "Terms & Conditions", href: "/terms-and-conditions" },
+      { label: "Data Deletion", href: "/data-deletion" },
+    ],
+  },
 ];
 
 export function Footer({
@@ -43,7 +51,7 @@ export function Footer({
   return (
     <footer className="mt-12 bg-night text-white">
       <div className="mx-auto w-full max-w-[1400px] px-4 py-10">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div>
             {/* The white-wordmark logo sits straight on the dark footer. Both
                 heights are admin-controlled (Storefront settings): a smaller one
