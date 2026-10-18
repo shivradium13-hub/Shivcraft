@@ -19,6 +19,7 @@ export type ApiErrorCode =
   | "OUT_OF_STOCK"
   | "INVALID_COUPON"
   | "RATE_LIMITED"
+  | "SERVICE_UNAVAILABLE"
   | "SERVER_ERROR";
 
 const STATUS: Record<ApiErrorCode, number> = {
@@ -30,6 +31,7 @@ const STATUS: Record<ApiErrorCode, number> = {
   OUT_OF_STOCK: 409,
   INVALID_COUPON: 422,
   RATE_LIMITED: 429,
+  SERVICE_UNAVAILABLE: 503,
   SERVER_ERROR: 500,
 };
 
