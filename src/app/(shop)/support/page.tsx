@@ -164,13 +164,14 @@ export default async function SupportPage() {
             from the site.
           </Faq>
           <Faq question="Can I return or exchange an order?">
-            No. Every piece is made to order with your name, photo or message, so it cannot be
-            resold — we do not accept returns or exchanges, and all sales are final.
+            Because personalised items are made to your specifications, we generally cannot
+            accept change-of-mind returns after production begins. This does not affect your
+            rights if an item is defective, damaged, incorrect or does not match the approved proof.
           </Faq>
           <Faq question="Something arrived damaged or wrong.">
-            That is the one exception. If an item reaches you damaged, or it does not match the
-            proof you approved, send a photo through whichever channel above is quickest and we will
-            remake it (or refund it where a remake is not possible).
+            Contact us promptly with your order number and photos through any support channel
+            listed above. We will review the issue and provide an appropriate remedy, such as
+            replacement, repair or refund, in line with applicable consumer law.
           </Faq>
           <Faq question="When does a refund reach me?">
             In the rare case one is issued, an online refund takes three to seven working days to
