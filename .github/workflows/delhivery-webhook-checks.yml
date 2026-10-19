@@ -39,5 +39,7 @@ jobs:
         run: pnpm exec next typegen
       - name: Typecheck
         run: pnpm typecheck
+      - name: Lint changed Delhivery files
+        run: pnpm exec eslint src/app/api/webhooks/delhivery/route.ts src/server/delivery/webhookScan.ts scripts/test-delhivery-webhook.ts
       - name: Delhivery unit tests
         run: pnpm test:delhivery
