@@ -43,7 +43,11 @@ jobs:
         run: pnpm typecheck
       - name: Lint changed Delhivery files
         run: pnpm exec eslint src/app/api/webhooks/delhivery/route.ts src/server/delivery/webhookScan.ts src/server/delivery/notificationWorker.ts src/app/api/internal/delhivery-notifications/route.ts scripts/test-delhivery-webhook.ts
-      - name: Validate Drizzle migration history
+      - name: Validate Drizzle migration history (offline)
+        # drizzle.config.ts validates DATABASE_URL even for offline snapshot checks.
+        # This is a fake URL; no database is contacted and no credentials are needed.
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/unused_ci_database
         run: pnpm exec drizzle-kit check
       - name: Delhivery unit tests
         run: pnpm test:delhivery
