@@ -59,7 +59,8 @@ export const POST = route(async (request: Request) => {
   // Unknown AWBs aren't customer orders. Never expose order or customer PII.
   if (!order) return ok({ accepted: true, matched: false });
 
-  const target = targetStatusFromScan(scan.status);
+  
+const target = targetStatusFromScan(scan.status, scan.statusType);
 
   // Atomic conditional update prevents two simultaneous duplicate/reordered
   // scans from both advancing the same order and both sending a notification.
