@@ -1,67 +1,51 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
-import { ok, route } from "@/server/api/http";
-import { STATUS_FLOW } from "@/server/admin/orders";
+import { ApiError, ok, route } from "@/server/api/http";
 import { db } from "@/server/db";
-import { orderEvents, orders, payments, users } from "@/server/db/schema";
-import { notifyOrderEvent, type OrderEvent } from "@/server/notify/orderNotify";
+import { orderEvents, orders, users } from "@/server/db/schema";
+import {
+  authorisedDelhiveryWebhook,
+  DELHIVERY_WEBHOOK_HEADER,
+  parseDelhiveryScan,
+  shouldAdvanceTo,
+  targetStatusFromScan,
+} from "@/server/delivery/webhookScan";
+import { notifyOrderEvent } from "@/server/notify/orderNotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Delhivery status push (webhook). Delhivery POSTs a status whenever a parcel
- * is scanned, so the order updates itself — no polling. Guarded by a shared
- * secret in the URL (?token=…) that matches DELHIVERY_WEBHOOK_SECRET; register
- * the URL with that token in Delhivery One. Disabled (401) until the secret is
- * set.
+ * Delhivery B2C Scan Push webhook. The client must ask Delhivery to send
+ * x-delhivery-webhook-token with the secret stored in DELHIVERY_WEBHOOK_SECRET.
  *
- * NOTE: Delhivery's exact webhook body differs per account. This reads the
- * waybill and a status string from the common locations and stores the raw
- * status; confirm the shape against a real push and adjust `extract` if needed.
+ * Acknowledgement is returned only after the status is durably committed.
+ * The external WhatsApp and email calls happen after commit; if delivery is
+ * slow, Delhivery can retry. Delivery deduplication uses the existing
+ * order+template message log. The 500ms P99 target MUST be load-tested before
+ * registering this production endpoint; for strict fast ACK a durable outbox
+ * worker is still needed.
  */
-
-type Classified = { event: OrderEvent | null; advanceTo: "OUT_FOR_DELIVERY" | "DELIVERED" | null };
-
-function classify(status: string): Classified {
-  const s = status.toLowerCase();
-  if (s.includes("delivered") && !s.includes("undelivered")) {
-    return { event: "DELIVERED", advanceTo: "DELIVERED" };
-  }
-  if (s.includes("out for delivery") || s.includes("out-for-delivery")) {
-    return { event: "OUT_FOR_DELIVERY", advanceTo: "OUT_FOR_DELIVERY" };
-  }
-  if (s.includes("rto") || s.includes("return")) return { event: "NDR", advanceTo: null };
-  if (s.includes("undelivered") || s.includes("ndr") || s.includes("not delivered")) {
-    return { event: "NDR", advanceTo: null };
-  }
-  if (s.includes("transit") || s.includes("dispatched") || s.includes("manifest") || s.includes("picked")) {
-    return { event: "SHIPPED", advanceTo: null };
-  }
-  return { event: null, advanceTo: null };
-}
-
-/** Pull the waybill + status from Delhivery's (variable) webhook body. */
-function extract(body: unknown): { waybill: string | null; status: string | null } {
-  const b = body as Record<string, unknown>;
-  const shipment = (b?.Shipment ?? b?.shipment ?? b) as Record<string, unknown> | undefined;
-  const statusObj = (shipment?.Status ?? shipment?.status) as Record<string, unknown> | undefined;
-  const waybill =
-    (shipment?.AWB as string) ?? (shipment?.Waybill as string) ?? (b?.waybill as string) ?? (b?.AWB as string) ?? null;
-  const status =
-    (statusObj?.Status as string) ?? (statusObj?.status as string) ?? (b?.status as string) ?? null;
-  return { waybill: waybill ? String(waybill) : null, status: status ? String(status) : null };
-}
-
 export const POST = route(async (request: Request) => {
   const secret = process.env.DELHIVERY_WEBHOOK_SECRET;
-  const token = new URL(request.url).searchParams.get("token");
-  // Disabled until a secret is set; and only the matching token is accepted.
-  if (!secret || token !== secret) return ok({ ignored: true });
+  if (!secret) throw new ApiError("SERVICE_UNAVAILABLE", "Webhook is not configured.");
+  if (!authorisedDelhiveryWebhook(secret, request.headers.get(DELHIVERY_WEBHOOK_HEADER))) {
+    throw new ApiError("UNAUTHORIZED", "Invalid webhook authorization.");
+  }
 
-  const body = await request.json().catch(() => null);
-  const { waybill, status } = extract(body);
-  if (!waybill || !status) return ok({ ignored: true });
+  const raw = await request.text();
+  if (Buffer.byteLength(raw, "utf8") > 16_384) {
+    throw new ApiError("BAD_REQUEST", "Webhook payload too large.");
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    throw new ApiError("BAD_REQUEST", "Invalid JSON.");
+  }
+
+  const scan = parseDelhiveryScan(body);
+  if (!scan) throw new ApiError("BAD_REQUEST", "Invalid Delhivery Scan Push payload.");
 
   const [order] = await db
     .select({
@@ -75,44 +59,56 @@ export const POST = route(async (request: Request) => {
     })
     .from(orders)
     .innerJoin(users, eq(users.id, orders.userId))
-    .where(eq(orders.delhiveryAwb, waybill))
+    .where(and(eq(orders.delhiveryAwb, scan.awb), eq(orders.shippingProvider, "DELHIVERY")))
     .limit(1);
 
-  if (!order) return ok({ ignored: true });
+  // Unknown AWBs aren't customer orders. Never expose order or customer PII.
+  if (!order) return ok({ accepted: true, matched: false });
 
-  const { event, advanceTo } = classify(status);
+  const target = targetStatusFromScan(scan.status);
+  let advanced = false;
 
-  // Store the raw courier status, and advance the order only forward.
-  const currentIndex = STATUS_FLOW.indexOf(order.status);
-  const targetIndex = advanceTo ? STATUS_FLOW.indexOf(advanceTo) : -1;
-  const shouldAdvance =
-    advanceTo != null && currentIndex >= 0 && targetIndex > currentIndex && order.status !== "CANCELLED";
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(orders)
-      .set({ shipmentStatus: status, ...(shouldAdvance ? { status: advanceTo! } : {}), updatedAt: new Date() })
-      .where(eq(orders.id, order.id));
-
-    if (shouldAdvance) {
-      await tx.insert(orderEvents).values({
-        orderId: order.id,
-        status: advanceTo!,
-        note: `Delhivery: ${status}`,
-        actorId: null,
-      });
-      // Cash on delivery settles at the door.
-      if (advanceTo === "DELIVERED") {
-        await tx
-          .update(payments)
-          .set({ status: "PAID", updatedAt: new Date() })
-          .where(and(eq(payments.orderId, order.id), eq(payments.status, "COD_PENDING")));
-      }
+  // Atomic conditional update prevents two simultaneous duplicate/reordered
+  // scans from both advancing the same order and both sending a notification.
+  // Always record the shipment scan text for display, even if it does not
+  // advance the order. Do not regress a terminal order's stored status.
+  const changed = await db.transaction(async (tx) => {
+    if (!target) {
+      await tx
+        .update(orders)
+        .set({ shipmentStatus: scan.status, updatedAt: new Date() })
+        .where(and(eq(orders.id, order.id), sql`${orders.status} <> 'DELIVERED' AND ${orders.status} <> 'CANCELLED'`));
+      return false;
     }
-  });
 
-  if (event) {
-    await notifyOrderEvent(event, {
+    const updated = await tx
+      .update(orders)
+      .set({ status: target, shipmentStatus: scan.status, updatedAt: new Date() })
+      .where(and(
+        eq(orders.id, order.id),
+        sql`case ${orders.status}
+          when 'PLACED' then 0 when 'CONFIRMED' then 1 when 'PROCESSING' then 2
+          when 'CUSTOMIZED' then 3 when 'PACKED' then 4 when 'SHIPPED' then 5
+          when 'OUT_FOR_DELIVERY' then 6 else 99 end < ${target === "DELIVERED" ? 7 : 6}`,
+      ))
+      .returning({ id: orders.id });
+
+    if (!updated.length) return false;
+
+    await tx.insert(orderEvents).values({
+      orderId: order.id,
+      status: target,
+      note: `Delhivery: ${scan.status}`,
+      actorId: null,
+    });
+    return true;
+  });
+  advanced = changed;
+
+  // The courier's scan alone does NOT establish collection of COD funds.
+  // Payment reconciliation must come from verified courier remittance data.
+  if (advanced && target && shouldAdvanceTo(order.status, target)) {
+    await notifyOrderEvent(target, {
       userId: order.userId,
       orderId: order.id,
       orderNumber: order.orderNumber,
@@ -122,5 +118,5 @@ export const POST = route(async (request: Request) => {
     });
   }
 
-  return ok({ orderNumber: order.orderNumber, status, advanced: shouldAdvance });
+  return ok({ accepted: true, advanced });
 });
