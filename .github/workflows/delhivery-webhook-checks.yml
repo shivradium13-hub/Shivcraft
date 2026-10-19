@@ -43,5 +43,7 @@ jobs:
         run: pnpm typecheck
       - name: Lint changed Delhivery files
         run: pnpm exec eslint src/app/api/webhooks/delhivery/route.ts src/server/delivery/webhookScan.ts src/server/delivery/notificationWorker.ts src/app/api/internal/delhivery-notifications/route.ts scripts/test-delhivery-webhook.ts
+      - name: Validate Drizzle migration history
+        run: pnpm exec drizzle-kit check
       - name: Delhivery unit tests
         run: pnpm test:delhivery
