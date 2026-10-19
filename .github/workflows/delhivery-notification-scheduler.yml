@@ -1,0 +1,42 @@
+name: Delhivery notification scheduler
+
+# GitHub schedules run from the default branch only, after PR merge.
+# IMPORTANT: The job remains DISABLED unless repository variable
+# DELHIVERY_NOTIFICATIONS_ENABLED is explicitly set to 'true'.
+# First run the DB migration and validate a live end-to-end delivery.
+on:
+  schedule:
+    # Every 5 minutes; GitHub may delay or occasionally drop scheduled runs.
+    - cron: '2-59/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: delhivery-notification-scheduler
+  cancel-in-progress: false
+
+jobs:
+  send:
+    if: ${{ vars.DELHIVERY_NOTIFICATIONS_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Trigger authenticated Delhivery notification worker
+        env:
+          WORKER_SECRET: ${{ secrets.DELHIVERY_WORKER_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${WORKER_SECRET}" ]]; then
+            echo "::error::GitHub Actions secret DELHIVERY_WORKER_SECRET is missing."
+            exit 1
+          fi
+          curl --fail --silent --show-error --max-time 120 \
+            --request POST \
+            --header "Authorization: Bearer ${WORKER_SECRET}" \
+            --header "Content-Type: application/json" \
+            --output /dev/null \
+            "https://www.shivradium.com/api/internal/delhivery-notifications"
+          echo "Delhivery notification worker responded successfully."
