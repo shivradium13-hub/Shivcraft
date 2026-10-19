@@ -2,15 +2,13 @@ import { and, eq, sql } from "drizzle-orm";
 
 import { ApiError, ok, route } from "@/server/api/http";
 import { db } from "@/server/db";
-import { orderEvents, orders, users } from "@/server/db/schema";
+import { delhiveryNotificationJobs, notifications, orderEvents, orders, users } from "@/server/db/schema";
 import {
   authorisedDelhiveryWebhook,
   DELHIVERY_WEBHOOK_HEADER,
   parseDelhiveryScan,
-  shouldAdvanceTo,
   targetStatusFromScan,
 } from "@/server/delivery/webhookScan";
-import { notifyOrderEvent } from "@/server/notify/orderNotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,11 +18,7 @@ export const dynamic = "force-dynamic";
  * x-delhivery-webhook-token with the secret stored in DELHIVERY_WEBHOOK_SECRET.
  *
  * Acknowledgement is returned only after the status is durably committed.
- * The external WhatsApp and email calls happen after commit; if delivery is
- * slow, Delhivery can retry. Delivery deduplication uses the existing
- * order+template message log. The 500ms P99 target MUST be load-tested before
- * registering this production endpoint; for strict fast ACK a durable outbox
- * worker is still needed.
+ * Courier status and WhatsApp job are committed atomically. A separate authenticated\n * worker sends notifications; configure and test worker schedule before launch.
  */
 export const POST = route(async (request: Request) => {
   const secret = process.env.DELHIVERY_WEBHOOK_SECRET;
@@ -66,7 +60,6 @@ export const POST = route(async (request: Request) => {
   if (!order) return ok({ accepted: true, matched: false });
 
   const target = targetStatusFromScan(scan.status);
-  let advanced = false;
 
   // Atomic conditional update prevents two simultaneous duplicate/reordered
   // scans from both advancing the same order and both sending a notification.
@@ -95,6 +88,14 @@ export const POST = route(async (request: Request) => {
 
     if (!updated.length) return false;
 
+    await tx.insert(delhiveryNotificationJobs).values({ orderId: order.id, event: target }).onConflictDoNothing();
+    await tx.insert(notifications).values({
+      userId: order.userId,
+      type: target === "DELIVERED" ? "ORDER_DELIVERED" : "ORDER_SHIPPED",
+      title: `${target === "DELIVERED" ? "Order delivered" : "Out for delivery"} · ${order.orderNumber}`,
+      body: target === "DELIVERED" ? "Your order has been delivered." : "Your parcel is out for delivery.",
+      href: `/order/${order.orderNumber}`,
+    });
     await tx.insert(orderEvents).values({
       orderId: order.id,
       status: target,
@@ -103,20 +104,5 @@ export const POST = route(async (request: Request) => {
     });
     return true;
   });
-  advanced = changed;
-
-  // The courier's scan alone does NOT establish collection of COD funds.
-  // Payment reconciliation must come from verified courier remittance data.
-  if (advanced && target && shouldAdvanceTo(order.status, target)) {
-    await notifyOrderEvent(target, {
-      userId: order.userId,
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      email: order.email,
-      phone: order.phone,
-      awb: order.awb,
-    });
-  }
-
-  return ok({ accepted: true, advanced });
+  return ok({ accepted: true, advanced: changed });
 });
