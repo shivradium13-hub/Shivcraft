@@ -134,6 +134,13 @@
       "when": 1792221280583,
       "tag": "0018_useful_doctor_octopus",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792410000000,
+      "tag": "0019_delhivery_notification_outbox",
+      "breakpoints": true
     }
   ]
 }
