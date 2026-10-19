@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/delhivery-webhook-checks.yml"
       - "src/app/api/webhooks/delhivery/**"
+      - "src/app/api/internal/delhivery-notifications/**"
+      - "drizzle/**"
       - "src/server/delivery/**"
       - "src/server/notify/**"
       - "src/server/whatsapp/**"
@@ -40,6 +42,6 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
       - name: Lint changed Delhivery files
-        run: pnpm exec eslint src/app/api/webhooks/delhivery/route.ts src/server/delivery/webhookScan.ts scripts/test-delhivery-webhook.ts
+        run: pnpm exec eslint src/app/api/webhooks/delhivery/route.ts src/server/delivery/webhookScan.ts src/server/delivery/notificationWorker.ts src/app/api/internal/delhivery-notifications/route.ts scripts/test-delhivery-webhook.ts
       - name: Delhivery unit tests
         run: pnpm test:delhivery
