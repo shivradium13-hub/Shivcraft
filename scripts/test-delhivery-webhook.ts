@@ -33,6 +33,7 @@ test("validates Delhivery's documented Scan Push JSON payload", () => {
   assert.deepEqual(parseDelhiveryScan(documentedPayload), {
     awb: "123456789012",
     status: "Manifested",
+statusType: "UD",
     scannedAt: "2019-01-09T17:10:42.767",
   });
   assert.equal(parseDelhiveryScan(null), null);
@@ -48,14 +49,27 @@ test("authorization fails closed with missing or incorrect header", () => {
   assert.equal(authorisedDelhiveryWebhook("correct-secret", "correct-secret"), true);
 });
 
-test("maps only unambiguous courier events", () => {
-  assert.equal(targetStatusFromScan("Out for Delivery"), "OUT_FOR_DELIVERY");
-  assert.equal(targetStatusFromScan("OUT-FOR-DELIVERY"), "OUT_FOR_DELIVERY");
-  assert.equal(targetStatusFromScan("Delivered"), "DELIVERED");
-  for (const status of ["Undelivered", "Not Delivered", "RTO", "Dispatched", "NDR", "Manifested"]) {
-    assert.equal(targetStatusFromScan(status), null, status);
+
+test("maps only valid forward-shipment statuses", () => {
+  assert.equal(targetStatusFromScan("Dispatched", "UD"), "OUT_FOR_DELIVERY");
+  assert.equal(targetStatusFromScan("Out for Delivery", "UD"), "OUT_FOR_DELIVERY");
+  assert.equal(targetStatusFromScan("Delivered", "DL"), "DELIVERED");
+
+  assert.equal(targetStatusFromScan("Dispatched", "PU"), null);
+  assert.equal(targetStatusFromScan("Delivered", "UD"), null);
+  assert.equal(targetStatusFromScan("Dispatched", "DL"), null);
+
+  for (const status of [
+    "Undelivered",
+    "Not Delivered",
+    "RTO",
+    "NDR",
+    "Manifested"
+  ]) {
+    assert.equal(targetStatusFromScan(status, "UD"), null, status);
   }
 });
+
 
 test("duplicate, regressing or cancelled updates cannot advance an order", () => {
   assert.equal(shouldAdvanceTo("SHIPPED", "OUT_FOR_DELIVERY"), true);
