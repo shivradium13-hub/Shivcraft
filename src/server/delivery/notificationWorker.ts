@@ -1,7 +1,7 @@
-import { and, eq, inArray, lte, or, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { delhiveryNotificationJobs, orders, users } from "@/server/db/schema";
+import { delhiveryNotificationJobs, orders } from "@/server/db/schema";
 import { getWhatsappSettings } from "@/server/whatsapp/settings";
 import { isLiveMode, orderMessageAlreadySent, sendOrderTemplate } from "@/server/whatsapp/service";
 
@@ -98,8 +98,8 @@ export async function runDelhiveryNotificationWorker(maxJobs = 5) {
         await markJob(job.id, job.attempts, "skipped", "Order or customer phone unavailable");
         continue;
       }
-      if (isOFD && order.currentStatus === "CANCELLED") {
-        await markJob(job.id, job.attempts, "skipped", "Order cancelled");
+      if ((isOFD && (order.currentStatus === "CANCELLED" || order.currentStatus === "DELIVERED")) || (isDelivery && order.currentStatus !== "DELIVERED")) {
+        await markJob(job.id, job.attempts, "skipped", "Order status no longer matches notification");
         continue;
       }
       if (await orderMessageAlreadySent(job.orderId, template)) {
