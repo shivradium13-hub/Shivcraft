@@ -10,6 +10,9 @@ export const DELHIVERY_WEBHOOK_HEADER = "x-delhivery-webhook-token";
 export type DelhiveryScan = {
   awb: string;
   status: string;
+  
+statusType: string;
+
   scannedAt: string | null;
 };
 
@@ -33,24 +36,53 @@ export function parseDelhiveryScan(value: unknown): DelhiveryScan | null {
   const statusData = statusObject as Record<string, unknown>;
   const awb = s.AWB;
   const rawStatus = statusData.Status;
+const rawStatusType = statusData.StatusType;
   if (typeof awb !== "string" || !/^[a-z0-9-]{6,40}$/i.test(awb.trim())) return null;
   if (typeof rawStatus !== "string" || !rawStatus.trim() || rawStatus.length > 60) return null;
+if (typeof rawStatusType !== "string" || !rawStatusType.trim() || rawStatusType.length > 20) return null;
+
   const date = statusData.StatusDateTime;
   if (date != null && (typeof date !== "string" || date.length > 80)) return null;
 
-  return { awb: awb.trim(), status: rawStatus.trim(), scannedAt: typeof date === "string" ? date : null };
+
+return {
+  awb: awb.trim(),
+  status: rawStatus.trim(),
+  statusType: rawStatusType.trim(),
+  scannedAt: typeof date === "string" ? date : null,
+};
+
 }
 
 /**
  * Do not treat "Undelivered", "Dispatched", "NDR" or "RTO" as a successful
  * customer delivery. Further Delhivery scan codes need their own validated mapping.
  */
-export function targetStatusFromScan(status: string): CourierOrderStatus | null {
-  const normalized = status.toLowerCase().trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
-  if (normalized === "delivered") return "DELIVERED";
-  if (normalized === "out for delivery") return "OUT_FOR_DELIVERY";
+
+export function targetStatusFromScan(
+  status: string,
+  statusType: string
+): CourierOrderStatus | null {
+  const normalized = status.toLowerCase().trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+  const type = statusType.trim().toUpperCase();
+
+  if (type === "DL" && normalized === "delivered") {
+    return "DELIVERED";
+  }
+
+  if (
+    type === "UD" &&
+    (normalized === "dispatched" || normalized === "out for delivery")
+  ) {
+    return "OUT_FOR_DELIVERY";
+  }
+
   return null;
 }
+
 
 const STATUS_FLOW = [
   "PLACED",
