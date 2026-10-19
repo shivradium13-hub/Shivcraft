@@ -542,6 +542,31 @@ export const orderEvents = pgTable(
   (t) => [index("order_events_order_idx").on(t.orderId, t.createdAt)],
 );
 
+/**
+ * Transactional outbox for Delhivery-triggered WhatsApp notifications.
+ * Insert alongside the order status transition in the same DB transaction.
+ * Unique per order+event: repeated courier scans cannot enqueue duplicates.
+ */
+export const delhiveryNotificationJobs = pgTable(
+  "delhivery_notification_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    event: orderStatusEnum("event").notNull(),
+    state: varchar("state", { length: 20 }).notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    lastError: varchar("last_error", { length: 300 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("delhivery_jobs_order_event_uq").on(t.orderId, t.event),
+    index("delhivery_jobs_ready_idx").on(t.state, t.nextAttemptAt),
+  ],
+);
+
 export const payments = pgTable(
   "payments",
   {
