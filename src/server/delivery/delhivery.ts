@@ -24,8 +24,7 @@ export type DelhiveryConfig = {
 
 const DEFAULT_BASE_URL = "https://track.delhivery.com";
 
-/** Null when the integration is not set up — callers then degrade gracefully
- *  (postal-zone estimate on the storefront, no Delhivery actions in admin). */
+/** Null when the full shipping integration is not set up. */
 export function getDelhiveryConfig(): DelhiveryConfig | null {
   const token = process.env.DELHIVERY_API_TOKEN;
   const client = process.env.DELHIVERY_CLIENT_NAME;
@@ -83,30 +82,93 @@ export type Serviceability = {
   prepaid: boolean;
 };
 
+/** Distinguish explicit Y/N flags from missing or unfamiliar API fields. */
+function serviceFlag(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (value === 1) return true;
+  if (value === 0) return false;
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  if (["Y", "YES", "TRUE", "1"].includes(normalized)) return true;
+  if (["N", "NO", "FALSE", "0"].includes(normalized)) return false;
+  return null;
+}
+
 /**
- * Whether Delhivery delivers to a pincode, and with which payment modes.
- * GET /c/api/pin-codes/json/?filter_codes=<pin>
+ * Delhivery B2C: { delivery_codes: [{ postal_code: {
+ *   pin: 174101, pre_paid: "Y", cod: "N", remarks: ""
+ * } }] }.
+ *
+ * null means the API response is malformed/ambiguous, NOT that the postcode
+ * is unserviceable. A valid empty delivery_codes array is a genuine "no match".
+ * Only treat an exact pincode match as a decision, never the first other PIN.
+ */
+export function parseDelhiveryServiceability(
+  pincode: string,
+  body: unknown,
+): Serviceability | null {
+  if (!body || typeof body !== "object") return null;
+  const deliveryCodes = (body as { delivery_codes?: unknown }).delivery_codes;
+  if (!Array.isArray(deliveryCodes)) return null;
+  if (deliveryCodes.length === 0) {
+    return { serviceable: false, prepaid: false, cod: false };
+  }
+
+  const entries = deliveryCodes
+    .map((item: unknown) =>
+      item && typeof item === "object"
+        ? (item as { postal_code?: unknown }).postal_code
+        : null,
+    )
+    .filter((item): item is Record<string, unknown> =>
+      item !== null && typeof item === "object" && !Array.isArray(item),
+    );
+  const entry = entries.find((item) => String(item.pin ?? "") === pincode);
+  if (!entry) return null;
+
+  // Delhivery explicitly documents Embargo remarks as temporarily NSZ.
+  const remarks = typeof entry.remarks === "string" ? entry.remarks.trim() : "";
+  if (/embargo|\\bnsz\\b|non[- ]?serviceable/i.test(remarks)) {
+    return { serviceable: false, prepaid: false, cod: false };
+  }
+
+  const prepaid = serviceFlag(entry.pre_paid ?? entry.prepaid ?? entry.prePaid);
+  if (prepaid === null) return null;
+
+  // Cash and COD flags are separate in some API responses. Prefer COD.
+  const cod = serviceFlag(entry.cod ?? entry.cash) ?? false;
+  return { serviceable: prepaid, prepaid, cod };
+}
+
+/**
+ * Live B2C coverage check. Delivery is prepaid-only at Shiv Radium, so the
+ * availability decision comes from Delhivery's pre_paid flag, not COD.
+ * Errors, authentication failures and unexpected responses return null, not
+ * a fabricated serviceability result.
  */
 export async function checkServiceability(pincode: string): Promise<Serviceability | null> {
   const config = getDelhiveryConfig();
   if (!config) return null;
 
   const url = `${config.baseUrl}/c/api/pin-codes/json/?filter_codes=${encodeURIComponent(pincode)}`;
-  const res = await fetch(url, { headers: authHeaders(config), cache: "no-store" });
-  const json = await res.json().catch(() => null);
-  if (!res.ok || !json) {
-    console.error("[delhivery] serviceability failed:", res.status, json);
+  try {
+    const res = await fetch(url, {
+      headers: authHeaders(config),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      console.error("[delhivery] serviceability HTTP status:", res.status);
+      return null;
+    }
+    const json: unknown = await res.json().catch(() => null);
+    const parsed = parseDelhiveryServiceability(pincode, json);
+    if (!parsed) console.error("[delhivery] unrecognized serviceability response format");
+    return parsed;
+  } catch (error) {
+    console.error("[delhivery] serviceability API unreachable:", error instanceof Error ? error.name : "Unknown");
     return null;
   }
-
-  // Documented shape: { delivery_codes: [ { postal_code: { pin, pre_paid, cod, ... } } ] }
-  const entry = json?.delivery_codes?.[0]?.postal_code;
-  if (!entry) return { serviceable: false, cod: false, prepaid: false };
-
-  const yes = (v: unknown) => v === "Y" || v === true || v === "true";
-  const prepaid = yes(entry.pre_paid);
-  const cod = yes(entry.cod ?? entry.cash);
-  return { serviceable: prepaid || cod, cod, prepaid };
 }
 
 /* --------------------------------------------------------------- create order */
