@@ -70,14 +70,6 @@ export const GET = route(async (request: Request) => {
   const originRegion = shipping.originPincode[0];
   const targetRegion = pincode[0];
 
-  if (targetRegion === "9") {
-    return ok({
-      pincode,
-      serviceable: false,
-      message:
-        "Army Postal Service addresses need to be arranged with us directly — call the workshop and we will sort it out.",
-    });
-  }
 
   // 3 working days to make it, plus transit that grows with distance. The
   // transit span is always an estimate; Delhivery, when configured, replaces the
