@@ -68,7 +68,7 @@ const sections: LegalSection[] = [
         Custom items require preparation time before dispatch. Delivery estimates can vary
         by product, customisation and destination and are not guarantees unless expressly
         agreed. Please provide an accessible, accurate delivery address. Tracking, when
-        available, can be viewed using your order account or the courier's tracking service.
+        available, can be viewed using your order account or the courier&rsquo;s tracking service.
       </p>
     ),
   },
@@ -110,7 +110,7 @@ const sections: LegalSection[] = [
     title: "Website content and permitted use",
     content: (
       <p>
-        The website's original branding, product images and other content belong to
+        The website&rsquo;s original branding, product images and other content belong to
         Shiv Radium or their respective owners. You may browse and purchase through the
         site for lawful purposes, but must not misuse accounts, interfere with services,
         attempt unauthorised access or copy protected materials without permission.

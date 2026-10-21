@@ -12,7 +12,7 @@ export function LegalPage({
   title,
   introduction,
   sections,
-  lastUpdated = "18 October 2026",
+  lastUpdated = "21 October 2026",
 }: {
   title: string;
   introduction: string;

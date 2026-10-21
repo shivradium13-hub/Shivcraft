@@ -4,7 +4,8 @@ import Link from "next/link";
 import { LegalPage, type LegalSection } from "@/components/shop/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Data Deletion Instructions",
+  // Renders as "Request Your Data Deletion | Shiv Radium" via the title template.
+  title: "Request Your Data Deletion",
   description: "How to request access, correction or deletion of personal data held by Shiv Radium.",
   alternates: { canonical: "/data-deletion" },
 };
@@ -65,7 +66,7 @@ const sections: LegalSection[] = [
         You can ask us to remove WhatsApp-related personal information that we hold and
         to stop optional marketing communications. You may also reply STOP to a marketing
         message where that option is supported. Deleting our records cannot remove
-        messages stored on your own device, another person's device, or from Meta's
+        messages stored on your own device, another person&rsquo;s device, or from Meta&rsquo;s
         systems; those services have separate controls and policies.
       </p>
     ),
@@ -88,7 +89,7 @@ const sections: LegalSection[] = [
 export default function DataDeletionPage() {
   return (
     <LegalPage
-      title="Data Deletion Instructions"
+      title="Request Your Data Deletion"
       introduction="You can ask Shiv Radium to review, correct or delete personal information we hold about you. There is no need to share your password or an OTP."
       sections={sections}
     />

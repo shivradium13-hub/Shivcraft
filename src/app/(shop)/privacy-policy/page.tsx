@@ -74,7 +74,7 @@ const sections: LegalSection[] = [
           to send relevant messages such as order confirmation, dispatch and delivery updates.
           The service may process recipient numbers, message content or template parameters,
           delivery status and message identifiers. Customer communications are also subject
-          to WhatsApp and Meta's applicable terms and privacy policies.
+          to WhatsApp and Meta&rsquo;s applicable terms and privacy policies.
         </p>
         <p>
           Where permission is required, we ask for consent before sending WhatsApp messages.
@@ -82,6 +82,11 @@ const sections: LegalSection[] = [
           authorised merely because you placed an order. You can ask us to stop optional
           marketing messages by replying STOP when supported or contacting us at the email above.
           Certain essential order or security messages may still be sent where permitted.
+        </p>
+        <p>
+          We use WhatsApp only to send messages to the number you provide and to receive
+          delivery receipts for those messages. We do not use Facebook Login, and we do not
+          request or receive your Facebook or Instagram profile, contacts or friends data.
         </p>
       </>
     ),
@@ -116,13 +121,21 @@ const sections: LegalSection[] = [
     id: "cookies",
     title: "Cookies and technical data",
     content: (
-      <p>
-        The website uses technical mechanisms needed for account sessions, cart continuity,
-        security and reliable operation. Any optional analytics or advertising technology,
-        if enabled, should be described in the site's applicable cookie or consent notice.
-        Browser settings may allow you to restrict cookies, although essential features
-        may then stop working.
-      </p>
+      <>
+        <p>
+          We use only strictly necessary, first-party cookies. We do not use advertising
+          cookies, analytics cookies or third-party tracking pixels, and we do not build
+          advertising profiles. Two cookies keep the site working:
+        </p>
+        <ul className="ml-5 list-disc space-y-1">
+          <li>a secure, HTTP-only session cookie that keeps you signed in to your account;</li>
+          <li>a cookie that remembers your cart and any photos you uploaded before you sign in.</li>
+        </ul>
+        <p>
+          You can clear cookies in your browser at any time, though you may then be signed out
+          and lose an in-progress cart.
+        </p>
+      </>
     ),
   },
   {
@@ -157,7 +170,7 @@ const sections: LegalSection[] = [
       <>
         <p>
           Our store is not intended for children to make purchases without a parent or
-          guardian's involvement. If you believe a child supplied information improperly,
+          guardian&rsquo;s involvement. If you believe a child supplied information improperly,
           contact us to review it.
         </p>
         <p>
