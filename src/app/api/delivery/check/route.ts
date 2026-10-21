@@ -70,14 +70,6 @@ export const GET = route(async (request: Request) => {
   const originRegion = shipping.originPincode[0];
   const targetRegion = pincode[0];
 
-  if (targetRegion === "9") {
-    return ok({
-      pincode,
-      serviceable: false,
-      message:
-        "Army Postal Service addresses need to be arranged with us directly — call the workshop and we will sort it out.",
-    });
-  }
 
   // 3 working days to make it, plus transit that grows with distance. The
   // transit span is always an estimate; Delhivery, when configured, replaces the
@@ -92,21 +84,23 @@ export const GET = route(async (request: Request) => {
   let note =
     "Estimated from postal zones, not a courier tracking check. We confirm the exact date on your artwork proof.";
 
-  if (getDelhiveryConfig()) {
-    const service = await checkServiceability(pincode);
-    if (service && !service.serviceable) {
-      return ok({
-        pincode,
-        serviceable: false,
-        message:
-          "Our courier does not deliver to this PIN code yet — call the workshop and we will arrange something.",
-      });
-    }
-    if (service) {
-      note =
-        "Delivery to this PIN code is confirmed with our courier (Delhivery). The exact date is confirmed on your artwork proof.";
-    }
+  // Courier coverage must come from the live Delhivery prepaid flag. Neither
+  // postal-zone estimates nor failed API requests prove a PIN is serviceable.
+  if (!getDelhiveryConfig()) {
+    throw new ApiError("SERVICE_UNAVAILABLE", "Delivery availability cannot be verified right now. Please try again later.");
   }
+  const service = await checkServiceability(pincode);
+  if (!service) {
+    throw new ApiError("SERVICE_UNAVAILABLE", "Delhivery availability could not be checked right now. Please try again shortly.");
+  }
+  if (!service.prepaid) {
+    return ok({
+      pincode,
+      serviceable: false,
+      message: "Prepaid delivery is currently unavailable for this PIN code with Delhivery.",
+    });
+  }
+  note = "Prepaid delivery to this PIN code is confirmed by Delhivery. Arrival dates are estimates.";
 
   return ok({
     pincode,
