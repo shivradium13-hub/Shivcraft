@@ -85,6 +85,8 @@ export function CheckoutClient({
   const [method, setMethod] = useState<Method>("UPI");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkingService, setCheckingService] = useState(false);
+  const [serviceBlock, setServiceBlock] = useState<string | null>(null);
   const [wantGst, setWantGst] = useState(false);
   const [gstin, setGstin] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -118,6 +120,34 @@ export function CheckoutClient({
     } finally {
       setBusy(false);
     }
+  }
+
+  /**
+   * Gate the address step on courier serviceability. We only block on a definite
+   * "not serviceable" from the PIN check; on any error we let the customer
+   * proceed — the server's placeOrder gate is the authoritative backstop, so we
+   * never trap someone behind a flaky check.
+   */
+  async function proceedFromAddress() {
+    if (!selected) return;
+    setCheckingService(true);
+    setServiceBlock(null);
+    try {
+      const res = await fetch(`/api/delivery/check?pincode=${encodeURIComponent(selected.pincode)}`);
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.data?.serviceable === false) {
+        setServiceBlock(
+          json.data.message ??
+            `Sorry, our courier does not deliver to PIN code ${selected.pincode} yet. Please choose a different address.`,
+        );
+        setCheckingService(false);
+        return;
+      }
+    } catch {
+      // Network issue — proceed; the server still enforces serviceability.
+    }
+    setCheckingService(false);
+    setStep(1);
   }
 
   async function payNow() {
@@ -276,7 +306,10 @@ export function CheckoutClient({
                         type="radio"
                         name="address"
                         checked={addressId === address.id}
-                        onChange={() => setAddressId(address.id)}
+                        onChange={() => {
+                          setAddressId(address.id);
+                          setServiceBlock(null);
+                        }}
                         className="mt-1 h-4 w-4 shrink-0 accent-brand-700"
                       />
                       <span className="min-w-0 text-sm">
@@ -337,14 +370,20 @@ export function CheckoutClient({
               </form>
             )}
 
+            {serviceBlock ? (
+              <p role="alert" className="mt-4 rounded-lg bg-danger-soft px-3 py-2 text-sm font-medium text-danger">
+                {serviceBlock}
+              </p>
+            ) : null}
+
             {!adding ? (
               <button
                 type="button"
-                disabled={!addressId}
-                onClick={() => setStep(1)}
+                disabled={!addressId || checkingService}
+                onClick={proceedFromAddress}
                 className="mt-5 rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-45"
               >
-                Deliver here
+                {checkingService ? "Checking delivery…" : "Deliver here"}
               </button>
             ) : null}
           </section>

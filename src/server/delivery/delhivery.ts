@@ -109,6 +109,42 @@ export async function checkServiceability(pincode: string): Promise<Serviceabili
   return { serviceable: prepaid || cod, cod, prepaid };
 }
 
+export type ServiceVerdict =
+  /** Serviceable — allow the order. */
+  | { status: "ok" }
+  /** Delhivery definitively does not deliver here — block the order. */
+  | { status: "blocked" }
+  /** Not enforced: integration unconfigured, or the check couldn't be reached. */
+  | { status: "skip" };
+
+/**
+ * The checkout gate's single source of truth for "can we deliver here?". Kept
+ * deliberately conservative so it never stops legitimate orders:
+ *
+ *  - Delhivery not configured  -> "skip" (checkout works exactly as before — an
+ *    un-set-up courier must never block every order).
+ *  - serviceability unreachable -> "skip" (fail OPEN; a courier API outage can't
+ *    halt all sales — logged for visibility).
+ *  - a definite answer          -> "ok" / "blocked" on PREPAID serviceability.
+ *    The shop is prepaid-only, so a PIN must support prepaid delivery — a
+ *    COD-only PIN is blocked. The storefront PIN-check widget uses the same
+ *    prepaid rule, so the customer is never told a PIN is serviceable and then
+ *    blocked at checkout (or vice versa).
+ */
+export async function serviceVerdict(pincode: string): Promise<ServiceVerdict> {
+  if (!isDelhiveryConfigured()) return { status: "skip" };
+  let service: Serviceability | null;
+  try {
+    service = await checkServiceability(pincode);
+  } catch (error) {
+    console.error("[delhivery] serviceability check errored, allowing order:", error);
+    return { status: "skip" };
+  }
+  if (!service) return { status: "skip" }; // unreachable / unparseable
+  // Prepaid-only shop: require prepaid delivery, not merely any serviceability.
+  return service.prepaid ? { status: "ok" } : { status: "blocked" };
+}
+
 /* --------------------------------------------------------------- create order */
 
 export type ShipmentInput = {

@@ -94,7 +94,10 @@ export const GET = route(async (request: Request) => {
 
   if (getDelhiveryConfig()) {
     const service = await checkServiceability(pincode);
-    if (service && !service.serviceable) {
+    // Prepaid-only shop: a PIN counts as serviceable only if the courier does
+    // PREPAID delivery there. This matches the checkout gate (serviceVerdict),
+    // so the widget and checkout never disagree.
+    if (service && !service.prepaid) {
       return ok({
         pincode,
         serviceable: false,

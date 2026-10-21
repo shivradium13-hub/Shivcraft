@@ -3,6 +3,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { ApiError } from "@/server/api/http";
 import { checkCoupon, computeTotals, getShopSettings } from "@/server/cart/pricing";
 import { getCartView } from "@/server/cart/queries";
+import { serviceVerdict } from "@/server/delivery/delhivery";
 import { db } from "@/server/db";
 import {
   addresses,
@@ -73,6 +74,20 @@ export async function placeOrder(input: {
 
   const address = addressRows[0];
   if (!address) throw new ApiError("BAD_REQUEST", "Choose a delivery address.");
+
+  /* Serviceability gate. When Delhivery is configured, an order can only be
+     placed to a PIN code it actually delivers to — a non-serviceable address is
+     rejected here, BEFORE any stock is taken, the order row is written, or the
+     payment gateway is opened, so the customer never pays for something we
+     cannot ship. When Delhivery is not configured (or its check can't be
+     reached) this is a no-op and checkout behaves exactly as before. */
+  const verdict = await serviceVerdict(address.pincode);
+  if (verdict.status === "blocked") {
+    throw new ApiError(
+      "BAD_REQUEST",
+      `Sorry — our courier does not deliver to PIN code ${address.pincode} yet, so this order can't be placed. Please choose a different delivery address, or contact us to arrange it.`,
+    );
+  }
 
   const shop = await getShopSettings();
 
