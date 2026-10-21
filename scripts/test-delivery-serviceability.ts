@@ -56,8 +56,12 @@ async function main() {
   stub(pin("Y", "N"));
   check("prepaid serviceable → ok", (await serviceVerdict("110001")).status === "ok");
 
+  stub(pin("Y", "Y"));
+  check("prepaid + cod serviceable → ok", (await serviceVerdict("560001")).status === "ok");
+
+  // Prepaid-only shop: a COD-only PIN cannot take a prepaid order → blocked.
   stub(pin("N", "Y"));
-  check("cod-only (still serviceable) → ok", (await serviceVerdict("400001")).status === "ok");
+  check("cod-only (no prepaid) → blocked", (await serviceVerdict("400001")).status === "blocked");
 
   stub(pin("N", "N"));
   check("not serviceable → blocked", (await serviceVerdict("999998")).status === "blocked");

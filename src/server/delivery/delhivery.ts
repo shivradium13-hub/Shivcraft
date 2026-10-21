@@ -125,9 +125,11 @@ export type ServiceVerdict =
  *    un-set-up courier must never block every order).
  *  - serviceability unreachable -> "skip" (fail OPEN; a courier API outage can't
  *    halt all sales — logged for visibility).
- *  - a definite answer          -> "ok" / "blocked" using the same `serviceable`
- *    flag the storefront PIN-check widget already shows, so the customer is never
- *    told a PIN is serviceable and then blocked at checkout (or vice versa).
+ *  - a definite answer          -> "ok" / "blocked" on PREPAID serviceability.
+ *    The shop is prepaid-only, so a PIN must support prepaid delivery — a
+ *    COD-only PIN is blocked. The storefront PIN-check widget uses the same
+ *    prepaid rule, so the customer is never told a PIN is serviceable and then
+ *    blocked at checkout (or vice versa).
  */
 export async function serviceVerdict(pincode: string): Promise<ServiceVerdict> {
   if (!isDelhiveryConfigured()) return { status: "skip" };
@@ -139,7 +141,8 @@ export async function serviceVerdict(pincode: string): Promise<ServiceVerdict> {
     return { status: "skip" };
   }
   if (!service) return { status: "skip" }; // unreachable / unparseable
-  return service.serviceable ? { status: "ok" } : { status: "blocked" };
+  // Prepaid-only shop: require prepaid delivery, not merely any serviceability.
+  return service.prepaid ? { status: "ok" } : { status: "blocked" };
 }
 
 /* --------------------------------------------------------------- create order */
