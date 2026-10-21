@@ -26,11 +26,33 @@ Real sending cannot turn itself on.
   (non-synthetic) inbox. OTP-only WhatsApp accounts (synthetic
   `…@phone.shivradium.local` emails) never receive an email code.
 
-> ⚠️ **No account currently has a verified email** — the app has no
-> email-verification step yet, and registration does not set `emailVerifiedAt`.
-> So until a verification mechanism exists (or you decide registered emails
-> should count as verified), the email channel stays dormant and WhatsApp OTP is
-> 100% unaffected. This is intentional and safe.
+Registration does **not** mark an email verified — ownership must be proven
+first (see below), so the email channel only reaches addresses the customer has
+confirmed. Until a customer verifies, they keep the WhatsApp-only flow unchanged.
+
+---
+
+## Email verification (proving ownership)
+
+Before a customer can receive login codes by email, they verify the address from
+**My Account → Email verification**:
+
+1. They click **Send verification link** → `POST /api/auth/email/request` sends a
+   confirmation email (mock-first) with a signed link to `/verify-email?token=…`.
+2. Opening the link shows a **Verify my email** button (a click → `POST
+   /api/auth/email/confirm`, *not* an automatic GET — so email link scanners
+   can't silently verify an address).
+3. On success, `users.emailVerifiedAt` is set and email OTP can reach them.
+
+The token is **stateless** — an HMAC-SHA256-signed, 60-minute payload
+`{userId, email, exp}` — so there is **no database table and no migration**. A
+token only verifies when the account's *current* email still matches, and
+synthetic placeholder addresses are rejected. The signing secret is
+`EMAIL_VERIFY_SECRET` (falls back to `OTP_PEPPER` / `WHATSAPP_APP_SECRET`).
+
+Verification emails are gated by the master `enabled` switch + live mode, so in
+mock/dev nothing is delivered and the link is echoed to the account page for
+testing.
 
 ---
 
@@ -75,14 +97,13 @@ table under key `email` (normalised by `src/lib/email.ts`):
    (e.g. `no-reply@shivradium.com`).
 3. **Account sending permission** — confirm the Brevo account is activated for
    transactional sending (new/free accounts can be review-gated at first).
-4. Decide **what counts as a verified email** (there's no verification step yet):
-   add an email-verification flow, or treat registered emails as verified — your
-   call. Until then the email channel stays dormant.
-5. When all the above are ready: set `EMAIL_LIVE=true` in Vercel, turn on the
-   `email` settings (`enabled` + `otpEnabled` + `senderEmail`), and send one test
-   login to confirm the email arrives alongside the WhatsApp code.
+4. When all the above are ready: set `EMAIL_LIVE=true` in Vercel, then in
+   **Admin → Email** turn on `Enable email integration`, set the sender, and
+   (once tested) `Enable Email OTP`. Have a customer verify their email, then
+   send one test login to confirm the email arrives alongside the WhatsApp code.
 
-Until step 5, everything stays in mock mode — safe to wire up and test now.
+Until step 4, everything stays in mock mode — safe to wire up and test now. The
+owner controls all of this from **Admin → Email**; both toggles default **off**.
 
 ---
 
@@ -95,7 +116,14 @@ Until step 5, everything stays in mock mode — safe to wire up and test now.
 - `src/server/email/service.ts` — Brevo service (mock/live, `sendOtpEmail`,
   `isEmailLiveMode`, `emailStatus`, `maskEmail`).
 - `src/server/auth/otp.ts` — `issueOtp` dual-channel dispatch + verified-email lookup.
-- `scripts/test-email-otp.ts` — mock tests (`pnpm test:email`).
+- `src/server/auth/emailVerify.ts` — stateless signed verify tokens + `markEmailVerifiedFromToken`.
+- `POST /api/auth/email/request` · `POST /api/auth/email/confirm` — verification endpoints.
+- `src/app/verify-email/page.tsx` + `VerifyEmailClient` — the confirmation page.
+- `src/components/shop/EmailVerifyCard.tsx` — the My Account verification card.
+- Admin: `src/app/admin/email/page.tsx`, `EmailSettingsForm`, `GET`/`PUT /api/admin/email`
+  — the **Enable Email OTP** toggle + sender settings + connection status.
+- Tests: `scripts/test-email-otp.ts` (`pnpm test:email`),
+  `scripts/test-email-verify.ts` (`pnpm test:email-verify`).
 
-Not included (safe follow-ups): an admin toggle UI for the email channel, and the
-email-verification flow that sets `emailVerifiedAt`.
+Still env-only (owner sets, never in code): `BREVO_API_KEY`, `EMAIL_LIVE`,
+optionally `EMAIL_VERIFY_SECRET`.

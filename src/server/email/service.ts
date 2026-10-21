@@ -152,3 +152,53 @@ export async function sendOtpEmail(args: {
   });
   return { ok: result.ok, mock: false, error: result.error };
 }
+
+function verificationEmailBody(link: string, brandName: string, ttlMinutes: number) {
+  const text =
+    `Confirm your email address for ${brandName}. ` +
+    `Open this link to verify it (valid for ${ttlMinutes} minutes): ${link} . ` +
+    `If you didn't request this, you can ignore this email.`;
+  const html =
+    `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111827">` +
+    `<h1 style="font-size:18px;margin:0 0 12px">Confirm your email</h1>` +
+    `<p style="font-size:14px;line-height:1.6;color:#374151;margin:0 0 16px">Verify this email address to receive your ${brandName} login codes by email. This link is valid for ${ttlMinutes} minutes.</p>` +
+    `<p style="margin:0 0 16px"><a href="${link}" style="display:inline-block;background:#e5541a;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 18px;border-radius:9999px">Verify my email</a></p>` +
+    `<p style="font-size:12px;line-height:1.6;color:#6b7280;margin:0">If the button doesn't work, copy this link into your browser:<br><span style="word-break:break-all">${link}</span></p>` +
+    `<p style="font-size:12px;line-height:1.6;color:#6b7280;margin:12px 0 0">If you didn't request this, you can ignore this email.</p>` +
+    `</div>`;
+  return { text, html };
+}
+
+/**
+ * Send an email-ownership verification link. Mock mode logs the attempt
+ * (recipient masked, the link — which carries a token — is NEVER logged) and
+ * reports a mock success; live mode performs the Brevo call. Gated only by the
+ * master `enabled` switch (not `otpEnabled`), so a customer can verify first and
+ * the owner can turn on email OTP afterwards.
+ */
+export async function sendVerificationEmail(args: {
+  to: string;
+  link: string;
+  settings: EmailSettings;
+  ttlMinutes: number;
+  env?: EmailEnv;
+}): Promise<EmailSendResult> {
+  const env = args.env ?? getEmailEnv();
+  const live = isEmailLiveMode(args.settings.enabled, args.settings.senderEmail, env);
+
+  if (!live) {
+    console.info(`[email] mock verification email to ${maskEmail(args.to)} (not sent)`);
+    return { ok: true, mock: true };
+  }
+
+  const { text, html } = verificationEmailBody(args.link, args.settings.senderName, args.ttlMinutes);
+  const result = await postBrevoEmail(env.apiKey as string, {
+    to: args.to,
+    senderEmail: args.settings.senderEmail,
+    senderName: args.settings.senderName,
+    subject: `Verify your email · ${args.settings.senderName}`,
+    html,
+    text,
+  });
+  return { ok: result.ok, mock: false, error: result.error };
+}
