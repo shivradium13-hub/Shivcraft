@@ -2,10 +2,13 @@ import { createHash, randomBytes, randomInt } from "node:crypto";
 
 import { and, eq } from "drizzle-orm";
 
+import { isRealEmail, type EmailSettings } from "@/lib/email";
 import { normalisePhone10, type WhatsappSettings } from "@/lib/whatsapp";
 import { hashPassword } from "@/server/auth/password";
 import { db } from "@/server/db";
 import { otpCodes, users } from "@/server/db/schema";
+import { getEmailSettings } from "@/server/email/settings";
+import { sendOtpEmail } from "@/server/email/service";
 import { sendOtpMessage } from "@/server/whatsapp/service";
 
 /** A cryptographically secure 6-digit code (100000–999999). */
@@ -36,33 +39,109 @@ export async function storeOtp(phone: string, code: string, ttlMinutes: number):
 }
 
 /**
- * Generate, store and send a fresh OTP for a phone. Returns whether delivery was
- * only mocked, and the code itself — which callers must expose ONLY in
- * non-production dev tooling, never in a production API response.
+ * A verified, real (non-synthetic) email on the account for this phone, or null.
+ *
+ * "Verified" means `users.emailVerifiedAt` is set — we never email a login code
+ * to an address the customer has not proven they own. Synthetic placeholder
+ * emails (OTP-only WhatsApp accounts) are excluded.
+ */
+async function findVerifiedEmailForPhone(phone: string): Promise<string | null> {
+  const p = normalisePhone10(phone);
+  const rows = await db
+    .select({ email: users.email, verifiedAt: users.emailVerifiedAt })
+    .from(users)
+    .where(eq(users.phone, p))
+    .limit(1);
+  const row = rows[0];
+  if (!row || !row.verifiedAt) return null;
+  return isRealEmail(row.email) ? row.email : null;
+}
+
+export type IssueOtpResult = {
+  code: string;
+  /** True once a usable code remains (delivered, or mock-delivered in dev). */
+  ok: boolean;
+  /** True when the only "delivery" was a mock (nothing real went out). */
+  mock: boolean;
+  channels: {
+    whatsapp: { ok: boolean; mock: boolean };
+    email: { ok: boolean; mock: boolean; attempted: true } | { attempted: false };
+  };
+};
+
+/**
+ * Generate ONE secure OTP per request, store it, and send that SAME code
+ * concurrently over WhatsApp and — when the account has a verified email and the
+ * email channel is enabled — email (Brevo). Returns whether a usable code
+ * remains, whether delivery was only mocked, and the code itself (which callers
+ * must expose ONLY in non-production dev tooling, never in a production response).
+ *
+ * The email channel is purely additive: a customer with no verified email keeps
+ * the WhatsApp-only flow unchanged, and in production the WhatsApp result still
+ * decides success (email is mock-first until `EMAIL_LIVE` is turned on). Once
+ * email is live, a delivery on EITHER channel keeps the code usable.
  */
 export async function issueOtp(
   phone: string,
   settings: WhatsappSettings,
   userId?: string | null,
-): Promise<{ code: string; mock: boolean; ok: boolean }> {
+  emailSettingsOverride?: EmailSettings,
+): Promise<IssueOtpResult> {
+  const p = normalisePhone10(phone);
   const code = generateOtp();
-  await storeOtp(phone, code, settings.otpTtlMinutes);
-  const result = await sendOtpMessage({
-    phone,
-    code,
-    template: settings.templateOtp || process.env.WHATSAPP_TEMPLATE_OTP || "",
-    language: settings.templateLang,
-    enabled: settings.enabled,
-    userId: userId ?? null,
-  });
-  // A failed delivery must not leave a usable code in the database.
-  // Match the exact hash so a concurrent, newer OTP is never deleted.
-  if (!result.ok) {
-    await db.delete(otpCodes).where(
-      and(eq(otpCodes.phone, normalisePhone10(phone)), eq(otpCodes.codeHash, hashOtp(normalisePhone10(phone), code))),
-    );
+  await storeOtp(p, code, settings.otpTtlMinutes);
+
+  // Resolve the optional second channel, then dispatch BOTH concurrently with
+  // the one code. getEmailSettings is read only here; findVerifiedEmailForPhone
+  // runs only when the email channel is switched on.
+  const emailSettings = emailSettingsOverride ?? (await getEmailSettings());
+  const verifiedEmail = emailSettings.otpEnabled ? await findVerifiedEmailForPhone(p) : null;
+
+  const [wa, mail] = await Promise.all([
+    sendOtpMessage({
+      phone: p,
+      code,
+      template: settings.templateOtp || process.env.WHATSAPP_TEMPLATE_OTP || "",
+      language: settings.templateLang,
+      enabled: settings.enabled,
+      userId: userId ?? null,
+    }),
+    verifiedEmail
+      ? sendOtpEmail({
+          to: verifiedEmail,
+          code,
+          settings: emailSettings,
+          ttlMinutes: settings.otpTtlMinutes,
+          userId: userId ?? null,
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const waReal = wa.ok && !wa.mock;
+  const emailReal = Boolean(mail && mail.ok && !mail.mock);
+  const anyReal = waReal || emailReal;
+  const anyOk = wa.ok || Boolean(mail && mail.ok);
+
+  // Keep the code only if it was really delivered on some channel, or — in dev —
+  // a mock "delivery" succeeded so the flow stays testable. Otherwise remove it
+  // so a non-deliverable code can never be used. Match the exact hash so a
+  // concurrent, newer OTP is never deleted.
+  const keep = anyReal || (process.env.NODE_ENV !== "production" && anyOk);
+  if (!keep) {
+    await db
+      .delete(otpCodes)
+      .where(and(eq(otpCodes.phone, p), eq(otpCodes.codeHash, hashOtp(p, code))));
   }
-  return { code, mock: result.mock, ok: result.ok };
+
+  return {
+    code,
+    ok: keep,
+    mock: keep && !anyReal,
+    channels: {
+      whatsapp: { ok: wa.ok, mock: wa.mock },
+      email: mail ? { ok: mail.ok, mock: mail.mock, attempted: true } : { attempted: false },
+    },
+  };
 }
 
 /** Seconds until a resend is allowed, 0 if allowed now. */

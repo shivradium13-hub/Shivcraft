@@ -85,6 +85,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             <Link href="/admin/whatsapp" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               WhatsApp
             </Link>
+            <Link href="/admin/email" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
+              Email
+            </Link>
             <Link href="/" className="shrink-0 whitespace-nowrap text-sr-100 transition hover:text-white">
               View store
             </Link>

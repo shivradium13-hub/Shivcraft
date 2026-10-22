@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { EmailVerifyCard } from "@/components/shop/EmailVerifyCard";
 import { ProfileForm } from "@/components/shop/ProfileForm";
 import { formatPaise } from "@/lib/money";
 import { getAccountSummary } from "@/server/account/queries";
+import { getUserEmailState } from "@/server/auth/emailVerify";
 import { requireUser } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +13,10 @@ export const metadata: Metadata = { title: "My account", robots: { index: false,
 
 export default async function AccountPage() {
   const user = await requireUser();
-  const summary = await getAccountSummary(user.id);
+  const [summary, emailState] = await Promise.all([
+    getAccountSummary(user.id),
+    getUserEmailState(user.id),
+  ]);
 
   const tiles = [
     { label: "Orders", value: String(summary.orders), href: "/account/orders" },
@@ -51,6 +56,12 @@ export default async function AccountPage() {
         </p>
         <ProfileForm initial={{ name: user.name, email: user.email, phone: user.phone ?? "" }} />
       </section>
+
+      {/* Email verification — only for accounts with a real email (OTP-only
+          WhatsApp accounts have a synthetic placeholder address and are skipped). */}
+      {emailState.isReal ? (
+        <EmailVerifyCard email={emailState.email} verified={emailState.verified} />
+      ) : null}
     </div>
   );
 }
