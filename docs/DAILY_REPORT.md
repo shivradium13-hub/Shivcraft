@@ -1,47 +1,66 @@
-# Daily orders digest (owner email)
+# Daily orders digest (owner)
 
-Every evening the owner gets an **email summary of the day's orders** — how many
-were placed, how much was collected, how many are awaiting payment or cancelled,
-and a table of each order. No one has to open anything; it arrives on its own.
+Every evening the owner gets an automatic summary of the day's orders. Two
+channels, each independent and optional (configured in the `reports` settings):
+
+- **WhatsApp** — a short summary (counts + amount) via an approved template.
+- **Email** — the full per-order report (table of every order).
 
 ## How it runs
 
 - **Schedule:** a Vercel Cron (`vercel.json`) hits `GET /api/cron/daily-orders`
   once a day at **15:30 UTC = 9:00 PM IST**. (Change the time in `vercel.json`.)
-- **The day** is a calendar day in **IST**, so the evening report covers the day
-  just finished (`src/server/reports/dailyOrders.ts`).
-- **Email** goes out through Brevo (`sendAdminEmail`) to the support email, else
-  the business email, else `shivradium13@gmail.com`. It is independent of the
-  customer OTP email toggle — it sends whenever `EMAIL_LIVE=true` + `BREVO_API_KEY`
-  + a verified sender are present (all already set).
+- **The day** is a calendar day in **IST** (`src/server/reports/dailyOrders.ts`).
+- The cron sends WhatsApp if a template + number are set, and email if an email
+  recipient is set. Nothing configured for a channel = that channel is skipped.
 
-## To turn it on (owner)
+## WhatsApp — the template the owner must create (Meta approval)
 
-1. In **Vercel → Settings → Environment Variables (Production)** add
-   **`CRON_SECRET`** = any long random string.
-   - Vercel sends this as a `Bearer` token on the scheduled request; the endpoint
-     rejects anything without it, so the report URL can't be triggered by outsiders.
-   - Until `CRON_SECRET` is set, the endpoint returns 401 and no report is sent.
-2. Redeploy (so Vercel registers the cron from `vercel.json`).
+A business-initiated WhatsApp message needs a **pre-approved template**, so the
+owner creates this once in **Meta WhatsApp Manager → Message templates**:
 
-That's it — the digest starts arriving the next evening. Email delivery is already
-live (`EMAIL_LIVE=true`, sender `no-reply@shivradium.com` verified), so nothing
-else is needed.
+- **Name:** `daily_orders_report` (lowercase + underscores only)
+- **Category:** Utility
+- **Language:** English
+- **Body** (5 variables, text around each, nothing at the very end is a bare
+  variable):
+
+  ```
+  Shiv Radium — daily orders summary for {{1}}.
+  Total orders: {{2}}. Amount collected: {{3}}.
+  Awaiting payment: {{4}}. Cancelled: {{5}} order(s).
+  ```
+
+- **Sample values** (Meta asks for these): {{1}} `22 October 2026`, {{2}} `5`,
+  {{3}} `₹4,500`, {{4}} `1`, {{5}} `0`.
+
+The code sends those 5 variables in that exact order (date, count, collected,
+awaiting-payment, cancelled), so the template body must keep that order. Once
+approved, give me the **template name** and the **WhatsApp number** to send to.
+
+## To turn it on
+
+1. **WhatsApp:** after the template is approved, set `reports.whatsappTemplate`
+   (the approved name) and `reports.whatsappTo` (owner's number). WhatsApp is
+   already live in production.
+2. **Email (optional):** set `reports.emailTo` to receive the full report too.
+   Email is already live (`EMAIL_LIVE=true`, sender `no-reply@shivradium.com`).
+3. **`CRON_SECRET`** in Vercel → Settings → Environment Variables (Production):
+   any long random string. Vercel sends it as a Bearer token on the scheduled
+   request; the endpoint rejects anything without it. Redeploy after setting it.
 
 ## Test / verify
 
-- `pnpm test:daily-report` — IST day boundaries, aggregation (paid/pending/cancelled),
-  yesterday excluded, and mock email (no real send).
-- After deploy you can also trigger it manually to check delivery:
+- `pnpm test:daily-report` — IST day boundaries, aggregation, mock WhatsApp +
+  mock email (no real send), settings normalise.
+- After deploy, trigger manually:
   `curl -H "Authorization: Bearer <CRON_SECRET>" https://www.shivradium.com/api/cron/daily-orders`
 
 ## Files
 
 - `src/server/reports/dailyOrders.ts` — `istDayRange`, `buildDailyOrdersReport`.
-- `src/server/email/service.ts` — `sendAdminEmail` (Brevo, owner-facing).
+- `src/server/reports/settings.ts` — the `reports` channel config.
+- `src/server/whatsapp/service.ts` — `sendReportTemplate` (WhatsApp summary).
+- `src/server/email/service.ts` — `sendAdminEmail` (full email report).
 - `src/app/api/cron/daily-orders/route.ts` — the cron endpoint (CRON_SECRET-gated).
 - `vercel.json` — the cron schedule.
-
-WhatsApp wasn't used for this: a business-initiated WhatsApp message needs an
-approved template with fixed variables, which doesn't fit a daily report whose
-content changes every day. Email is the right channel here.

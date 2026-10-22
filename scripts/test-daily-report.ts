@@ -14,6 +14,8 @@ import { db } from "@/server/db";
 import { orders, payments, users } from "@/server/db/schema";
 import { sendAdminEmail } from "@/server/email/service";
 import { buildDailyOrdersReport, istDayRange } from "@/server/reports/dailyOrders";
+import { normaliseReports } from "@/server/reports/settings";
+import { sendReportTemplate } from "@/server/whatsapp/service";
 
 const PHONE = "9000003333";
 const NUMS = ["TEST-DR-A", "TEST-DR-B", "TEST-DR-C", "TEST-DR-YDAY"];
@@ -102,8 +104,14 @@ async function main() {
     return realFetch(...a);
   }) as typeof fetch;
   const sent = await sendAdminEmail({ to: "owner@example.com", subject: report.subject, html: report.html, text: report.text, settings: { ...DEFAULT_EMAIL, senderEmail: "no-reply@shivradium.com" } });
+  const wa = await sendReportTemplate({ phone: "9000000000", template: "daily_orders_report", language: "en", bodyParams: ["x"], enabled: true });
   globalThis.fetch = realFetch;
   check("admin email is mock without EMAIL_LIVE, no network", sent.mock === true && calls === 0);
+  check("WhatsApp report is mock without WHATSAPP_LIVE, no network", wa.mock === true && calls === 0);
+
+  // --- report settings normalise -------------------------------------------
+  const rs = normaliseReports({ whatsappTemplate: "  daily_orders_report ", whatsappTo: "9876543210" });
+  check("report settings normalise (template trimmed, email empty, lang default)", rs.whatsappTemplate === "daily_orders_report" && rs.emailTo === "" && rs.language === "en");
 
   await cleanup();
   console.log(failures === 0 ? "\n✓ All daily-report tests passed\n" : `\n✗ ${failures} test(s) failed\n`);
