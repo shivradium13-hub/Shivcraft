@@ -71,39 +71,55 @@ All five conditions are required before a single real email can be sent.
 
 | Variable | Required for live email | Notes |
 |----------|-------------------------|-------|
-| `BREVO_API_KEY` | yes | Brevo API v3 key. Secret — server env only. |
+| `BREVO_API_KEY` | yes | Brevo API v3 key (Transactional Email). Secret — server env only, never `NEXT_PUBLIC_`. |
 | `EMAIL_LIVE` | to actually send | `true` enables live delivery. Anything else = mock. |
+| `BREVO_FROM_EMAIL` | sender (env option) | A **verified** Brevo sender, e.g. `no-reply@shivradium.com`. Used when the admin sender field is blank. |
+| `BREVO_FROM_NAME` | optional | From name; default "Shiv Radium". |
+| `EMAIL_VERIFY_SECRET` | optional | HMAC secret for verification links; falls back to `OTP_PEPPER` / `WHATSAPP_APP_SECRET`. |
 
-The sender identity and toggles are **non-secret** and live in the `settings`
-table under key `email` (normalised by `src/lib/email.ts`):
+The sender can be set **either** by env (`BREVO_FROM_EMAIL`/`BREVO_FROM_NAME`)
+**or** in **Admin → Email** (settings win when set). Toggles + subject live in the
+`settings` table under key `email` (normalised by `src/lib/email.ts`):
 
 | Setting | Meaning |
 |---------|---------|
 | `enabled` | master switch for the email integration (default off) |
 | `otpEnabled` | send the login OTP by email (default off) |
-| `senderEmail` | a **verified** sender address on a **verified domain** in Brevo |
-| `senderName` | From name (default "Shiv Radium") |
+| `senderEmail` | overrides `BREVO_FROM_EMAIL`; must be a **verified** Brevo sender |
+| `senderName` | overrides `BREVO_FROM_NAME` |
 | `otpSubject` | subject line |
+
+**Brevo client resilience:** the send has a 10s timeout, classifies failures
+(auth / sender / rate-limited / transient), and retries **once** on a transient
+error (timeout / network / 5xx) only — never on 401/403/429 or an unverified-sender
+400, so it won't hammer a limit or risk a duplicate (a retry re-sends the *same*
+code). An email failure never invalidates the WhatsApp OTP. (`pnpm test:email-brevo`.)
 
 ---
 
-## What I need from you to go live (Brevo config)
+## Status & what's left to go live
 
-1. **`BREVO_API_KEY`** — in Brevo: *SMTP & API → API Keys → Generate*. Add it to
-   Vercel (Production) as `BREVO_API_KEY`. (You set it; I never see the value.)
-2. **Verified sender + domain** — add and verify your sender domain in Brevo
-   (*Senders, Domains & Dedicated IPs*), complete the DKIM/SPF DNS records, and
-   confirm a sender address on that domain. Tell me the sender address to use
-   (e.g. `no-reply@shivradium.com`).
-3. **Account sending permission** — confirm the Brevo account is activated for
-   transactional sending (new/free accounts can be review-gated at first).
-4. When all the above are ready: set `EMAIL_LIVE=true` in Vercel, then in
-   **Admin → Email** turn on `Enable email integration`, set the sender, and
-   (once tested) `Enable Email OTP`. Have a customer verify their email, then
-   send one test login to confirm the email arrives alongside the WhatsApp code.
+Done (owner): `BREVO_API_KEY` set in Vercel Production; `shivradium.com`
+authenticated in Brevo (Brevo code + DKIM1 + DKIM2 + DMARC); API key restricted
+to Transactional Email.
 
-Until step 4, everything stays in mock mode — safe to wire up and test now. The
-owner controls all of this from **Admin → Email**; both toggles default **off**.
+**BLOCKER — sender not ready:** the professional sender `no-reply@shivradium.com`
+is **not yet a verified/approved Brevo sender**. `shivradium13@gmail.com` is a
+verified sender but Brevo warns on the free Gmail domain — do **not** use it for
+production login codes. Until a proper sender on `shivradium.com` is approved,
+the integration ships with email **disabled** (mock).
+
+To go live, once `no-reply@shivradium.com` is a verified Brevo sender:
+1. Set `BREVO_FROM_EMAIL=no-reply@shivradium.com` (and `BREVO_FROM_NAME=Shiv Radium`)
+   in Vercel Production — or set the sender in **Admin → Email**.
+2. Set `EMAIL_LIVE=true` in Vercel Production and redeploy.
+3. In **Admin → Email**: turn on **Enable email integration**, then (after a test)
+   **Enable Email OTP**.
+4. Have a customer verify their email (My Account → Email verification), then do one
+   test login and confirm the code arrives on both WhatsApp and email.
+
+Until then everything stays in mock mode — safe, already deployed, and the
+WhatsApp OTP is unaffected. Both admin toggles default **off**.
 
 ---
 

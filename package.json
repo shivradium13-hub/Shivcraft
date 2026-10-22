@@ -18,7 +18,8 @@
     "verify:security": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/verify-security.ts",
     "test:whatsapp": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-whatsapp-webhook.ts",
     "test:email": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-email-otp.ts",
-    "test:email-verify": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-email-verify.ts"
+    "test:email-verify": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-email-verify.ts",
+    "test:email-brevo": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-email-brevo.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

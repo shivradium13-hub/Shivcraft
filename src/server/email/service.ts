@@ -21,12 +21,30 @@ import type { EmailSettings } from "@/lib/email";
 export type EmailEnv = {
   apiKey: string | null;
   liveFlag: boolean;
+  /** Fallback sender from env (BREVO_FROM_EMAIL/BREVO_FROM_NAME). */
+  fromEmail: string | null;
+  fromName: string | null;
 };
 
 export function getEmailEnv(): EmailEnv {
   return {
     apiKey: process.env.BREVO_API_KEY || null,
     liveFlag: process.env.EMAIL_LIVE === "true",
+    fromEmail: process.env.BREVO_FROM_EMAIL || null,
+    fromName: process.env.BREVO_FROM_NAME || null,
+  };
+}
+
+/**
+ * The sender to send as. Admin settings win when set, else the env fallback
+ * (BREVO_FROM_EMAIL/BREVO_FROM_NAME), else a safe name default. Email is only
+ * sent at all when `email` returns non-empty (see isEmailLiveMode), so an
+ * unconfigured sender keeps everything in mock mode.
+ */
+export function resolveSender(settings: EmailSettings, env = getEmailEnv()): { email: string; name: string } {
+  return {
+    email: (settings.senderEmail || env.fromEmail || "").trim(),
+    name: (settings.senderName || env.fromName || "Shiv Radium").trim(),
   };
 }
 
@@ -41,14 +59,15 @@ export function isEmailLiveMode(
   senderEmail: string,
   env = getEmailEnv(),
 ): boolean {
-  return enabled && emailCredentialsPresent(env) && Boolean(senderEmail) && env.liveFlag;
+  return enabled && emailCredentialsPresent(env) && Boolean(senderEmail.trim()) && env.liveFlag;
 }
 
 /** For display in the admin / status reports — no secret material. */
 export function emailStatus(settings: EmailSettings) {
   const env = getEmailEnv();
   const configured = emailCredentialsPresent(env);
-  const live = isEmailLiveMode(settings.enabled, settings.senderEmail, env);
+  const sender = resolveSender(settings, env);
+  const live = isEmailLiveMode(settings.enabled, sender.email, env);
   return {
     enabled: settings.enabled,
     otpEnabled: settings.otpEnabled,
@@ -56,8 +75,10 @@ export function emailStatus(settings: EmailSettings) {
     live,
     mode: live ? ("live" as const) : ("mock" as const),
     hasApiKey: configured,
-    senderEmail: settings.senderEmail || null,
-    senderName: settings.senderName,
+    senderEmail: sender.email || null,
+    senderName: sender.name,
+    /** Where the sender came from, so the admin can tell env vs settings. */
+    senderSource: settings.senderEmail ? ("settings" as const) : env.fromEmail ? ("env" as const) : ("unset" as const),
     liveFlag: env.liveFlag,
   };
 }
@@ -88,11 +109,32 @@ function otpEmailBody(code: string, ttlMinutes: number, brandName: string) {
   return { text, html };
 }
 
-/** Low-level Brevo transactional send. Returns ok + (server-only) error text. */
-async function postBrevoEmail(
+const BREVO_TIMEOUT_MS = 10_000;
+
+/** A coarse classification of a Brevo failure, for logs and retry decisions. */
+type EmailErrorClass = "auth" | "sender" | "rate_limited" | "transient" | "client" | "unknown";
+
+function classify(status: number, code?: string): EmailErrorClass {
+  if (status === 401 || status === 403) return "auth";
+  if (status === 429) return "rate_limited";
+  if (status >= 500) return "transient";
+  // Brevo flags an unauthorised/unverified sender on a 400 with these codes.
+  if (status === 400 && (code === "invalid_parameter" || /sender/i.test(code ?? ""))) return "sender";
+  if (status >= 400) return "client";
+  return "unknown";
+}
+
+/**
+ * Low-level Brevo transactional send — ONE attempt. Returns ok, a server-only
+ * error string, the error class, and whether a retry is worth trying. The API
+ * key, the OTP code and the full request body are NEVER logged.
+ */
+async function postBrevoEmailOnce(
   apiKey: string,
   args: { to: string; senderEmail: string; senderName: string; subject: string; html: string; text: string },
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; errorClass?: EmailErrorClass; retryable: boolean }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), BREVO_TIMEOUT_MS);
   try {
     const res = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
@@ -104,19 +146,43 @@ async function postBrevoEmail(
         htmlContent: args.html,
         textContent: args.text,
       }),
+      signal: controller.signal,
     });
     if (!res.ok) {
-      // Provider wording stays in the server log, never reaches the customer.
+      // Only the provider's short message/code is read — never echoed to the client.
       const body = (await res.json().catch(() => ({}))) as { message?: string; code?: string };
-      const msg = body?.message || `HTTP ${res.status}`;
-      console.error("[email] Brevo send failed:", res.status, msg);
-      return { ok: false, error: String(msg).slice(0, 400) };
+      const errorClass = classify(res.status, body?.code);
+      console.error(`[email] Brevo send failed (${errorClass}):`, res.status, body?.code ?? "");
+      return { ok: false, error: `${errorClass}:${res.status}`, errorClass, retryable: errorClass === "transient" };
     }
-    return { ok: true };
+    return { ok: true, retryable: false };
   } catch (error) {
-    console.error("[email] Brevo send error:", error);
-    return { ok: false, error: "network error" };
+    // Abort (timeout) or a network error: the request may not have reached Brevo.
+    const timedOut = error instanceof Error && error.name === "AbortError";
+    console.error("[email] Brevo send error:", timedOut ? "timeout" : "network");
+    return { ok: false, error: timedOut ? "timeout" : "network", errorClass: "transient", retryable: true };
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+/**
+ * Send one email with a single retry on a clearly-transient failure (timeout /
+ * network / 5xx). We deliberately do NOT retry 429 or 4xx: a retry there would
+ * either hammer a rate limit or risk a duplicate delivery, and the customer
+ * still has the WhatsApp code. A retry re-sends the SAME OTP, so at worst a
+ * transient blip produces one duplicate of an identical code — never a second,
+ * different code.
+ */
+async function postBrevoEmail(
+  apiKey: string,
+  args: { to: string; senderEmail: string; senderName: string; subject: string; html: string; text: string },
+): Promise<{ ok: boolean; error?: string }> {
+  const first = await postBrevoEmailOnce(apiKey, args);
+  if (first.ok || !first.retryable) return first;
+  await new Promise((r) => setTimeout(r, 400));
+  const second = await postBrevoEmailOnce(apiKey, args);
+  return second;
 }
 
 /**
@@ -133,7 +199,8 @@ export async function sendOtpEmail(args: {
   env?: EmailEnv;
 }): Promise<EmailSendResult> {
   const env = args.env ?? getEmailEnv();
-  const live = isEmailLiveMode(args.settings.enabled, args.settings.senderEmail, env);
+  const sender = resolveSender(args.settings, env);
+  const live = isEmailLiveMode(args.settings.enabled, sender.email, env);
 
   if (!live) {
     // Mock: log the attempt without the code or any secret.
@@ -141,11 +208,11 @@ export async function sendOtpEmail(args: {
     return { ok: true, mock: true };
   }
 
-  const { text, html } = otpEmailBody(args.code, args.ttlMinutes, args.settings.senderName);
+  const { text, html } = otpEmailBody(args.code, args.ttlMinutes, sender.name);
   const result = await postBrevoEmail(env.apiKey as string, {
     to: args.to,
-    senderEmail: args.settings.senderEmail,
-    senderName: args.settings.senderName,
+    senderEmail: sender.email,
+    senderName: sender.name,
     subject: args.settings.otpSubject,
     html,
     text,
@@ -184,19 +251,20 @@ export async function sendVerificationEmail(args: {
   env?: EmailEnv;
 }): Promise<EmailSendResult> {
   const env = args.env ?? getEmailEnv();
-  const live = isEmailLiveMode(args.settings.enabled, args.settings.senderEmail, env);
+  const sender = resolveSender(args.settings, env);
+  const live = isEmailLiveMode(args.settings.enabled, sender.email, env);
 
   if (!live) {
     console.info(`[email] mock verification email to ${maskEmail(args.to)} (not sent)`);
     return { ok: true, mock: true };
   }
 
-  const { text, html } = verificationEmailBody(args.link, args.settings.senderName, args.ttlMinutes);
+  const { text, html } = verificationEmailBody(args.link, sender.name, args.ttlMinutes);
   const result = await postBrevoEmail(env.apiKey as string, {
     to: args.to,
-    senderEmail: args.settings.senderEmail,
-    senderName: args.settings.senderName,
-    subject: `Verify your email · ${args.settings.senderName}`,
+    senderEmail: sender.email,
+    senderName: sender.name,
+    subject: `Verify your email · ${sender.name}`,
     html,
     text,
   });
