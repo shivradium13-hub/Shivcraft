@@ -6,6 +6,11 @@ channels, each independent and optional (configured in the `reports` settings):
 - **WhatsApp** — a short summary (counts + amount) via an approved template.
 - **Email** — the full per-order report (table of every order).
 
+The WhatsApp message carries a **PDF attachment** (the day's orders with product
+line-item details) via the template's Document header, plus a short text summary.
+The PDF is generated server-side (`src/server/reports/dailyOrdersPdf.ts`) and
+uploaded to WhatsApp's media store (never a public URL).
+
 ## How it runs
 
 - **Schedule:** a Vercel Cron (`vercel.json`) hits `GET /api/cron/daily-orders`
@@ -22,6 +27,8 @@ owner creates this once in **Meta WhatsApp Manager → Message templates**:
 - **Name:** `daily_orders_report` (lowercase + underscores only)
 - **Category:** Utility
 - **Language:** English
+- **Header:** set to **Document** (type: Document / Media). This carries the
+  daily PDF of the day's orders + product details. Sample file: upload any PDF.
 - **Body** (5 variables, text around each, nothing at the very end is a bare
   variable):
 

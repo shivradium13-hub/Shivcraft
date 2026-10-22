@@ -254,11 +254,44 @@ export async function sendOrderTemplate(args: {
 }
 
 /**
- * Send an operational report to the owner via an approved UTILITY template
- * (e.g. the daily orders digest). Ordered body params fill the template's
- * {{1}}, {{2}}, … variables. Mock mode (not live) logs without sending. Not
- * written to the message log — it is an internal owner message, not a customer
- * one. The code/secret path is identical to the order templates.
+ * Upload a file to WhatsApp's media store and return its id (used as a template
+ * document/image header). Keeps the file off any public URL — WhatsApp holds it.
+ */
+async function uploadWhatsappMedia(
+  env: WhatsappEnv,
+  bytes: Uint8Array,
+  filename: string,
+  mimeType: string,
+): Promise<{ id: string } | { error: string }> {
+  try {
+    const form = new FormData();
+    form.append("messaging_product", "whatsapp");
+    form.append("type", mimeType);
+    form.append("file", new Blob([bytes as BlobPart], { type: mimeType }), filename);
+    const res = await fetch(`https://graph.facebook.com/${env.graphVersion}/${env.phoneNumberId}/media`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${env.token}` },
+      body: form,
+    });
+    const json = (await res.json().catch(() => ({}))) as { id?: string; error?: { message?: string } };
+    if (!res.ok || !json.id) {
+      console.error("[whatsapp] media upload failed:", res.status, json?.error?.message ?? "");
+      return { error: json?.error?.message || `HTTP ${res.status}` };
+    }
+    return { id: json.id };
+  } catch (error) {
+    console.error("[whatsapp] media upload error:", error);
+    return { error: "network error" };
+  }
+}
+
+/**
+ * Send an operational report to the owner via an approved UTILITY template (e.g.
+ * the daily orders digest). Ordered body params fill the template's {{1}}, {{2}},
+ * … variables; an optional `document` (e.g. a PDF) is uploaded and attached as
+ * the template's document header — so the template MUST be created with a
+ * Document header when a document is sent. Mock mode (not live) logs without
+ * sending. Not written to the customer message log.
  */
 export async function sendReportTemplate(args: {
   phone: string;
@@ -266,19 +299,30 @@ export async function sendReportTemplate(args: {
   language: string;
   bodyParams: string[];
   enabled: boolean;
+  document?: { bytes: Uint8Array; filename: string; mimeType?: string };
 }): Promise<{ ok: boolean; mock: boolean; error?: string }> {
   const env = getWhatsappEnv();
   const live = isLiveMode(args.enabled, env);
   if (!args.template || !args.phone) return { ok: false, mock: !live };
 
   if (!live) {
-    console.info(`[whatsapp] mock report template "${args.template}" (not sent)`);
+    console.info(`[whatsapp] mock report template "${args.template}"${args.document ? " (with document)" : ""} (not sent)`);
     return { ok: true, mock: true };
   }
 
-  const components = args.bodyParams.length
-    ? [{ type: "body", parameters: args.bodyParams.map((text) => ({ type: "text", text })) }]
-    : [];
+  const components: Record<string, unknown>[] = [];
+  if (args.document) {
+    const up = await uploadWhatsappMedia(env, args.document.bytes, args.document.filename, args.document.mimeType ?? "application/pdf");
+    if ("error" in up) return { ok: false, mock: false, error: up.error };
+    components.push({
+      type: "header",
+      parameters: [{ type: "document", document: { id: up.id, filename: args.document.filename } }],
+    });
+  }
+  if (args.bodyParams.length) {
+    components.push({ type: "body", parameters: args.bodyParams.map((text) => ({ type: "text", text })) });
+  }
+
   const result = await postTemplate(env, args.phone, args.template, args.language, components);
   return { ok: result.ok, mock: false, error: result.error };
 }

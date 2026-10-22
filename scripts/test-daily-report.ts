@@ -14,6 +14,7 @@ import { db } from "@/server/db";
 import { orders, payments, users } from "@/server/db/schema";
 import { sendAdminEmail } from "@/server/email/service";
 import { buildDailyOrdersReport, istDayRange } from "@/server/reports/dailyOrders";
+import { buildDailyOrdersPdf } from "@/server/reports/dailyOrdersPdf";
 import { normaliseReports } from "@/server/reports/settings";
 import { sendReportTemplate } from "@/server/whatsapp/service";
 
@@ -112,6 +113,19 @@ async function main() {
   // --- report settings normalise -------------------------------------------
   const rs = normaliseReports({ whatsappTemplate: "  daily_orders_report ", whatsappTo: "9876543210" });
   check("report settings normalise (template trimmed, email empty, lang default)", rs.whatsappTemplate === "daily_orders_report" && rs.emailTo === "" && rs.language === "en");
+
+  // --- PDF generation -------------------------------------------------------
+  const pdf = await buildDailyOrdersPdf(NOW);
+  const header = new TextDecoder().decode(pdf.bytes.slice(0, 5));
+  check("PDF generated (valid %PDF, non-trivial size)", header === "%PDF-" && pdf.bytes.length > 500);
+  check("PDF filename names the date", pdf.filename.includes("15-june-2026") && pdf.filename.endsWith(".pdf"));
+
+  // WhatsApp send WITH a PDF document is still mock (no WHATSAPP_LIVE), no upload call.
+  let calls2 = 0;
+  globalThis.fetch = ((...a: Parameters<typeof fetch>) => { calls2++; return realFetch(...a); }) as typeof fetch;
+  const waDoc = await sendReportTemplate({ phone: "9000000000", template: "daily_orders_report", language: "en", bodyParams: ["x"], enabled: true, document: { bytes: pdf.bytes, filename: pdf.filename } });
+  globalThis.fetch = realFetch;
+  check("WhatsApp report with PDF is mock without WHATSAPP_LIVE, no upload", waDoc.mock === true && calls2 === 0);
 
   await cleanup();
   console.log(failures === 0 ? "\n✓ All daily-report tests passed\n" : `\n✗ ${failures} test(s) failed\n`);

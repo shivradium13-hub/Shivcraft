@@ -2,6 +2,7 @@ import { formatPaise } from "@/lib/money";
 import { sendAdminEmail } from "@/server/email/service";
 import { getEmailSettings } from "@/server/email/settings";
 import { buildDailyOrdersReport } from "@/server/reports/dailyOrders";
+import { buildDailyOrdersPdf } from "@/server/reports/dailyOrdersPdf";
 import { getReportSettings } from "@/server/reports/settings";
 import { getWhatsappSettings } from "@/server/whatsapp/settings";
 import { sendReportTemplate } from "@/server/whatsapp/service";
@@ -47,12 +48,16 @@ export async function GET(request: Request) {
         String(report.pendingPaymentCount),
         String(report.cancelledCount),
       ];
+      // Always attach the product-detail PDF — the template's document header
+      // needs a file every day (even a "no orders" one).
+      const pdf = await buildDailyOrdersPdf();
       const r = await sendReportTemplate({
         phone: reports.whatsappTo,
         template: reports.whatsappTemplate,
         language: reports.language,
         bodyParams: params,
         enabled: waSettings.enabled,
+        document: { bytes: pdf.bytes, filename: pdf.filename },
       });
       whatsapp = { ok: r.ok, mock: r.mock };
     }
