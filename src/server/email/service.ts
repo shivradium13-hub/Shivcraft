@@ -270,3 +270,39 @@ export async function sendVerificationEmail(args: {
   });
   return { ok: result.ok, mock: false, error: result.error };
 }
+
+/**
+ * Send an operational email to the shop owner/admin (e.g. the daily orders
+ * digest). Deliberately independent of the customer-facing `enabled` /
+ * `otpEnabled` toggles — an internal report should go out whenever email is live
+ * (`EMAIL_LIVE` + API key + a configured sender), regardless of whether customer
+ * OTP email is switched on. Mock mode logs without sending; the content (never a
+ * secret) is not logged.
+ */
+export async function sendAdminEmail(args: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  settings: EmailSettings;
+  env?: EmailEnv;
+}): Promise<EmailSendResult> {
+  const env = args.env ?? getEmailEnv();
+  const sender = resolveSender(args.settings, env);
+  const live = emailCredentialsPresent(env) && Boolean(sender.email) && env.liveFlag;
+
+  if (!live) {
+    console.info(`[email] mock admin email to ${maskEmail(args.to)} (not sent)`);
+    return { ok: true, mock: true };
+  }
+
+  const result = await postBrevoEmail(env.apiKey as string, {
+    to: args.to,
+    senderEmail: sender.email,
+    senderName: sender.name,
+    subject: args.subject,
+    html: args.html,
+    text: args.text,
+  });
+  return { ok: result.ok, mock: false, error: result.error };
+}
