@@ -254,6 +254,36 @@ export async function sendOrderTemplate(args: {
 }
 
 /**
+ * Send an operational report to the owner via an approved UTILITY template
+ * (e.g. the daily orders digest). Ordered body params fill the template's
+ * {{1}}, {{2}}, … variables. Mock mode (not live) logs without sending. Not
+ * written to the message log — it is an internal owner message, not a customer
+ * one. The code/secret path is identical to the order templates.
+ */
+export async function sendReportTemplate(args: {
+  phone: string;
+  template: string;
+  language: string;
+  bodyParams: string[];
+  enabled: boolean;
+}): Promise<{ ok: boolean; mock: boolean; error?: string }> {
+  const env = getWhatsappEnv();
+  const live = isLiveMode(args.enabled, env);
+  if (!args.template || !args.phone) return { ok: false, mock: !live };
+
+  if (!live) {
+    console.info(`[whatsapp] mock report template "${args.template}" (not sent)`);
+    return { ok: true, mock: true };
+  }
+
+  const components = args.bodyParams.length
+    ? [{ type: "body", parameters: args.bodyParams.map((text) => ({ type: "text", text })) }]
+    : [];
+  const result = await postTemplate(env, args.phone, args.template, args.language, components);
+  return { ok: result.ok, mock: false, error: result.error };
+}
+
+/**
  * Whether an order-update message for this order + template has already been
  * recorded (in any non-failed state), so a repeated status event or webhook
  * retry does not send a duplicate.
