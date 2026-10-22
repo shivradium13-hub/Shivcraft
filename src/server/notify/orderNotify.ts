@@ -1,6 +1,9 @@
+import { eq } from "drizzle-orm";
+
 import { db } from "@/server/db";
-import { notifications } from "@/server/db/schema";
+import { notifications, orderItems, orders, payments, users } from "@/server/db/schema";
 import { sendEmail } from "@/server/notify/channels";
+import { formatPaise } from "@/lib/money";
 import type { WhatsappSettings } from "@/lib/whatsapp";
 import { getWhatsappSettings } from "@/server/whatsapp/settings";
 import { orderMessageAlreadySent, sendOrderTemplate } from "@/server/whatsapp/service";
@@ -75,9 +78,52 @@ function whatsappFor(event: OrderEvent, s: WhatsappSettings): { enabled: boolean
       return { enabled: s.notifyOutForDelivery, template: s.templateOutForDelivery };
     case "DELIVERED":
       return { enabled: s.notifyDelivered, template: s.templateDelivered };
+    case "CANCELLED":
+      return { enabled: s.notifyCancelled, template: s.templateCancelled };
     default:
       return null;
   }
+}
+
+/** One WhatsApp-safe line: no newlines/tabs, collapsed spaces, capped length. */
+function oneLine(s: string, max = 120): string {
+  return (s || "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+/**
+ * The 6 body params for the owner's `order_cancelled` template:
+ * {{1}} customer name, {{2}} order number, {{3}} product(s), {{4}} amount (the
+ * template already prints the ₹), {{5}} cancellation reason, {{6}} refund status.
+ * Read here (after the refund has run) so the refund status is current. Returns
+ * null if the order can't be read — the message is then skipped rather than sent
+ * with the wrong number of variables.
+ */
+export async function buildCancelledParams(orderId: string, orderNumber: string): Promise<string[] | null> {
+  const [ord] = await db
+    .select({ totalP: orders.totalP, cancelReason: orders.cancelReason, userId: orders.userId })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+  if (!ord) return null;
+
+  const [[u], items, [pay]] = await Promise.all([
+    db.select({ name: users.name }).from(users).where(eq(users.id, ord.userId)).limit(1),
+    db.select({ productName: orderItems.productName, quantity: orderItems.quantity }).from(orderItems).where(eq(orderItems.orderId, orderId)),
+    db.select({ status: payments.status, method: payments.method }).from(payments).where(eq(payments.orderId, orderId)).limit(1),
+  ]);
+
+  const product = items.length
+    ? oneLine(items.map((i) => `${i.productName} x${i.quantity}`).join(", "))
+    : "your order";
+  const amount = formatPaise(ord.totalP).replace("₹", "").trim();
+  const refundStatus =
+    pay?.status === "REFUNDED"
+      ? "Refunded to your original payment (3-7 working days)"
+      : pay && pay.method !== "COD" && pay.status === "PAID"
+        ? "Refund is being processed"
+        : "No online payment to refund";
+
+  return [oneLine(u?.name || "Customer", 60), orderNumber, product, amount, oneLine(ord.cancelReason || "Cancelled"), refundStatus];
 }
 
 /**
@@ -121,11 +167,22 @@ export async function notifyOrderEvent(event: OrderEvent, ctx: NotifyContext): P
   if (!wa || !wa.enabled || !wa.template) return;
   if (ctx.orderId && (await orderMessageAlreadySent(ctx.orderId, wa.template))) return;
 
+  // The cancellation template carries full detail (6 variables); the others take
+  // the order number + a one-line status.
+  let bodyParams: string[];
+  if (event === "CANCELLED") {
+    const params = ctx.orderId ? await buildCancelledParams(ctx.orderId, ctx.orderNumber) : null;
+    if (!params) return; // can't fill the detailed template — skip rather than mis-send
+    bodyParams = params;
+  } else {
+    bodyParams = [ctx.orderNumber, body];
+  }
+
   await sendOrderTemplate({
     phone: ctx.phone,
     template: wa.template,
     language: settings.templateLang,
-    bodyParams: [ctx.orderNumber, body],
+    bodyParams,
     enabled: settings.enabled,
     userId: ctx.userId,
     orderId: ctx.orderId ?? null,
