@@ -29,6 +29,7 @@ export default async function AdminOrderPage(props: PageProps<"/admin/orders/[or
   const payment = order.payments[0] ?? null;
   const needsRefund =
     order.status === "CANCELLED" && payment?.status === "PAID" && payment.method !== "COD";
+  const refunded = order.status === "CANCELLED" && payment?.status === "REFUNDED";
 
   return (
     <div>
@@ -68,10 +69,18 @@ export default async function AdminOrderPage(props: PageProps<"/admin/orders/[or
         </div>
       </div>
 
+      {refunded ? (
+        <p className="mt-4 rounded-xl bg-success-soft px-4 py-3 text-sm font-medium text-success">
+          This order was cancelled and the online payment has been refunded automatically through
+          Razorpay. The money typically reaches the customer in 3–7 working days.
+        </p>
+      ) : null}
+
       {needsRefund ? (
         <p className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-sm font-medium text-danger">
-          This order was paid online and then cancelled. Issue the refund from your Razorpay
-          dashboard — nothing here has refunded it automatically.
+          This order was paid online and then cancelled, but the automatic refund did not go
+          through. Issue the refund from your Razorpay dashboard — the money has not been returned
+          yet.
         </p>
       ) : null}
 

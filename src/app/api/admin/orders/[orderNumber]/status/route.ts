@@ -5,6 +5,7 @@ import { ApiError, ok, readJson, route } from "@/server/api/http";
 import { requireAdmin } from "@/server/auth/guards";
 import { allowedNext, type OrderStatus } from "@/server/admin/orders";
 import { notifyOrderEvent, type OrderEvent } from "@/server/notify/orderNotify";
+import { refundForCancelledOrder } from "@/server/orders/refund";
 import { db } from "@/server/db";
 import {
   inventoryMovements,
@@ -151,26 +152,28 @@ export const POST = route(
       });
     }
 
-    /* A cancelled order that was already PAID needs a real refund in Razorpay.
-       We do NOT mark it refunded here — saying so without moving money would be
-       a lie in the records. */
-    const paid = await db
-      .select({ id: payments.id, status: payments.status, method: payments.method })
-      .from(payments)
-      .where(eq(payments.orderId, order.id))
-      .limit(1);
-
-    const refundOwed =
-      input.status === "CANCELLED" && paid[0]?.status === "PAID" && paid[0]?.method !== "COD";
+    /* A cancelled, online-paid order is refunded automatically through Razorpay.
+       Done outside the transaction (it is an external API call) and best-effort:
+       on any failure the cancellation still stands and a manual refund is flagged
+       instead — we never record a refund that did not actually move money. */
+    const refund =
+      input.status === "CANCELLED"
+        ? await refundForCancelledOrder({
+            orderId: order.id,
+            orderNumber,
+            userId: order.userId,
+            actorId: admin.id,
+          })
+        : { refunded: false, refundId: null, refundOwed: false, note: null };
 
     return ok({
       orderNumber,
       status: input.status,
       restocked,
-      refundOwed,
-      refundNote: refundOwed
-        ? "This order was paid online. Issue the refund from your Razorpay dashboard — it has not been refunded automatically."
-        : null,
+      refunded: refund.refunded,
+      refundId: refund.refundId,
+      refundOwed: refund.refundOwed,
+      refundNote: refund.note,
     });
   },
 );

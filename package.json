@@ -18,6 +18,7 @@
     "verify:security": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/verify-security.ts",
     "test:whatsapp": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-whatsapp-webhook.ts",
     "test:delivery": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-delivery-serviceability.ts",
+    "test:refund": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-refund.ts",
     "test:email": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-email-otp.ts",
     "test:email-verify": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-email-verify.ts",
     "test:email-brevo": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-email-brevo.ts"
