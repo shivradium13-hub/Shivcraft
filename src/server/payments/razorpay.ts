@@ -103,6 +103,45 @@ export async function createRazorpayOrder(
   return payload as RazorpayOrder;
 }
 
+export type RazorpayRefund = { id: string; status: string; amount: number; payment_id?: string };
+
+/**
+ * Refunds a captured payment. `amountP` omitted = a full refund; Razorpay works
+ * in paise, the same unit we store, so the value passes straight through.
+ *
+ * Throws on any non-2xx (Razorpay's wording goes only to the log). The caller
+ * must NOT mark the order refunded unless this resolves — a record saying
+ * "refunded" without money actually moving would be a lie. Razorpay will not
+ * over-refund a payment, so a repeat call for an already-refunded payment fails
+ * here rather than sending money twice.
+ */
+export async function refundPayment(
+  paymentId: string,
+  amountP?: number,
+  notes: Record<string, string> = {},
+): Promise<RazorpayRefund> {
+  const config = getRazorpayConfig();
+  if (!config) throw new Error("Razorpay is not configured");
+
+  const auth = Buffer.from(`${config.keyId}:${config.keySecret}`).toString("base64");
+  const body: Record<string, unknown> = { notes };
+  if (typeof amountP === "number") body.amount = amountP;
+
+  const response = await fetch(`${API}/payments/${encodeURIComponent(paymentId)}/refund`, {
+    method: "POST",
+    headers: { authorization: `Basic ${auth}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    console.error("[razorpay] refund failed:", response.status, payload);
+    const description = (payload as { error?: { description?: string } })?.error?.description;
+    throw new Error(description || "Razorpay rejected the refund");
+  }
+  return payload as RazorpayRefund;
+}
+
 /**
  * Confirms the callback really came from Razorpay.
  *
