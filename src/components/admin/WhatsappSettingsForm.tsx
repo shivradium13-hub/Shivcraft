@@ -129,6 +129,7 @@ export function WhatsappSettingsForm({ initial }: { initial: WhatsappSettings })
           <Toggle label="Shipped" checked={v.notifyShipped} onChange={(x) => set("notifyShipped", x)} />
           <Toggle label="Out for delivery" checked={v.notifyOutForDelivery} onChange={(x) => set("notifyOutForDelivery", x)} />
           <Toggle label="Delivered" checked={v.notifyDelivered} onChange={(x) => set("notifyDelivered", x)} />
+          <Toggle label="Cancelled" checked={v.notifyCancelled} onChange={(x) => set("notifyCancelled", x)} />
         </div>
       </Section>
 
@@ -139,6 +140,7 @@ export function WhatsappSettingsForm({ initial }: { initial: WhatsappSettings })
           <TextField label="Shipped (utility)" value={v.templateShipped} onChange={(x) => set("templateShipped", x)} placeholder="order_shipped" />
           <TextField label="Out for delivery (utility)" value={v.templateOutForDelivery} onChange={(x) => set("templateOutForDelivery", x)} placeholder="order_out_for_delivery" />
           <TextField label="Delivered (utility)" value={v.templateDelivered} onChange={(x) => set("templateDelivered", x)} placeholder="order_delivered" />
+          <TextField label="Cancelled (utility)" value={v.templateCancelled} onChange={(x) => set("templateCancelled", x)} placeholder="order_cancelled" />
         </div>
         <TextField label="Template language" value={v.templateLang} onChange={(x) => set("templateLang", x)} placeholder="en" />
       </Section>

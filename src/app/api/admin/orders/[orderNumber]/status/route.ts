@@ -138,6 +138,22 @@ export const POST = route(
       });
     });
 
+    /* A cancelled, online-paid order is refunded automatically through Razorpay.
+       Done outside the transaction (it is an external API call) and best-effort:
+       on any failure the cancellation still stands and a manual refund is flagged
+       instead — we never record a refund that did not actually move money. Run
+       BEFORE the customer message so a cancellation note can report the refund
+       status (the payment row is REFUNDED by then). */
+    const refund =
+      input.status === "CANCELLED"
+        ? await refundForCancelledOrder({
+            orderId: order.id,
+            orderNumber,
+            userId: order.userId,
+            actorId: admin.id,
+          })
+        : { refunded: false, refundId: null, refundOwed: false, note: null };
+
     // Tell the customer (in-app always; email + WhatsApp when configured). Best
     // effort and outside the transaction so a channel hiccup cannot undo the
     // status change.
@@ -151,20 +167,6 @@ export const POST = route(
         phone: order.phone,
       });
     }
-
-    /* A cancelled, online-paid order is refunded automatically through Razorpay.
-       Done outside the transaction (it is an external API call) and best-effort:
-       on any failure the cancellation still stands and a manual refund is flagged
-       instead — we never record a refund that did not actually move money. */
-    const refund =
-      input.status === "CANCELLED"
-        ? await refundForCancelledOrder({
-            orderId: order.id,
-            orderNumber,
-            userId: order.userId,
-            actorId: admin.id,
-          })
-        : { refunded: false, refundId: null, refundOwed: false, note: null };
 
     return ok({
       orderNumber,

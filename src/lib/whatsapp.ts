@@ -20,6 +20,7 @@ export type WhatsappSettings = {
   notifyShipped: boolean;
   notifyOutForDelivery: boolean;
   notifyDelivered: boolean;
+  notifyCancelled: boolean;
 
   /** Approved template names + language. */
   templateOtp: string;
@@ -27,6 +28,7 @@ export type WhatsappSettings = {
   templateShipped: string;
   templateOutForDelivery: string;
   templateDelivered: string;
+  templateCancelled: string;
   templateLang: string;
 
   /** Estimated cost per message, in paise — for the reporting dashboard only. */
@@ -44,11 +46,13 @@ export const DEFAULT_WHATSAPP: WhatsappSettings = {
   notifyShipped: true,
   notifyOutForDelivery: true,
   notifyDelivered: true,
+  notifyCancelled: true,
   templateOtp: "",
   templateConfirmed: "",
   templateShipped: "",
   templateOutForDelivery: "",
   templateDelivered: "",
+  templateCancelled: "",
   templateLang: "en",
   // Rough Meta India list prices; configurable, used for reporting only.
   rateAuthPaise: 11,
@@ -81,11 +85,13 @@ export function normaliseWhatsapp(value: unknown): WhatsappSettings {
     notifyShipped: bool(v.notifyShipped, d.notifyShipped),
     notifyOutForDelivery: bool(v.notifyOutForDelivery, d.notifyOutForDelivery),
     notifyDelivered: bool(v.notifyDelivered, d.notifyDelivered),
+    notifyCancelled: bool(v.notifyCancelled, d.notifyCancelled),
     templateOtp: str(v.templateOtp, d.templateOtp),
     templateConfirmed: str(v.templateConfirmed, d.templateConfirmed),
     templateShipped: str(v.templateShipped, d.templateShipped),
     templateOutForDelivery: str(v.templateOutForDelivery, d.templateOutForDelivery),
     templateDelivered: str(v.templateDelivered, d.templateDelivered),
+    templateCancelled: str(v.templateCancelled, d.templateCancelled),
     templateLang: str(v.templateLang, d.templateLang, 12) || d.templateLang,
     rateAuthPaise: int(v.rateAuthPaise, d.rateAuthPaise, 0, 100000),
     rateUtilityPaise: int(v.rateUtilityPaise, d.rateUtilityPaise, 0, 100000),
