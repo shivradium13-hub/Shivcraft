@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       getEmailSettings(),
     ]);
 
-    let whatsapp: { ok: boolean; mock: boolean } | null = null;
+    let whatsapp: { ok: boolean; mock: boolean; error?: string | null } | null = null;
     if (reports.whatsappTemplate && reports.whatsappTo) {
       // WhatsApp templates take fixed body variables — a short summary, not the
       // per-order table (that stays in email). Order: date, count, collected,
@@ -49,17 +49,23 @@ export async function GET(request: Request) {
         String(report.cancelledCount),
       ];
       // Always attach the product-detail PDF — the template's document header
-      // needs a file every day (even a "no orders" one).
-      const pdf = await buildDailyOrdersPdf();
-      const r = await sendReportTemplate({
-        phone: reports.whatsappTo,
-        template: reports.whatsappTemplate,
-        language: reports.language,
-        bodyParams: params,
-        enabled: waSettings.enabled,
-        document: { bytes: pdf.bytes, filename: pdf.filename },
-      });
-      whatsapp = { ok: r.ok, mock: r.mock };
+      // needs a file every day (even a "no orders" one). Wrapped so a PDF or
+      // media-upload failure surfaces in the response instead of a 500.
+      try {
+        const pdf = await buildDailyOrdersPdf();
+        const r = await sendReportTemplate({
+          phone: reports.whatsappTo,
+          template: reports.whatsappTemplate,
+          language: reports.language,
+          bodyParams: params,
+          enabled: waSettings.enabled,
+          document: { bytes: pdf.bytes, filename: pdf.filename },
+        });
+        whatsapp = { ok: r.ok, mock: r.mock, error: r.error ?? null };
+      } catch (error) {
+        console.error("[cron] daily-orders whatsapp failed:", error);
+        whatsapp = { ok: false, mock: false, error: error instanceof Error ? error.message : String(error) };
+      }
     }
 
     let email: { ok: boolean; mock: boolean } | null = null;
