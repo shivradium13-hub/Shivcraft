@@ -17,8 +17,12 @@ export const GET = route(async (request: Request) => {
     throw new ApiError("BAD_REQUEST", "WhatsApp isn't configured (missing access token or business account id).");
   }
 
-  const name = new URL(request.url).searchParams.get("name") || "daily_orders_report";
-  const url = `https://graph.facebook.com/${env.graphVersion}/${env.businessAccountId}/message_templates?name=${encodeURIComponent(name)}`;
+  const search = new URL(request.url).searchParams;
+  const name = search.get("name") || "daily_orders_report";
+  // message_templates live on the WABA node; a `waba` override is allowed because
+  // WHATSAPP_BUSINESS_ACCOUNT_ID may hold the business-portfolio id instead.
+  const waba = search.get("waba") || env.businessAccountId;
+  const url = `https://graph.facebook.com/${env.graphVersion}/${waba}/message_templates?name=${encodeURIComponent(name)}`;
   const res = await fetch(url, { headers: { authorization: `Bearer ${env.token}` }, cache: "no-store" });
   const json = (await res.json().catch(() => null)) as {
     data?: { name?: string; status?: string; language?: string; components?: unknown }[];
