@@ -1,13 +1,15 @@
-import { runDailyReport } from "@/server/reports/send";
+import { runScheduledReport } from "@/server/reports/send";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/cron/daily-orders — the evening digest of the day's orders, sent to
- * the owner over WhatsApp (and/or email). Invoked by Vercel Cron (see
- * vercel.json). Protected by CRON_SECRET: Vercel sends it as a Bearer token on
- * the scheduled request, so a public call without it is rejected.
+ * GET /api/cron/daily-orders — the digest of the day's orders, sent to the owner
+ * over WhatsApp (and/or email) at the admin-chosen IST hour. Designed to be hit
+ * as often as hourly (Vercel Cron in vercel.json as the daily guaranteed run,
+ * plus an optional external hourly ping for a precise time) — `runScheduledReport`
+ * sends at most once per IST day. Protected by CRON_SECRET: the caller sends it
+ * as a Bearer token, so a public call without it is rejected.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -16,7 +18,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await runDailyReport();
+    const result = await runScheduledReport();
+    if (!result.sent) {
+      console.info(`[cron] daily-orders: skipped (${result.reason})`);
+      return Response.json({ ok: true, skipped: true, reason: result.reason });
+    }
     console.info(
       `[cron] daily-orders: ${result.count} order(s); whatsapp=${result.whatsapp ? (result.whatsapp.mock ? "mock" : result.whatsapp.ok ? "sent" : `failed(${result.whatsapp.error ?? ""})`) : "off"}; email=${result.email ? (result.email.mock ? "mock" : result.email.ok ? "sent" : "failed") : "off"}`,
     );

@@ -1,0 +1,31 @@
+name: Daily orders report (hourly check)
+
+# Pings the report endpoint every hour. The endpoint itself decides whether to
+# send — it goes out at most once per IST day, at or after the hour chosen in
+# Admin → WhatsApp → Daily orders report. This is what makes the send time
+# changeable from the admin panel on the Hobby plan (whose Vercel Cron can only
+# run once a day; that daily run stays as a guaranteed fallback in vercel.json).
+#
+# One-time setup: add a repository secret named CRON_SECRET (same value as the
+# CRON_SECRET env var in Vercel) under Settings → Secrets and variables → Actions.
+
+on:
+  schedule:
+    - cron: "5 * * * *" # every hour at :05 UTC
+  workflow_dispatch: {} # also runnable by hand from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the daily report endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          code=$(curl -sS -o /tmp/out.txt -w "%{http_code}" \
+            "https://www.shivradium.com/api/cron/daily-orders" \
+            -H "authorization: Bearer ${CRON_SECRET}")
+          echo "HTTP ${code}"
+          cat /tmp/out.txt || true
+          # Never fail the job on a non-2xx (e.g. before the secret is set), so
+          # the schedule keeps running without emailing failures every hour.

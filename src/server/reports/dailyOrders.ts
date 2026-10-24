@@ -15,6 +15,15 @@ import { orders, payments } from "@/server/db/schema";
 
 const IST_OFFSET_MIN = 330;
 
+/** IST wall-clock hour (0-23) and calendar-day key (YYYY-MM-DD) that `now` is in. */
+export function istNowParts(now: Date): { hour: number; dateKey: string } {
+  const istWall = new Date(now.getTime() + IST_OFFSET_MIN * 60000);
+  const y = istWall.getUTCFullYear();
+  const m = String(istWall.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(istWall.getUTCDate()).padStart(2, "0");
+  return { hour: istWall.getUTCHours(), dateKey: `${y}-${m}-${d}` };
+}
+
 /** The UTC range [start, end) covering the IST calendar day that `now` falls in. */
 export function istDayRange(now: Date): { start: Date; end: Date; label: string } {
   const istWall = new Date(now.getTime() + IST_OFFSET_MIN * 60000);

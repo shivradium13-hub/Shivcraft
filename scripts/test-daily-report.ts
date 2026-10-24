@@ -13,7 +13,7 @@ import { hashPassword } from "@/server/auth/password";
 import { db } from "@/server/db";
 import { orders, payments, users } from "@/server/db/schema";
 import { sendAdminEmail } from "@/server/email/service";
-import { buildDailyOrdersReport, istDayRange } from "@/server/reports/dailyOrders";
+import { buildDailyOrdersReport, istDayRange, istNowParts } from "@/server/reports/dailyOrders";
 import { buildDailyOrdersPdf } from "@/server/reports/dailyOrdersPdf";
 import { normaliseReports } from "@/server/reports/settings";
 import { sendReportTemplate } from "@/server/whatsapp/service";
@@ -69,6 +69,12 @@ async function main() {
   // 19:00 UTC is already past IST midnight → belongs to the next IST day.
   check("late-UTC time rolls into next IST day", istDayRange(new Date("2026-06-15T19:00:00Z")).label === "16 June 2026");
 
+  // --- istNowParts (pure) — the scheduled-send gate turns on these -----------
+  const np = istNowParts(NOW); // 2026-06-15 15:30 IST
+  check("istNowParts hour is 15 (IST)", np.hour === 15, `got ${np.hour}`);
+  check("istNowParts dateKey is 2026-06-15", np.dateKey === "2026-06-15", np.dateKey);
+  check("istNowParts rolls past IST midnight", istNowParts(new Date("2026-06-15T19:00:00Z")).dateKey === "2026-06-16");
+
   // --- buildDailyOrdersReport against the DB --------------------------------
   await cleanup();
   const [u] = await db
@@ -113,6 +119,9 @@ async function main() {
   // --- report settings normalise -------------------------------------------
   const rs = normaliseReports({ whatsappTemplate: "  daily_orders_report ", whatsappTo: "9876543210" });
   check("report settings normalise (template trimmed, email empty, lang default)", rs.whatsappTemplate === "daily_orders_report" && rs.emailTo === "" && rs.language === "en");
+  check("report settings defaults (enabled on, sendHour 21)", rs.enabled === true && rs.sendHour === 21);
+  const rsBad = normaliseReports({ enabled: false, sendHour: 99 });
+  check("report settings clamp bad sendHour, honour enabled=false", rsBad.enabled === false && rsBad.sendHour === 21);
 
   // --- PDF generation -------------------------------------------------------
   const pdf = await buildDailyOrdersPdf(NOW);

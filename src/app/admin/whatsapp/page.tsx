@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 
 import { DailyReportTestButton } from "@/components/admin/DailyReportTestButton";
+import { ReportSettingsForm } from "@/components/admin/ReportSettingsForm";
 import { WhatsappSettingsForm } from "@/components/admin/WhatsappSettingsForm";
 import { formatPaise } from "@/lib/money";
 import { requireAdmin } from "@/server/auth/guards";
+import { getReportSettings } from "@/server/reports/settings";
 import { costSummary, failedCount, recentMessages } from "@/server/whatsapp/admin";
 import { getWhatsappSettings } from "@/server/whatsapp/settings";
 import { whatsappStatus } from "@/server/whatsapp/service";
@@ -28,7 +30,12 @@ export default async function AdminWhatsappPage() {
   await requireAdmin();
   const settings = await getWhatsappSettings();
   const status = whatsappStatus(settings.enabled);
-  const [logs, cost, failed] = await Promise.all([recentMessages(50), costSummary(), failedCount()]);
+  const [logs, cost, failed, reportSettings] = await Promise.all([
+    recentMessages(50),
+    costSummary(),
+    failedCount(),
+    getReportSettings(),
+  ]);
 
   return (
     <div className="grid gap-6">
@@ -114,14 +121,15 @@ export default async function AdminWhatsappPage() {
         </p>
       </section>
 
-      {/* ---------------------------------------------- daily report test */}
+      {/* ---------------------------------------------- daily report */}
       <section className="rounded-2xl border border-sr-line bg-sr-surface p-5">
         <h2 className="font-display text-base font-semibold text-sr-ink">Daily orders report</h2>
         <p className="mt-0.5 mb-3 text-xs text-sr-muted">
-          Sends the day&rsquo;s orders (summary + PDF) to the report WhatsApp number now, so you can
-          test it without waiting for the 9 PM schedule.
+          A summary (and PDF) of the day&rsquo;s orders, sent to your WhatsApp automatically. Use the button to
+          send it now for a test, and the settings below to change the number, time, and whether it runs.
         </p>
         <DailyReportTestButton />
+        <ReportSettingsForm initial={reportSettings} />
       </section>
 
       {/* -------------------------------------------------------- settings */}
