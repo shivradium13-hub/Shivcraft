@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { DailyReportTestButton } from "@/components/admin/DailyReportTestButton";
 import { WhatsappSettingsForm } from "@/components/admin/WhatsappSettingsForm";
 import { formatPaise } from "@/lib/money";
 import { requireAdmin } from "@/server/auth/guards";
@@ -111,6 +112,16 @@ export default async function AdminWhatsappPage() {
           Billable messages only (real sends). Estimate uses your configured rates — for reporting, nothing is charged
           here.{failed > 0 ? ` ${failed} message(s) have failed.` : ""}
         </p>
+      </section>
+
+      {/* ---------------------------------------------- daily report test */}
+      <section className="rounded-2xl border border-sr-line bg-sr-surface p-5">
+        <h2 className="font-display text-base font-semibold text-sr-ink">Daily orders report</h2>
+        <p className="mt-0.5 mb-3 text-xs text-sr-muted">
+          Sends the day&rsquo;s orders (summary + PDF) to the report WhatsApp number now, so you can
+          test it without waiting for the 9 PM schedule.
+        </p>
+        <DailyReportTestButton />
       </section>
 
       {/* -------------------------------------------------------- settings */}
