@@ -37,14 +37,17 @@ export async function runDailyReport(): Promise<DailyReportResult> {
       String(report.cancelledCount),
     ];
     try {
-      const pdf = await buildDailyOrdersPdf();
+      // The PDF is attached ONLY when the template has a Document header
+      // (reports.whatsappPdf). With a plain text-header template, attaching a
+      // document would make WhatsApp reject it (#132012).
+      const pdf = reports.whatsappPdf ? await buildDailyOrdersPdf() : null;
       const r = await sendReportTemplate({
         phone: reports.whatsappTo,
         template: reports.whatsappTemplate,
         language: reports.language,
         bodyParams: params,
         enabled: waSettings.enabled,
-        document: { bytes: pdf.bytes, filename: pdf.filename },
+        document: pdf ? { bytes: pdf.bytes, filename: pdf.filename } : undefined,
       });
       whatsapp = { ok: r.ok, mock: r.mock, error: r.error ?? null };
     } catch (error) {

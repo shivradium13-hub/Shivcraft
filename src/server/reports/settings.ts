@@ -17,6 +17,8 @@ export type ReportSettings = {
   emailTo: string;
   /** Template language code, e.g. "en". */
   language: string;
+  /** Attach the PDF to WhatsApp — ONLY when the template has a Document header. */
+  whatsappPdf: boolean;
 };
 
 export const DEFAULT_REPORTS: ReportSettings = {
@@ -24,10 +26,14 @@ export const DEFAULT_REPORTS: ReportSettings = {
   whatsappTo: "",
   emailTo: "",
   language: "en",
+  whatsappPdf: false,
 };
 
 function str(v: unknown, fallback: string, max = 120): string {
   return typeof v === "string" ? v.trim().slice(0, max) : fallback;
+}
+function bool(v: unknown, fallback: boolean): boolean {
+  return typeof v === "boolean" ? v : fallback;
 }
 
 export function normaliseReports(value: unknown): ReportSettings {
@@ -38,6 +44,7 @@ export function normaliseReports(value: unknown): ReportSettings {
     whatsappTo: str(v.whatsappTo, d.whatsappTo, 20),
     emailTo: str(v.emailTo, d.emailTo),
     language: str(v.language, d.language, 12) || d.language,
+    whatsappPdf: bool(v.whatsappPdf, d.whatsappPdf),
   };
 }
 
