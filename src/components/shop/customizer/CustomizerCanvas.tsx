@@ -10,6 +10,7 @@ import {
   ledTint,
   resolveFrameFill,
   resolveGradient,
+  resolveLogoUrl,
   resolveTextStyle,
   fontStack,
   zoneAcrylicText,
@@ -199,6 +200,27 @@ function ZoneLayer({
   };
 
   const selectable = interactive && onSelect && !zone.locked;
+
+  /* -------------------------------------------------------------- LOGO
+     The customer's chosen preset logo, fit inside the box like a frame image.
+     The picker lives in the controls; here the logo only displays. */
+  if (zone.kind === "LOGO") {
+    const logoUrl = resolveLogoUrl(zone, design);
+    return (
+      <div style={box} className="pointer-events-none absolute overflow-hidden">
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt=""
+            draggable={false}
+            style={maskStyle(zone.maskUrl)}
+            className="absolute inset-0 h-full w-full object-contain"
+          />
+        ) : null}
+      </div>
+    );
+  }
 
   /* ------------------------------------------------------------- FRAME */
   if (zone.kind === "FRAME") {

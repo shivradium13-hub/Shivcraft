@@ -21,6 +21,7 @@
     "test:refund": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-refund.ts",
     "test:cancelled": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-cancelled-notify.ts",
     "test:daily-report": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-daily-report.ts",
+    "test:customizer-logo": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-customizer-logo.ts",
     "test:email": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-email-otp.ts",
     "test:email-verify": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-email-verify.ts",
     "test:email-brevo": "tsx --env-file=.env.local --tsconfig tsconfig.json scripts/test-email-brevo.ts"

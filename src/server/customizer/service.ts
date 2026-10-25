@@ -120,6 +120,16 @@ export async function validateDesign(options: {
           message: `The photo in ${zone.label} is too small to print at this size. Please upload a larger one.`,
         });
       }
+    } else if (value.kind === "LOGO") {
+      if (zone.kind !== "LOGO") {
+        issues.push({ zoneId, message: `${zone.label} is not a logo picker.` });
+        continue;
+      }
+      // A chosen logo must still be one of this zone's offered logos.
+      const choiceId = value.logo.choiceId;
+      if (choiceId && !zone.logoChoices.some((c) => c.id === choiceId)) {
+        issues.push({ zoneId, message: `That logo is no longer offered for ${zone.label}.` });
+      }
     } else {
       if (zone.kind !== "TEXT") {
         issues.push({ zoneId, message: `${zone.label} does not take text.` });
@@ -140,7 +150,8 @@ export async function validateDesign(options: {
     const missing =
       !value ||
       (value.kind === "TEXT" && value.text.value.trim() === "") ||
-      (value.kind === "PHOTO" && !value.photo.uploadId);
+      (value.kind === "PHOTO" && !value.photo.uploadId) ||
+      (value.kind === "LOGO" && !value.logo.choiceId);
 
     if (missing) {
       issues.push({
@@ -148,7 +159,9 @@ export async function validateDesign(options: {
         message:
           zone.kind === "PHOTO"
             ? `Add a photo for ${zone.label}.`
-            : `Enter your ${zone.label.toLowerCase()}.`,
+            : zone.kind === "LOGO"
+              ? `Choose a logo for ${zone.label}.`
+              : `Enter your ${zone.label.toLowerCase()}.`,
       });
     }
   }
@@ -238,13 +251,25 @@ export function describeOptions(
   config: CustomizerConfig,
   design: CustomerDesign,
 ): { label: string; value: string; sku: string; priceDeltaP: number }[] {
-  return config.optionGroups.flatMap((group) => {
+  const fromGroups = config.optionGroups.flatMap((group) => {
     if (!isGroupVisible(config, group, design.options)) return [];
     const option = resolveOption(group, design.options[group.id]);
     return option
       ? [{ label: group.label, value: option.label, sku: option.sku, priceDeltaP: option.priceDeltaP }]
       : [];
   });
+
+  /* The chosen logo, named so the workshop knows which one to apply. Logo picks
+     carry no price of their own; the customization fee covers personalising. */
+  const fromLogos = config.zones.flatMap((zone) => {
+    if (zone.kind !== "LOGO" || !isZoneVisible(config, zone, design.options)) return [];
+    const value = design.zones[zone.id];
+    const choiceId = value?.kind === "LOGO" ? value.logo.choiceId : "";
+    const chosen = zone.logoChoices.find((c) => c.id === choiceId);
+    return chosen ? [{ label: zone.label, value: chosen.label, sku: "", priceDeltaP: 0 }] : [];
+  });
+
+  return [...fromGroups, ...fromLogos];
 }
 
 /** Parses a design off the wire, or throws a written error. */

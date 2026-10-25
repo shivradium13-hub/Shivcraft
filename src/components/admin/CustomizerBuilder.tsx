@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 
-import { emptyDesign, type CustomerDesign } from "@/lib/customizer/design";
+import { emptyDesign, type CustomerDesign, type ZoneValue } from "@/lib/customizer/design";
 import {
   ACRYLIC_FINISHES,
   EMPTY_CONFIG,
@@ -12,6 +12,7 @@ import {
   type CustomizerTemplate,
   type CustomizerView,
   type CustomizerZone,
+  type LogoChoice,
   type VisibilityRule,
 } from "@/lib/customizer/schema";
 import { CustomizerCanvas } from "@/components/shop/customizer/CustomizerCanvas";
@@ -145,13 +146,17 @@ export function CustomizerBuilder({
 
   /* A design with every zone filled by placeholder content, so the admin can
      see where things land before any customer has uploaded anything. */
+  const previewEntries: [string, ZoneValue][] = config.zones.flatMap((z): [string, ZoneValue][] =>
+    z.kind === "TEXT"
+      ? [[z.id, { kind: "TEXT", text: { value: z.defaultText || z.label } }]]
+      : z.kind === "LOGO" && z.logoChoices[0]
+        ? // Show the first logo so the admin sees the area filled in the preview.
+          [[z.id, { kind: "LOGO", logo: { choiceId: z.logoChoices[0].id } }]]
+        : [],
+  );
   const previewDesign: CustomerDesign = {
     ...emptyDesign(config.version, view?.id ?? ""),
-    zones: Object.fromEntries(
-      config.zones
-        .filter((z) => z.kind === "TEXT")
-        .map((z) => [z.id, { kind: "TEXT" as const, text: { value: z.defaultText || z.label } }]),
-    ),
+    zones: Object.fromEntries(previewEntries),
   };
 
   const patchZone = useCallback(
@@ -556,17 +561,19 @@ export function CustomizerBuilder({
                 const created: CustomizerZone = {
                   id,
                   kind,
-                  label: kind === "PHOTO" ? "Img box" : kind === "TEXT" ? "Text box" : "Frame",
+                  label:
+                    kind === "PHOTO" ? "Img box" : kind === "TEXT" ? "Text box" : kind === "LOGO" ? "Professional logo" : "Frame",
                   shape: opts?.shape ?? "RECT",
                   x: kind === "FRAME" ? 12 : 25,
                   y: kind === "FRAME" ? 12 : 25,
                   width: kind === "FRAME" ? 76 : 50,
-                  height: kind === "PHOTO" ? 40 : kind === "TEXT" ? 10 : 76,
+                  height: kind === "PHOTO" || kind === "LOGO" ? 40 : kind === "TEXT" ? 10 : 76,
                   rotation: 0,
                   cornerRadius: opts?.cornerRadius ?? 0,
                   safeInset: kind === "PHOTO" ? 4 : 0,
-                  // A frame is decoration, not something the customer must fill.
-                  required: kind !== "FRAME",
+                  // A frame is decoration; a logo picker is optional by default
+                  // (the customer may leave it blank). Photo and text must be filled.
+                  required: kind === "PHOTO" || kind === "TEXT",
                   opacity: 100,
                   hidden: false,
                   locked: false,
@@ -594,6 +601,7 @@ export function CustomizerBuilder({
                   shadow: { enabled: false, inset: false, color: "#000000", opacity: 45, blur: 6, offsetX: 0, offsetY: 4 },
                   gradient: { enabled: false, color1: "#ff6b2c", color2: "#151b39", angle: 135, opacity: 60 },
                   maskUrl: "",
+                  logoChoices: opts?.logoChoices ?? [],
                   fonts: [],
                   acrylicMirror: { enabled: false, finish: "gold" },
                   texture: {
@@ -1080,8 +1088,8 @@ function ZonesTab({
   onSelect: (id: string) => void;
   onPatch: (id: string, patch: Partial<CustomizerZone>) => void;
   onAdd: (
-    kind: "PHOTO" | "TEXT" | "FRAME",
-    opts?: { shape?: "RECT" | "CIRCLE"; imageUrl?: string; cornerRadius?: number },
+    kind: "PHOTO" | "TEXT" | "FRAME" | "LOGO",
+    opts?: { shape?: "RECT" | "CIRCLE"; imageUrl?: string; cornerRadius?: number; logoChoices?: LogoChoice[] },
   ) => void;
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -1098,7 +1106,7 @@ function ZonesTab({
     : [];
 
   const kindLabel = (k: CustomizerZone["kind"]) =>
-    k === "PHOTO" ? "Image box" : k === "TEXT" ? "Text box" : "Frame";
+    k === "PHOTO" ? "Image box" : k === "TEXT" ? "Text box" : k === "LOGO" ? "Logo picker" : "Frame";
 
   return (
     <div className="grid gap-4">
@@ -1147,6 +1155,19 @@ function ZonesTab({
             className="shrink-0 rounded-lg border border-sr-line-strong px-4 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400"
           >
             + Text box
+          </button>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-sr-ink">Insert logo picker</p>
+            <p className="text-[11px] text-sr-muted">The customer picks one preset logo (PNG) from a set you add.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onAdd("LOGO")}
+            className="shrink-0 rounded-lg border border-sr-line-strong px-4 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400"
+          >
+            + Logo picker
           </button>
         </div>
       </div>
@@ -1220,7 +1241,14 @@ function ZonesTab({
         <div className="grid gap-3 rounded-lg border border-sr-line p-3 sm:grid-cols-2">
           <div className="flex items-center justify-between gap-2 sm:col-span-2">
             <p className="text-sm font-semibold text-sr-ink">
-              {selected.kind === "PHOTO" ? "Image" : selected.kind === "TEXT" ? "Text" : "Frame"} properties
+              {selected.kind === "PHOTO"
+                ? "Image"
+                : selected.kind === "TEXT"
+                  ? "Text"
+                  : selected.kind === "LOGO"
+                    ? "Logo picker"
+                    : "Frame"}{" "}
+              properties
             </p>
             <div className="flex items-center gap-1.5">
               <button
@@ -1716,6 +1744,14 @@ function ZonesTab({
                 ) : null}
               </div>
             </>
+          ) : selected.kind === "LOGO" ? (
+            /* LOGO: the preset logos the customer picks from. */
+            <div className="sm:col-span-2">
+              <LogoChoicesEditor
+                choices={selected.logoChoices}
+                onChange={(choices) => onPatch(selected.id, { logoChoices: choices })}
+              />
+            </div>
           ) : (
             /* FRAME: a decorative shape or PNG the customer never edits. */
             <>
@@ -3129,6 +3165,142 @@ function MediaUploadField({
           }}
         />
       ) : null}
+    </div>
+  );
+}
+
+/** The built-in "Professional logo" set, shipped in /public/logos as PNGs. The
+ *  admin can add the whole set with one click, then keep, rename or remove any. */
+const BUILTIN_LOGOS: { label: string; imageUrl: string }[] = [
+  { label: "Chef", imageUrl: "/logos/chef.png" },
+  { label: "Music", imageUrl: "/logos/music.png" },
+  { label: "Medical", imageUrl: "/logos/medical.png" },
+  { label: "Doctor", imageUrl: "/logos/caduceus.png" },
+  { label: "CA", imageUrl: "/logos/ca.png" },
+  { label: "Om", imageUrl: "/logos/om.png" },
+  { label: "Salon", imageUrl: "/logos/salon.png" },
+  { label: "Photography", imageUrl: "/logos/camera.png" },
+  { label: "Teacher", imageUrl: "/logos/teacher.png" },
+  { label: "Law", imageUrl: "/logos/law.png" },
+  { label: "Dental", imageUrl: "/logos/dental.png" },
+  { label: "Fitness", imageUrl: "/logos/fitness.png" },
+];
+
+/** Manages the list of preset logos a LOGO zone offers: add the built-in set,
+ *  upload your own PNGs, rename each, remove any. Uploads go through the shared
+ *  /api/admin/media route (PNG/JPG/WebP), so each logo is served from there. */
+function LogoChoicesEditor({
+  choices,
+  onChange,
+}: {
+  choices: LogoChoice[];
+  onChange: (choices: LogoChoice[]) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const ref = useRef<HTMLInputElement>(null);
+
+  const genId = () => `logo-${Math.random().toString(36).slice(2, 8)}`;
+
+  function patch(id: string, p: Partial<LogoChoice>) {
+    onChange(choices.map((c) => (c.id === id ? { ...c, ...p } : c)));
+  }
+  function remove(id: string) {
+    onChange(choices.filter((c) => c.id !== id));
+  }
+  async function uploadLogo(file: File) {
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/admin/media", { method: "POST", body });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.data?.url) {
+        const name = file.name.replace(/\.[^.]+$/, "").slice(0, 40) || "Logo";
+        onChange([...choices, { id: genId(), label: name, imageUrl: json.data.url }]);
+      } else {
+        setError(json?.error?.message ?? "That file could not be uploaded.");
+      }
+    } catch {
+      setError("Network problem — try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
+  function addDefaults() {
+    const have = new Set(choices.map((c) => c.imageUrl));
+    const extra = BUILTIN_LOGOS.filter((l) => !have.has(l.imageUrl)).map((l) => ({ id: genId(), ...l }));
+    if (extra.length) onChange([...choices, ...extra]);
+  }
+
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-sr-ink">Logo choices ({choices.length})</span>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={addDefaults}
+            className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400"
+          >
+            + Default logos
+          </button>
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => ref.current?.click()}
+            className="rounded-lg border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400 disabled:opacity-60"
+          >
+            {uploading ? "Uploading…" : "+ Upload PNG"}
+          </button>
+        </div>
+      </div>
+      <p className="text-[11px] text-sr-muted">
+        The customer picks one of these. Each logo is a PNG, shown fit inside the box. “Default logos” adds a
+        built-in set you can keep, rename or remove.
+      </p>
+      {error ? <p className="text-xs font-medium text-danger">{error}</p> : null}
+      {choices.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-sr-line-strong px-3 py-4 text-center text-xs text-sr-muted">
+          No logos yet — add the default set or upload your own PNGs.
+        </p>
+      ) : (
+        <ul className="grid gap-1.5">
+          {choices.map((c) => (
+            <li key={c.id} className="flex items-center gap-2 rounded-lg border border-sr-line bg-sr-canvas p-1.5">
+              <span className="h-10 w-10 shrink-0 overflow-hidden rounded border border-sr-line-strong bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={c.imageUrl} alt="" className="h-full w-full object-contain" />
+              </span>
+              <input
+                className={input}
+                value={c.label}
+                aria-label="Logo name"
+                onChange={(e) => patch(c.id, { label: e.target.value })}
+              />
+              <button
+                type="button"
+                onClick={() => remove(c.id)}
+                className="shrink-0 text-xs font-semibold text-danger hover:underline"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <input
+        ref={ref}
+        type="file"
+        accept="image/png,image/webp,image/jpeg"
+        className="sr-only"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void uploadLogo(f);
+          if (ref.current) ref.current.value = "";
+        }}
+      />
     </div>
   );
 }

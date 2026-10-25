@@ -28,9 +28,20 @@ export type ZoneShape = z.infer<typeof zoneShapeSchema>;
 
 /** PHOTO takes a customer photo, TEXT takes customer wording, FRAME is a
  *  decorative shape or PNG the admin places — a border, mask or accent the
- *  customer never edits, though it may follow the chosen frame colour. */
-export const zoneKindSchema = z.enum(["PHOTO", "TEXT", "FRAME"]);
+ *  customer never edits, though it may follow the chosen frame colour. LOGO
+ *  lets the customer pick one preset logo (a PNG the admin supplies) from a
+ *  set — e.g. a "Professional logo" — which then renders like a frame image. */
+export const zoneKindSchema = z.enum(["PHOTO", "TEXT", "FRAME", "LOGO"]);
 export type ZoneKind = z.infer<typeof zoneKindSchema>;
+
+/** One pickable logo in a LOGO zone: a label and the PNG the admin supplies
+ *  (an uploaded /api/media/[id] URL, or a built-in /logos/*.png). */
+export const logoChoiceSchema = z.object({
+  id: z.string().min(1).max(64),
+  label: z.string().trim().min(1).max(60),
+  imageUrl: z.string().trim().max(500),
+});
+export type LogoChoice = z.infer<typeof logoChoiceSchema>;
 
 const percent = z.number().min(0).max(100);
 
@@ -174,6 +185,11 @@ export const zoneSchema = z.object({
    *  photo is clipped to it; on a frame the frame image is. This is how the admin
    *  gives an area a custom / mockup shape beyond rectangle and circle. */
   maskUrl: z.string().trim().max(500).default(""),
+
+  /** LOGO zones only: the preset logos the customer may choose from. Each is a
+   *  PNG (an uploaded media URL or a built-in /logos/*.png). The customer picks
+   *  one and it renders fit inside the zone, exactly like a frame image. */
+  logoChoices: z.array(logoChoiceSchema).max(40).default([]),
 
   /** TEXT areas only: an acrylic-mirror finish (a metallic look with a raised
    *  3D emboss). When on, it colours the letters instead of the plain colour. */
@@ -664,6 +680,29 @@ export function resolveFrameFill(
     if (co.enabled && co.default) return co.default;
   }
   return zone.fill;
+}
+
+/**
+ * The logo a LOGO zone currently shows, given the customer's pick.
+ *
+ * The customer's valid choice wins; if they have not picked (or picked one that
+ * no longer exists) and the zone is required, it falls back to the first logo
+ * that has an image, so a preview is never empty — the same no-impossible-state
+ * rule `resolveOption` follows. An optional zone shows nothing until picked.
+ */
+export function logoChoiceOf(zone: CustomizerZone, design: CustomerDesign): LogoChoice | null {
+  if (zone.kind !== "LOGO") return null;
+  const value = design.zones[zone.id];
+  const choiceId = value?.kind === "LOGO" ? value.logo.choiceId : "";
+  const chosen = zone.logoChoices.find((c) => c.id === choiceId && c.imageUrl);
+  if (chosen) return chosen;
+  if (zone.required) return zone.logoChoices.find((c) => c.imageUrl) ?? null;
+  return null;
+}
+
+/** The image URL a LOGO zone currently shows, or "" when none is selected. */
+export function resolveLogoUrl(zone: CustomizerZone, design: CustomerDesign): string {
+  return logoChoiceOf(zone, design)?.imageUrl ?? "";
 }
 
 export type ResolvedGradient = {

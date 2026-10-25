@@ -4,6 +4,7 @@ import {
   isZoneVisible,
   resolveFrameFill,
   resolveGradient,
+  resolveLogoUrl,
   resolveTextStyle,
   zonesForView,
   type CustomizerConfig,
@@ -287,7 +288,18 @@ export function renderComposite(options: {
     let inner = "";
     let clipped = false;
 
-    if (zone.kind === "FRAME") {
+    if (zone.kind === "LOGO") {
+      // The customer's chosen preset logo, embedded when its PNG was fetched
+      // (frameImages, keyed by zone id), else referenced by URL. Fit "meet",
+      // the same as a frame image, so it is never cropped.
+      const logoUrl = resolveLogoUrl(zone, design);
+      if (logoUrl) {
+        const img = frameImages?.get(zone.id);
+        const href = img ? `data:${img.contentType};base64,${img.base64}` : esc(logoUrl);
+        inner = `<g transform="translate(${round(zx)} ${round(zy)})"><image x="0" y="0" width="${round(zw)}" height="${round(zh)}" preserveAspectRatio="xMidYMid meet" href="${href}"/></g>`;
+        clipped = true;
+      }
+    } else if (zone.kind === "FRAME") {
       const img = frameImages?.get(zone.id);
       if (zone.imageUrl && img) {
         inner = `<g transform="translate(${round(zx)} ${round(zy)})"><image x="0" y="0" width="${round(zw)}" height="${round(zh)}" preserveAspectRatio="xMidYMid meet" href="data:${img.contentType};base64,${img.base64}"/></g>`;

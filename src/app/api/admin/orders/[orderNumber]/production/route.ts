@@ -2,7 +2,7 @@ import { get } from "@vercel/blob";
 import { and, eq } from "drizzle-orm";
 
 import { readStoredDesign } from "@/lib/customizer/design";
-import { readConfig } from "@/lib/customizer/schema";
+import { readConfig, resolveLogoUrl } from "@/lib/customizer/schema";
 import { ApiError, route } from "@/server/api/http";
 import { requireAdmin } from "@/server/auth/guards";
 import {
@@ -122,11 +122,17 @@ export const GET = route(
         resolveImage(view.overlay, url.origin),
       ]);
 
-      /* Frame PNGs shown on this view, embedded so the proof is self-contained. */
+      /* Frame PNGs — and the customer's chosen logo PNGs — shown on this view,
+         embedded so the proof is self-contained. Both render through the same
+         frameImages map (keyed by zone id). */
       const frameImages = new Map<string, ResolvedImage>();
       for (const zone of config.zones) {
-        if (zone.kind === "FRAME" && zone.imageUrl && !zone.hidden && view.zoneIds.includes(zone.id)) {
+        if (zone.hidden || !view.zoneIds.includes(zone.id)) continue;
+        if (zone.kind === "FRAME" && zone.imageUrl) {
           frameImages.set(zone.id, await resolveImage(zone.imageUrl, url.origin));
+        } else if (zone.kind === "LOGO") {
+          const logoUrl = resolveLogoUrl(zone, stored.design);
+          if (logoUrl) frameImages.set(zone.id, await resolveImage(logoUrl, url.origin));
         }
       }
 

@@ -155,8 +155,18 @@ export function ProductCustomizer({
   const zones = useMemo(
     () =>
       zonesForView(config, design.viewId).filter(
-        // Frames are the admin's decoration, not something the customer edits.
-        (z) => z.kind !== "FRAME" && isZoneVisible(config, z, design.options),
+        // Frames are the admin's decoration; logo pickers get their own grid
+        // (below) rather than a photo/text tab — so neither is an editable zone.
+        (z) => z.kind !== "FRAME" && z.kind !== "LOGO" && isZoneVisible(config, z, design.options),
+      ),
+    [config, design.viewId, design.options],
+  );
+  /* Logo pickers for this view — each shown as a grid of preset logos the
+     customer chooses one from (a "Professional logo" picker). */
+  const logoZones = useMemo(
+    () =>
+      zonesForView(config, design.viewId).filter(
+        (z) => z.kind === "LOGO" && isZoneVisible(config, z, design.options),
       ),
     [config, design.viewId, design.options],
   );
@@ -840,6 +850,74 @@ export function ProductCustomizer({
                         ) : null}
                       </>
                     )}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        );
+      })}
+
+      {/* ----------------------------------------------- professional logo
+          Each logo picker: a grid of preset logos (PNGs the admin set), the
+          customer picks one. Optional pickers offer a "None" tile. */}
+      {logoZones.map((zone) => {
+        const value = design.zones[zone.id];
+        const selectedId = value?.kind === "LOGO" ? value.logo.choiceId : "";
+        const choices = zone.logoChoices.filter((c) => c.imageUrl);
+        if (choices.length === 0) return null;
+
+        const pick = (choiceId: string) =>
+          commit({ ...design, zones: { ...design.zones, [zone.id]: { kind: "LOGO", logo: { choiceId } } } });
+        const clear = () => {
+          const next = { ...design.zones };
+          delete next[zone.id];
+          commit({ ...design, zones: next });
+        };
+        const chosen = choices.find((c) => c.id === selectedId);
+
+        return (
+          <fieldset key={zone.id} className="mt-4">
+            <legend className="text-xs font-semibold text-ink">
+              {zone.label}
+              {zone.required ? <span className="ml-0.5 text-brand-600">*</span> : null}
+              {chosen ? <span className="ml-1.5 font-normal text-muted">{chosen.label}</span> : null}
+            </legend>
+            <div className="mt-1.5 grid grid-cols-5 gap-2 sm:grid-cols-6">
+              {!zone.required ? (
+                <button
+                  type="button"
+                  onClick={clear}
+                  aria-pressed={!selectedId}
+                  aria-label="No logo"
+                  className={`flex aspect-square items-center justify-center rounded-xl border-2 text-[10px] font-semibold transition ${
+                    !selectedId ? "border-brand-600 text-brand-700" : "border-line-strong text-muted hover:border-brand-400"
+                  }`}
+                >
+                  None
+                </button>
+              ) : null}
+              {choices.map((c) => {
+                const active = selectedId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => pick(c.id)}
+                    aria-pressed={active}
+                    aria-label={c.label}
+                    title={c.label}
+                    className={`relative flex aspect-square items-center justify-center rounded-xl border-2 bg-white p-1.5 transition ${
+                      active ? "border-brand-600" : "border-line-strong hover:border-brand-400"
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={c.imageUrl} alt="" draggable={false} className="h-full w-full object-contain" />
+                    {active ? (
+                      <span className="absolute right-0 bottom-0 flex h-4 w-4 items-center justify-center rounded-tl-md rounded-br-[10px] bg-brand-600 text-[9px] font-bold text-white">
+                        ✓
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}

@@ -55,10 +55,14 @@ function summariseDesign(raw: unknown): string | null {
 
   const parts: string[] = [];
   let photos = 0;
+  let logos = 0;
   for (const value of Object.values(design.data.zones)) {
     if (value.kind === "PHOTO") photos += 1;
-    else if (value.text.value.trim()) parts.push(`“${value.text.value.trim()}”`);
+    else if (value.kind === "LOGO") {
+      if (value.logo.choiceId) logos += 1;
+    } else if (value.text.value.trim()) parts.push(`“${value.text.value.trim()}”`);
   }
+  if (logos > 0) parts.unshift(`${logos} logo${logos === 1 ? "" : "s"}`);
   if (photos > 0) parts.unshift(`${photos} photo${photos === 1 ? "" : "s"}`);
   return parts.length > 0 ? parts.join(" · ") : null;
 }
