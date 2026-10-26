@@ -103,6 +103,34 @@ export async function createRazorpayOrder(
   return payload as RazorpayOrder;
 }
 
+/**
+ * Whether a gateway order has actually been paid — used before auto-cancelling an
+ * order that is still PENDING in our DB, so a payment our verify step missed (e.g.
+ * the browser closed before the callback) is never cancelled out from under the
+ * customer. "paid" when Razorpay reports the order paid or any amount captured;
+ * "unpaid" when it reports none; "unknown" when Razorpay isn't configured or the
+ * lookup fails — and the caller treats "unknown" as "do not cancel" (fail-safe).
+ */
+export async function razorpayOrderPaid(orderId: string): Promise<"paid" | "unpaid" | "unknown"> {
+  const config = getRazorpayConfig();
+  if (!config) return "unknown";
+
+  const auth = Buffer.from(`${config.keyId}:${config.keySecret}`).toString("base64");
+  const response = await fetch(`${API}/orders/${encodeURIComponent(orderId)}`, {
+    headers: { authorization: `Basic ${auth}` },
+  }).catch(() => null);
+  if (!response || !response.ok) {
+    if (response) console.error("[razorpay] order fetch failed:", response.status);
+    return "unknown";
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | { status?: string; amount_paid?: number }
+    | null;
+  if (!payload) return "unknown";
+  return payload.status === "paid" || Number(payload.amount_paid ?? 0) > 0 ? "paid" : "unpaid";
+}
+
 export type RazorpayRefund = { id: string; status: string; amount: number; payment_id?: string };
 
 /**
