@@ -30,6 +30,14 @@ export const metadata: Metadata = {
     title: "Shiv Radium — Personalised Gifts Made Just For You",
     description:
       "Name plates, photo frames, photo mugs and custom gifts, made to order in India.",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Shiv Radium — Personalised Gifts & Décor" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Shiv Radium — Personalised Gifts Made Just For You",
+    description:
+      "Name plates, photo frames, photo mugs and custom gifts, made to order in India.",
+    images: ["/og.png"],
   },
   robots: { index: true, follow: true },
 };

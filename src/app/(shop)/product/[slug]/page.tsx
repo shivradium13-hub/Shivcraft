@@ -31,6 +31,12 @@ export async function generateMetadata(props: PageProps<"/product/[slug]">): Pro
   const product = await getProductBySlug(slug);
   if (!product) return { title: "Product not found" };
 
+  // The product's own primary image for social shares, falling back to the
+  // brand card so a share is never imageless. /api/media/[id] serves public
+  // catalogue art without auth, so crawlers can fetch it; metadataBase makes it
+  // absolute.
+  const ogImage = product.images[0]?.url ?? "/og.png";
+
   return {
     // An admin-set meta title is used verbatim; otherwise the layout template
     // appends the brand, so the product name alone goes in here.
@@ -41,6 +47,13 @@ export async function generateMetadata(props: PageProps<"/product/[slug]">): Pro
       title: product.name,
       description: product.shortDescription ?? undefined,
       type: "website",
+      images: [ogImage],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description: product.shortDescription ?? undefined,
+      images: [ogImage],
     },
   };
 }

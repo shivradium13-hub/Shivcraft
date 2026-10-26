@@ -22,19 +22,43 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const [prod, cats] = await Promise.all([
+    const [prod, cats, withProducts] = await Promise.all([
       db
         .select({ slug: products.slug, updatedAt: products.updatedAt })
         .from(products)
         .where(eq(products.isActive, true)),
-      db.select({ slug: categories.slug }).from(categories),
+      db
+        .select({ id: categories.id, parentId: categories.parentId, slug: categories.slug, isActive: categories.isActive })
+        .from(categories),
+      // Categories that DIRECTLY hold an active product.
+      db.selectDistinct({ categoryId: products.categoryId }).from(products).where(eq(products.isActive, true)),
     ]);
 
-    const categoryRoutes: MetadataRoute.Sitemap = cats.map((c) => ({
-      url: `${base}/category/${c.slug}`,
-      changeFrequency: "weekly",
-      priority: 0.6,
-    }));
+    /* Only list a category when its page would actually show something — i.e. it,
+       or one of its subcategories, has an active product. A category page shows
+       its whole subtree (categoryIdsForSlug is recursive), so we mark every
+       category that has a direct product and then walk UP to its ancestors. This
+       keeps empty categories out of the sitemap, and (since only isActive ones
+       are emitted) a disabled category never becomes a sitemap URL that 404s. */
+    const parentOf = new Map(cats.map((c) => [c.id, c.parentId]));
+    const nonEmpty = new Set<string>();
+    for (const { categoryId } of withProducts) {
+      let id: string | null = categoryId;
+      const seen = new Set<string>();
+      while (id && !seen.has(id)) {
+        seen.add(id);
+        nonEmpty.add(id);
+        id = parentOf.get(id) ?? null;
+      }
+    }
+
+    const categoryRoutes: MetadataRoute.Sitemap = cats
+      .filter((c) => c.isActive && nonEmpty.has(c.id))
+      .map((c) => ({
+        url: `${base}/category/${c.slug}`,
+        changeFrequency: "weekly",
+        priority: 0.6,
+      }));
 
     const productRoutes: MetadataRoute.Sitemap = prod.map((p) => ({
       url: `${base}/product/${p.slug}`,
