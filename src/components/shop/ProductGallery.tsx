@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useState } from "react";
 
+import { mediaSrc } from "@/lib/mediaVersion";
+
 type GalleryImage = { id: string; url: string; alt: string | null };
 
 export function ProductGallery({ images, name }: { images: GalleryImage[]; name: string }) {
@@ -36,7 +38,7 @@ export function ProductGallery({ images, name }: { images: GalleryImage[]; name:
               }`}
             >
               <Image
-                src={image.url}
+                src={mediaSrc(image.url)}
                 alt=""
                 fill
                 sizes="64px"
@@ -64,7 +66,7 @@ export function ProductGallery({ images, name }: { images: GalleryImage[]; name:
       >
         <Image
           key={active.id}
-          src={active.url}
+          src={mediaSrc(active.url)}
           alt={active.alt ?? name}
           fill
           priority

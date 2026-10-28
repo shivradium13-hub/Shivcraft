@@ -1,6 +1,8 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 
+import { mediaSrc } from "@/lib/mediaVersion";
+
 /** Local placeholder artwork is SVG, which the optimiser will not process —
  *  pass it straight through. Uploaded photographs still get optimised. */
 export function ProductImage({
@@ -25,7 +27,7 @@ export function ProductImage({
   }
   return (
     <Image
-      src={src}
+      src={mediaSrc(src)}
       alt={alt}
       fill
       sizes={sizes}

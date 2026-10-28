@@ -25,6 +25,18 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: {
+    // Next 16 requires local image sources that carry a query string to be
+    // allow-listed here. Our only optimised local images come from the media
+    // route — plain `/api/media/<id>` (category tiles, live preview) and the
+    // version-stamped product photos (`?v=wm1`, bumped in
+    // src/lib/mediaVersion.ts when the media rendering changes, e.g. the
+    // watermark, so next/image re-fetches the freshly stamped file). Omitting
+    // `search` allows this path with or without a query; the media route only
+    // serves PUBLIC rows for valid UUIDs, so an extra param can't enumerate
+    // anything.
+    localPatterns: [{ pathname: "/api/media/**" }],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
