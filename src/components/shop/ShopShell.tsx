@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 
 import type { CategoryNode } from "@/server/catalog/categories";
 
+import { ImageProtection } from "./ImageProtection";
 import { WishlistProvider } from "./WishlistButton";
 
 /* The category drawer is opened from two places — the header hamburger and the
@@ -52,6 +53,7 @@ export function ShopShell({
   return (
     <DrawerContext.Provider value={{ open, categories }}>
       <WishlistProvider>
+        <ImageProtection />
         {children}
         <CategoryDrawer categories={categories} isOpen={isOpen} onClose={close} />
       </WishlistProvider>
