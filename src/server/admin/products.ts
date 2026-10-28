@@ -126,6 +126,7 @@ async function writeChildren(tx: Tx, productId: string, input: ProductInput) {
         helpText: field.helpText || null,
         isRequired: field.isRequired,
         showPreview: field.showPreview,
+        textCase: field.textCase,
         maxLength: field.maxLength ?? null,
         options: field.options,
         position: index,

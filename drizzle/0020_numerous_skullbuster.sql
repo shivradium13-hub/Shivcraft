@@ -1,0 +1,1 @@
+ALTER TABLE "customization_fields" ADD COLUMN "text_case" varchar(10) DEFAULT 'normal' NOT NULL;

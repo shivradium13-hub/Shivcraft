@@ -386,6 +386,9 @@ export const customizationFields = pgTable(
     /** TEXT/IMAGE fields: whether this field feeds the storefront live preview.
      *  The admin decides per field; defaults on so existing products are unchanged. */
     showPreview: boolean("show_preview").notNull().default(true),
+    /** TEXT fields: letter case the customer's wording is locked to —
+     *  "normal" (capital + small, as typed) or "upper" (ALL CAPITALS). */
+    textCase: varchar("text_case", { length: 10 }).notNull().default("normal"),
     maxLength: integer("max_length"),
     /** For SELECT / FONT / COLOR: the allowed choices. */
     options: text("options").array().notNull().default(sql`ARRAY[]::text[]`),

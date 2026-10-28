@@ -408,7 +408,13 @@ export function ProductPurchase({
                     type="text"
                     maxLength={field.maxLength ?? 120}
                     value={answers[field.id] ?? ""}
-                    onChange={(e) => setAnswer(field.id, e.target.value)}
+                    /* When the admin locked the field to UPPERCASE, the stored
+                       value (what the workshop engraves) is uppercased too, not
+                       just the on-screen display. */
+                    onChange={(e) =>
+                      setAnswer(field.id, field.textCase === "upper" ? e.target.value.toUpperCase() : e.target.value)
+                    }
+                    style={field.textCase === "upper" ? { textTransform: "uppercase" } : undefined}
                     placeholder={field.label}
                     className="w-full rounded-lg border border-field bg-field-bg px-3 py-2 text-sm outline-none focus:border-brand-500"
                   />

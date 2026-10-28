@@ -18,6 +18,8 @@ export const customizationFieldSchema = z.object({
   isRequired: z.boolean().default(false),
   /** Whether a TEXT/IMAGE field feeds the storefront live preview (admin choice). */
   showPreview: z.boolean().default(true),
+  /** TEXT fields: lock the wording to a letter case. */
+  textCase: z.enum(["normal", "upper"]).default("normal"),
   maxLength: z.number().int().min(1).max(2000).nullable().optional(),
   options: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
 });

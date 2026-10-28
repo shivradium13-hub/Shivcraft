@@ -93,6 +93,7 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
       helpText: field.helpText ?? "",
       isRequired: field.isRequired,
       showPreview: field.showPreview,
+      textCase: (field.textCase === "upper" ? "upper" : "normal") as "normal" | "upper",
       maxLength: field.maxLength,
       options: field.options,
     })),

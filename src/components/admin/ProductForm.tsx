@@ -14,6 +14,7 @@ type FieldRow = {
   helpText: string;
   isRequired: boolean;
   showPreview: boolean;
+  textCase: "normal" | "upper";
   maxLength: number | null;
   options: string[];
 };
@@ -451,10 +452,10 @@ export function ProductForm({
       if (!on) return { ...prev, simpleUploadMode: false };
       const fields = [...prev.customizationFields];
       if (!fields.some((f) => f.type === "IMAGE")) {
-        fields.push({ type: "IMAGE", label: "Upload your photo", helpText: "", isRequired: true, showPreview: true, maxLength: null, options: [] });
+        fields.push({ type: "IMAGE", label: "Upload your photo", helpText: "", isRequired: true, showPreview: true, textCase: "normal", maxLength: null, options: [] });
       }
       if (!fields.some((f) => f.type === "TEXT")) {
-        fields.push({ type: "TEXT", label: "Your text / name", helpText: "", isRequired: false, showPreview: true, maxLength: 60, options: [] });
+        fields.push({ type: "TEXT", label: "Your text / name", helpText: "", isRequired: false, showPreview: true, textCase: "normal", maxLength: 60, options: [] });
       }
       return { ...prev, simpleUploadMode: true, isPersonalizable: true, customizationFields: fields };
     });
@@ -1073,15 +1074,27 @@ export function ProductForm({
                     </Field>
 
                     {field.type === "TEXT" ? (
-                      <Field label="Maximum characters">
-                        <input
-                          type="number"
-                          min="1"
-                          className={input}
-                          value={field.maxLength ?? ""}
-                          onChange={(e) => patchField(setValues, i, { maxLength: e.target.value ? Number(e.target.value) : null })}
-                        />
-                      </Field>
+                      <Row>
+                        <Field label="Maximum characters">
+                          <input
+                            type="number"
+                            min="1"
+                            className={input}
+                            value={field.maxLength ?? ""}
+                            onChange={(e) => patchField(setValues, i, { maxLength: e.target.value ? Number(e.target.value) : null })}
+                          />
+                        </Field>
+                        <Field label="Letter case" hint="Locks what the customer types.">
+                          <select
+                            className={input}
+                            value={field.textCase}
+                            onChange={(e) => patchField(setValues, i, { textCase: e.target.value as FieldRow["textCase"] })}
+                          >
+                            <option value="normal">As typed (capital + small)</option>
+                            <option value="upper">UPPERCASE only</option>
+                          </select>
+                        </Field>
+                      </Row>
                     ) : null}
 
                     {field.type === "FONT" || field.type === "SELECT" || field.type === "COLOR" ? (
@@ -1131,7 +1144,7 @@ export function ProductForm({
                     ...prev,
                     customizationFields: [
                       ...prev.customizationFields,
-                      { type: "TEXT", label: "", helpText: "", isRequired: false, showPreview: true, maxLength: 40, options: [] },
+                      { type: "TEXT", label: "", helpText: "", isRequired: false, showPreview: true, textCase: "normal", maxLength: 40, options: [] },
                     ],
                   }))
                 }
