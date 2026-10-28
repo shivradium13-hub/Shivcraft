@@ -125,6 +125,24 @@ export function ProductPurchase({
   const colorField = product.customizationFields.find((f) => f.type === "COLOR");
   const imageField = product.customizationFields.find((f) => f.type === "IMAGE");
 
+  /* The section heading reflects what the customer supplies, instead of a generic
+     "Customize Your Gift". */
+  const hasTextField = product.customizationFields.some((f) => f.type === "TEXT");
+  const hasImageField = product.customizationFields.some((f) => f.type === "IMAGE");
+  const personaliseHeading =
+    hasTextField && hasImageField
+      ? "Upload Your Text & Image"
+      : hasTextField
+        ? "Upload Your Text"
+        : hasImageField
+          ? "Upload Your Image"
+          : "Personalise Your Gift";
+
+  /* The live preview is per-field, admin's choice: a text field feeds the text
+     preview, an image field the backdrop. With both off, no preview box shows. */
+  const textPreviewOn = Boolean(previewField?.showPreview);
+  const imagePreviewOn = Boolean(imageField?.showPreview);
+
   function setAnswer(id: string, value: string) {
     setAnswers((prev) => ({ ...prev, [id]: value }));
     setFieldErrors((prev) => {
@@ -287,7 +305,7 @@ export function ProductPurchase({
          or one switched to photo + text upload mode). */}
       {!showDesigner && product.isPersonalizable && product.customizationFields.length > 0 ? (
         <section className="rounded-card border border-brand-200 bg-brand-50/60 p-4">
-          <h2 className="font-display text-lg font-semibold text-brand-800">Customize Your Gift</h2>
+          <h2 className="font-display text-lg font-semibold text-brand-800">{personaliseHeading}</h2>
           <p className="mt-0.5 mb-4 text-xs text-ink-soft">
             We send a to-scale artwork proof before anything is made. Nothing is cut until you approve it.
           </p>
@@ -414,12 +432,13 @@ export function ProductPurchase({
             })}
           </div>
 
-          {/* ------------------------------------------------------ preview */}
-          {previewField ? (
+          {/* ------------------------------------------------------ preview
+              Shown per the admin's per-field "Show in live preview" choice. */}
+          {textPreviewOn || imagePreviewOn ? (
             <div className="mt-4">
               <p className="mb-1.5 text-xs font-semibold text-ink">Preview</p>
               <div className="relative flex min-h-28 items-center justify-center overflow-hidden rounded-lg border border-line p-4">
-                {imageField && photos[imageField.id] ? (
+                {imageField && imagePreviewOn && photos[imageField.id] ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={photos[imageField.id]!.url}
@@ -427,15 +446,21 @@ export function ProductPurchase({
                     className="absolute inset-0 h-full w-full object-cover opacity-30"
                   />
                 ) : null}
-                <p
-                  className="relative text-center text-2xl leading-tight font-semibold break-words"
-                  style={{
-                    fontFamily: FONT_STACKS[answers[fontField?.id ?? ""] ?? ""] ?? "var(--font-fraunces), serif",
-                    color: answers[colorField?.id ?? ""] || "var(--color-ink)",
-                  }}
-                >
-                  {answers[previewField.id] || "Your text here"}
-                </p>
+                {previewField && textPreviewOn ? (
+                  <p
+                    className="relative text-center text-2xl leading-tight font-semibold break-words"
+                    style={{
+                      fontFamily: FONT_STACKS[answers[fontField?.id ?? ""] ?? ""] ?? "var(--font-fraunces), serif",
+                      color: answers[colorField?.id ?? ""] || "var(--color-ink)",
+                    }}
+                  >
+                    {answers[previewField.id] || "Your text here"}
+                  </p>
+                ) : imagePreviewOn && imageField && !photos[imageField.id] ? (
+                  <p className="relative text-center text-sm text-muted">
+                    Upload an image to preview it here
+                  </p>
+                ) : null}
               </div>
               <p className="mt-1.5 text-xs text-muted">
                 An approximation of the layout — the artwork proof is the accurate one.

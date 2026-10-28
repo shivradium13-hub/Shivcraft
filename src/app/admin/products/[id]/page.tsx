@@ -92,6 +92,7 @@ export default async function EditProductPage(props: PageProps<"/admin/products/
       label: field.label,
       helpText: field.helpText ?? "",
       isRequired: field.isRequired,
+      showPreview: field.showPreview,
       maxLength: field.maxLength,
       options: field.options,
     })),

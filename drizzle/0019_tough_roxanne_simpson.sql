@@ -1,0 +1,1 @@
+ALTER TABLE "customization_fields" ADD COLUMN "show_preview" boolean DEFAULT true NOT NULL;

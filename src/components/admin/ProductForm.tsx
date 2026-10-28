@@ -13,6 +13,7 @@ type FieldRow = {
   label: string;
   helpText: string;
   isRequired: boolean;
+  showPreview: boolean;
   maxLength: number | null;
   options: string[];
 };
@@ -450,10 +451,10 @@ export function ProductForm({
       if (!on) return { ...prev, simpleUploadMode: false };
       const fields = [...prev.customizationFields];
       if (!fields.some((f) => f.type === "IMAGE")) {
-        fields.push({ type: "IMAGE", label: "Upload your photo", helpText: "", isRequired: true, maxLength: null, options: [] });
+        fields.push({ type: "IMAGE", label: "Upload your photo", helpText: "", isRequired: true, showPreview: true, maxLength: null, options: [] });
       }
       if (!fields.some((f) => f.type === "TEXT")) {
-        fields.push({ type: "TEXT", label: "Your text / name", helpText: "", isRequired: false, maxLength: 60, options: [] });
+        fields.push({ type: "TEXT", label: "Your text / name", helpText: "", isRequired: false, showPreview: true, maxLength: 60, options: [] });
       }
       return { ...prev, simpleUploadMode: true, isPersonalizable: true, customizationFields: fields };
     });
@@ -1097,15 +1098,28 @@ export function ProductForm({
                       </Field>
                     ) : null}
 
-                    <label className="mt-2 flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={field.isRequired}
-                        onChange={(e) => patchField(setValues, i, { isRequired: e.target.checked })}
-                        className="h-4 w-4 accent-sr-500"
-                      />
-                      Required
-                    </label>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={field.isRequired}
+                          onChange={(e) => patchField(setValues, i, { isRequired: e.target.checked })}
+                          className="h-4 w-4 accent-sr-500"
+                        />
+                        Required
+                      </label>
+                      {field.type === "TEXT" || field.type === "IMAGE" ? (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={field.showPreview}
+                            onChange={(e) => patchField(setValues, i, { showPreview: e.target.checked })}
+                            className="h-4 w-4 accent-sr-500"
+                          />
+                          Show in live preview
+                        </label>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1117,7 +1131,7 @@ export function ProductForm({
                     ...prev,
                     customizationFields: [
                       ...prev.customizationFields,
-                      { type: "TEXT", label: "", helpText: "", isRequired: false, maxLength: 40, options: [] },
+                      { type: "TEXT", label: "", helpText: "", isRequired: false, showPreview: true, maxLength: 40, options: [] },
                     ],
                   }))
                 }

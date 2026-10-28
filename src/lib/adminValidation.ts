@@ -16,6 +16,8 @@ export const customizationFieldSchema = z.object({
   label: z.string().trim().min(1, "Give the field a label.").max(120),
   helpText: optionalText(240),
   isRequired: z.boolean().default(false),
+  /** Whether a TEXT/IMAGE field feeds the storefront live preview (admin choice). */
+  showPreview: z.boolean().default(true),
   maxLength: z.number().int().min(1).max(2000).nullable().optional(),
   options: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
 });

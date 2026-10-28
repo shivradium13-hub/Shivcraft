@@ -383,6 +383,9 @@ export const customizationFields = pgTable(
     label: varchar("label", { length: 120 }).notNull(),
     helpText: varchar("help_text", { length: 240 }),
     isRequired: boolean("is_required").notNull().default(false),
+    /** TEXT/IMAGE fields: whether this field feeds the storefront live preview.
+     *  The admin decides per field; defaults on so existing products are unchanged. */
+    showPreview: boolean("show_preview").notNull().default(true),
     maxLength: integer("max_length"),
     /** For SELECT / FONT / COLOR: the allowed choices. */
     options: text("options").array().notNull().default(sql`ARRAY[]::text[]`),
