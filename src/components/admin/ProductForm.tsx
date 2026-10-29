@@ -150,7 +150,16 @@ const COLOUR_FIELD: FieldRow = {
   showPreview: false,
   textCase: "normal",
   maxLength: null,
-  options: ["Black", "White", "Gold", "Silver", "Red", "Blue"],
+  // "Name #code": the swatch renders the exact shade, and the order records the
+  // name + code together for the workshop. Edit these to your real finishes.
+  options: [
+    "Black #111111",
+    "White #ffffff",
+    "Gold #d4af37",
+    "Silver #c0c0c0",
+    "Red #e03131",
+    "Blue #1971c2",
+  ],
 };
 const WHATSAPP_PREVIEW_FIELD: FieldRow = {
   type: "TEXT",
@@ -1166,7 +1175,14 @@ export function ProductForm({
                     ) : null}
 
                     {field.type === "FONT" || field.type === "SELECT" || field.type === "COLOR" ? (
-                      <Field label="Choices" hint="Comma separated.">
+                      <Field
+                        label="Choices"
+                        hint={
+                          field.type === "COLOR"
+                            ? "Comma separated. Add a colour code for the exact shade — e.g. “Rose Gold #b76e79”. The name + code reach you on the order."
+                            : "Comma separated."
+                        }
+                      >
                         <input
                           className={input}
                           value={field.options.join(", ")}

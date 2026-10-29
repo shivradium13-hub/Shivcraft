@@ -29,6 +29,19 @@ const FONT_STACKS: Record<string, string> = {
    chrome — this is the one place a range of colours belongs. */
 const SWATCHES = ["#0f121f", "#ee722e", "#b3261e", "#151b39", "#1f7a4d", "#ad6616", "#ffffff"];
 
+/** A colour choice is either a plain CSS colour ("red", "#0f121f") or a
+ *  "Name #code" pair the admin typed (e.g. "Rose Gold #b76e79"). Split it so the
+ *  swatch shows the real shade (the code) while the customer sees the name and
+ *  the order records both for the workshop. `value` is what gets stored. */
+function parseSwatch(raw: string): { label: string; color: string; value: string } {
+  const code = raw.match(/#[0-9a-fA-F]{3,8}\b/)?.[0] ?? raw.match(/\b(?:rgb|hsl)a?\([^)]*\)/i)?.[0];
+  if (code) {
+    const name = raw.replace(code, "").replace(/[()]/g, "").trim();
+    return { label: name || code, color: code, value: raw.trim() };
+  }
+  return { label: raw, color: raw, value: raw };
+}
+
 const ProductCustomizer = dynamic(
   () => import("./customizer/ProductCustomizer").then((m) => m.ProductCustomizer),
   {
@@ -341,21 +354,26 @@ export function ProductPurchase({
                       {field.isRequired ? <span className="ml-1 text-danger">*</span> : null}
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      {(field.options.length ? field.options : SWATCHES).map((swatch) => (
-                        <button
-                          key={swatch}
-                          type="button"
-                          aria-label={swatch}
-                          aria-pressed={answers[field.id] === swatch}
-                          onClick={() => setAnswer(field.id, swatch)}
-                          style={{ background: swatch }}
-                          className={`h-8 w-8 rounded-full border-2 transition ${
-                            answers[field.id] === swatch
-                              ? "border-brand-500 ring-2 ring-brand-200"
-                              : "border-line-strong"
-                          }`}
-                        />
-                      ))}
+                      {(field.options.length ? field.options : SWATCHES).map((raw) => {
+                        const sw = parseSwatch(raw);
+                        const selected = answers[field.id] === sw.value;
+                        return (
+                          <button
+                            key={raw}
+                            type="button"
+                            title={sw.label}
+                            aria-label={sw.label}
+                            aria-pressed={selected}
+                            onClick={() => setAnswer(field.id, sw.value)}
+                            style={{ background: sw.color }}
+                            className={`h-8 w-8 rounded-full border-2 transition ${
+                              selected
+                                ? "border-brand-500 ring-2 ring-brand-200"
+                                : "border-line-strong"
+                            }`}
+                          />
+                        );
+                      })}
                     </div>
                     {fieldErrors[field.id] ? (
                       <p className="mt-1.5 text-xs font-medium text-danger">{fieldErrors[field.id]}</p>
