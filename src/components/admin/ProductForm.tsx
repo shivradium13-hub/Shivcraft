@@ -138,6 +138,31 @@ const inputBase =
   "rounded-lg border border-field bg-field-bg px-3 py-2 text-sm text-sr-ink outline-none focus:border-sr-400";
 const input = `w-full ${inputBase}`;
 
+/* Two ready-made customisation fields the admin can drop in with one tap. Both
+   run through the normal customisation pipeline, so the customer's pick arrives
+   on the order (shown to the workshop in the order's "Customisation" box). The
+   admin can still edit the label/choices afterwards. */
+const COLOUR_FIELD: FieldRow = {
+  type: "COLOR",
+  label: "Colour",
+  helpText: "Choose a colour.",
+  isRequired: false,
+  showPreview: false,
+  textCase: "normal",
+  maxLength: null,
+  options: ["Black", "White", "Gold", "Silver", "Red", "Blue"],
+};
+const WHATSAPP_PREVIEW_FIELD: FieldRow = {
+  type: "TEXT",
+  label: "Share your WhatsApp Number For Preview",
+  helpText: "We'll send a design preview on WhatsApp before we make it.",
+  isRequired: false,
+  showPreview: false,
+  textCase: "normal",
+  maxLength: 15,
+  options: [],
+};
+
 export function ProductForm({
   productId,
   initial,
@@ -458,6 +483,24 @@ export function ProductForm({
         fields.push({ type: "TEXT", label: "Your text / name", helpText: "", isRequired: false, showPreview: true, textCase: "normal", maxLength: 60, options: [] });
       }
       return { ...prev, simpleUploadMode: true, isPersonalizable: true, customizationFields: fields };
+    });
+  }
+
+  /* One-tap add for a preset field (Colour / WhatsApp-for-preview). Turns
+     personalisation on and appends the field unless one just like it (same type
+     + label) is already present, so tapping twice does not duplicate it. */
+  function addPresetField(preset: FieldRow) {
+    setValues((prev) => {
+      const already = prev.customizationFields.some(
+        (f) => f.type === preset.type && f.label.trim().toLowerCase() === preset.label.trim().toLowerCase(),
+      );
+      return {
+        ...prev,
+        isPersonalizable: true,
+        customizationFields: already
+          ? prev.customizationFields
+          : [...prev.customizationFields, preset],
+      };
     });
   }
 
@@ -1024,6 +1067,31 @@ export function ProductForm({
             label="This product is personalised"
             hint="A simpler alternative to the Frame Designer: the customer fills in the fields below (name, photo, etc.) before adding to cart."
           />
+
+          {/* One-tap shortcuts for the two most-asked options. Each turns
+              personalisation on and drops in a ready-made field; the customer's
+              answer comes back on the order. */}
+          <div className="rounded-lg bg-sr-canvas p-3">
+            <p className="mb-2 text-xs font-medium text-sr-body">
+              Quick-add common options (they reach you with each order):
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => addPresetField(COLOUR_FIELD)}
+                className="rounded-full border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400 hover:text-sr-700"
+              >
+                + Colour option
+              </button>
+              <button
+                type="button"
+                onClick={() => addPresetField(WHATSAPP_PREVIEW_FIELD)}
+                className="rounded-full border border-sr-line-strong px-3 py-1.5 text-xs font-semibold text-sr-body hover:border-sr-400 hover:text-sr-700"
+              >
+                + WhatsApp number for preview
+              </button>
+            </div>
+          </div>
 
           {values.isPersonalizable ? (
             <>
