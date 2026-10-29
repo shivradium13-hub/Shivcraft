@@ -1,6 +1,8 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 
+import { PRODUCT_IMAGE_QUALITY } from "@/lib/imageQuality";
+
 /** Local placeholder artwork is SVG, which the optimiser will not process —
  *  pass it straight through. Uploaded photographs still get optimised. */
 export function ProductImage({
@@ -30,6 +32,7 @@ export function ProductImage({
       fill
       sizes={sizes}
       priority={priority}
+      quality={PRODUCT_IMAGE_QUALITY}
       unoptimized={src.endsWith(".svg")}
       className={`object-cover ${className}`}
     />

@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useState } from "react";
 
+import { PRODUCT_IMAGE_QUALITY } from "@/lib/imageQuality";
+
 type GalleryImage = { id: string; url: string; alt: string | null };
 
 export function ProductGallery({ images, name }: { images: GalleryImage[]; name: string }) {
@@ -40,6 +42,7 @@ export function ProductGallery({ images, name }: { images: GalleryImage[]; name:
                 alt=""
                 fill
                 sizes="64px"
+                quality={PRODUCT_IMAGE_QUALITY}
                 unoptimized={image.url.endsWith(".svg")}
                 className="object-cover"
               />
@@ -69,6 +72,7 @@ export function ProductGallery({ images, name }: { images: GalleryImage[]; name:
           fill
           priority
           sizes="(min-width: 1024px) 520px, 100vw"
+          quality={PRODUCT_IMAGE_QUALITY}
           unoptimized={active.url.endsWith(".svg")}
           className="object-cover transition-transform duration-200"
           style={{ transformOrigin: origin, transform: zoomed ? "scale(1.9)" : "scale(1)" }}

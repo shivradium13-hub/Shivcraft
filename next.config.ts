@@ -25,6 +25,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: {
+    // Next 16 requires this allowlist (an unlisted quality 400s). 75 stays as
+    // the default for any image that does not opt in; 90/100 let product
+    // photos render crisp. Keep in sync with PRODUCT_IMAGE_QUALITY.
+    qualities: [75, 90, 100],
+    // AVIF first (best quality per byte), then WebP, else the original format.
+    formats: ["image/avif", "image/webp"],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
