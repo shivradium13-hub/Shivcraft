@@ -327,6 +327,17 @@ export function ProductForm({
       return { ...prev, images: next };
     });
 
+  // Reorder personalisation fields; the array order becomes each field's saved
+  // position, which is the order the customer sees them in.
+  const moveField = (index: number, dir: -1 | 1) =>
+    setValues((prev) => {
+      const j = index + dir;
+      if (j < 0 || j >= prev.customizationFields.length) return prev;
+      const next = [...prev.customizationFields];
+      [next[index], next[j]] = [next[j], next[index]];
+      return { ...prev, customizationFields: next };
+    });
+
   async function uploadBanner(file: File) {
     const index = bannerTargetIndex.current;
     setUploadingBanner(true);
@@ -1143,18 +1154,38 @@ export function ProductForm({
                   <div key={i} className="rounded-xl border border-sr-line bg-sr-canvas p-3">
                     <div className="mb-2 flex items-center gap-2">
                       <span className="text-xs font-semibold text-sr-600">FIELD {i + 1}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setValues((prev) => ({
-                            ...prev,
-                            customizationFields: prev.customizationFields.filter((_, j) => j !== i),
-                          }))
-                        }
-                        className="ml-auto text-xs font-semibold text-danger hover:underline"
-                      >
-                        Remove
-                      </button>
+                      <div className="ml-auto flex items-center gap-1">
+                        <button
+                          type="button"
+                          aria-label="Move field up"
+                          disabled={i === 0}
+                          onClick={() => moveField(i, -1)}
+                          className="rounded border border-sr-line bg-paper px-2 py-1 text-xs font-semibold text-sr-body hover:bg-sr-100 disabled:opacity-40"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Move field down"
+                          disabled={i === values.customizationFields.length - 1}
+                          onClick={() => moveField(i, 1)}
+                          className="rounded border border-sr-line bg-paper px-2 py-1 text-xs font-semibold text-sr-body hover:bg-sr-100 disabled:opacity-40"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setValues((prev) => ({
+                              ...prev,
+                              customizationFields: prev.customizationFields.filter((_, j) => j !== i),
+                            }))
+                          }
+                          className="text-xs font-semibold text-danger hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
 
                     <Row>
