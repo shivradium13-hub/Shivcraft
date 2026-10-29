@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 type CategoryOption = { id: string; label: string };
 
@@ -475,25 +475,25 @@ export function ProductForm({
             </Field>
           </Row>
 
-          <Field
-            label="Category"
-            required
-            error={err("categoryId")}
-            hint="Pick a subcategory — products filed on a top-level category will not appear in browse."
-          >
-            <select
-              className={input}
+          {/* Searchable category picker: many subcategories exist, so a plain
+              <select> is slow to scan — type to filter instead. Rendered on a
+              <div> (not <Field>'s <label>) so the listbox buttons don't sit
+              inside a label. */}
+          <div className="grid gap-1.5">
+            <span className="text-xs font-semibold text-sr-ink">
+              Category<span className="ml-0.5 text-danger">*</span>
+            </span>
+            <CategoryCombobox
+              categories={categories}
               value={values.categoryId}
-              onChange={(e) => set("categoryId", e.target.value)}
-            >
-              <option value="">Choose a category…</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </Field>
+              onChange={(id) => set("categoryId", id)}
+              invalid={!!errors.categoryId}
+            />
+            <span className="text-xs text-sr-muted">
+              Pick a subcategory — products filed on a top-level category will not appear in browse.
+            </span>
+            {err("categoryId")}
+          </div>
 
           <Field label="Short description" hint="One line, shown on cards and in search.">
             <input
@@ -1287,6 +1287,161 @@ function Field({
       {hint ? <span className="text-xs text-sr-muted">{hint}</span> : null}
       {error}
     </label>
+  );
+}
+
+/** A type-to-filter category picker. Behaves like a <select> for the form
+ *  (emits the chosen category id) but lets the admin search a long subcategory
+ *  list. Same open/keyboard/outside-click pattern as the storefront SearchBar. */
+function CategoryCombobox({
+  categories,
+  value,
+  onChange,
+  invalid,
+}: {
+  categories: CategoryOption[];
+  value: string;
+  onChange: (id: string) => void;
+  invalid?: boolean;
+}) {
+  const listId = useId();
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(0);
+
+  const selected = categories.find((c) => c.id === value) ?? null;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return categories;
+    return categories.filter((c) => c.label.toLowerCase().includes(q));
+  }, [categories, query]);
+
+  // Close when clicking outside (mirrors SearchBar).
+  useEffect(() => {
+    function onPointerDown(e: MouseEvent) {
+      if (!boxRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, []);
+
+  function openList() {
+    setOpen(true);
+    setQuery("");
+    // Highlight the current choice (against the full list, since clearing the
+    // query shows every category) so Enter keeps it.
+    const i = selected ? categories.findIndex((c) => c.id === selected.id) : 0;
+    setActive(i < 0 ? 0 : i);
+  }
+
+  function choose(c: CategoryOption) {
+    onChange(c.id);
+    setOpen(false);
+    setQuery("");
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!open) {
+        openList();
+        return;
+      }
+      setActive((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      if (open) {
+        e.preventDefault();
+        if (filtered[active]) choose(filtered[active]);
+      }
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setQuery("");
+    }
+  }
+
+  // Show the typed query while open, otherwise the chosen label.
+  const shown = open ? query : (selected?.label ?? "");
+
+  return (
+    <div ref={boxRef} className="relative">
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        autoComplete="off"
+        value={shown}
+        placeholder="Search or choose a category…"
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setActive(0);
+        }}
+        onFocus={openList}
+        onClick={openList}
+        onKeyDown={onKeyDown}
+        className={`${input} pr-9 ${invalid ? "border-danger" : ""}`}
+      />
+      <svg
+        viewBox="0 0 20 20"
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-sr-muted"
+      >
+        <path
+          d="M5.5 7.5 10 12l4.5-4.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+
+      {open ? (
+        <div
+          id={listId}
+          role="listbox"
+          className="absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-lg border border-field bg-paper shadow-lift"
+        >
+          <ul className="max-h-64 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-sr-muted">
+                No category matches “{query.trim()}”.
+              </li>
+            ) : (
+              filtered.map((c, i) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={c.id === value}
+                    onMouseEnter={() => setActive(i)}
+                    // Keep input focus so the click lands as a selection, not a blur.
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => choose(c)}
+                    className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm ${
+                      i === active ? "bg-sr-100 text-sr-ink" : "text-sr-body"
+                    }`}
+                  >
+                    <span className="truncate">{c.label}</span>
+                    {c.id === value ? <span className="shrink-0 text-sr-600">✓</span> : null}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
