@@ -90,7 +90,7 @@ export const EMPTY_PRODUCT: ProductFormValues = {
    flat in product_variants — one row per option, keyed by the attribute name —
    and grouped here only so the editor can nest options under their attribute. */
 type OptionRow = { id?: string; value: string; priceDelta: string; stock: string; sku: string; isActive: boolean };
-type AttributeRow = { key: string; name: string; options: OptionRow[] };
+type AttributeRow = { key: string; name: string; options: OptionRow[]; priced: boolean };
 
 let attrKeySeq = 0;
 const newAttrKey = () => `attr-${attrKeySeq++}`;
@@ -103,17 +103,20 @@ function groupVariantsToAttributes(variants: VariantRow[]): AttributeRow[] {
   for (const v of variants) {
     let a = byName.get(v.name);
     if (!a) {
-      a = { key: newAttrKey(), name: v.name, options: [] };
+      a = { key: newAttrKey(), name: v.name, options: [], priced: false };
       byName.set(v.name, a);
       order.push(a);
     }
     a.options.push({ id: v.id, value: v.value, priceDelta: v.priceDelta, stock: v.stock, sku: v.sku, isActive: v.isActive });
   }
+  // An option type "has a price" when any of its choices carries a non-zero
+  // price change; otherwise it is a plain selection and no price column shows.
+  for (const a of order) a.priced = a.options.some((o) => Number(o.priceDelta) !== 0);
   return order;
 }
 
 /** A fresh, empty option type the admin can fill in (e.g. a new "Frame colour"). */
-const blankGroup = (): AttributeRow => ({ key: newAttrKey(), name: "", options: [blankOption()] });
+const blankGroup = (): AttributeRow => ({ key: newAttrKey(), name: "", options: [blankOption()], priced: false });
 
 /** Flatten attributes back to the variant rows the save payload expects. */
 function flattenAttributesToVariants(attributes: AttributeRow[]): VariantRow[] {
@@ -125,7 +128,8 @@ function flattenAttributesToVariants(attributes: AttributeRow[]): VariantRow[] {
         name: a.name,
         value: o.value,
         sku: o.sku,
-        priceDelta: o.priceDelta,
+        // A non-priced option type saves a zero price change for every choice.
+        priceDelta: a.priced ? o.priceDelta : "0",
         stock: o.stock,
         isActive: o.isActive,
       });
@@ -263,6 +267,16 @@ export function ProductForm({
   const removeOption = (key: string, index: number) =>
     setGroups((gs) =>
       gs.map((g) => (g.key === key ? { ...g, options: g.options.filter((_, i) => i !== index) } : g)),
+    );
+  // Admin decides per option type whether it changes the price. Turning it off
+  // hides the price column and clears any amounts so nothing is charged for it.
+  const setGroupPriced = (key: string, priced: boolean) =>
+    setGroups((gs) =>
+      gs.map((g) =>
+        g.key === key
+          ? { ...g, priced, options: priced ? g.options : g.options.map((o) => ({ ...o, priceDelta: "0" })) }
+          : g,
+      ),
     );
 
   async function uploadImages(files: FileList) {
@@ -588,9 +602,9 @@ export function ProductForm({
         {/* -------------------------------------------- options / variants */}
         <Card
           title="Options / variants"
-          subtitle="Offer the product in choices the customer picks from — e.g. a Size and a Frame colour. Add an option type for each thing they choose; each option has its own price and stock. Leave empty for a single-version product."
+          subtitle="Offer the product in choices the customer picks from — e.g. a Size and a Frame colour. Add an option type for each thing they choose. Tick “This option changes the price” only for the types that affect the price; the rest are just a choice. Leave empty for a single-version product."
         >
-          {groups.length > 0 && (
+          {groups.some((g) => g.priced) && (
             <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-sr-line bg-sr-canvas px-3 py-2.5">
               <input
                 type="checkbox"
@@ -635,15 +649,29 @@ export function ProductForm({
                     </button>
                   </div>
 
+                  {/* Admin chooses whether this option type affects the price.
+                      Off = just a choice (no price column, nothing charged). */}
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-sr-body">
+                    <input
+                      type="checkbox"
+                      checked={grp.priced}
+                      onChange={(e) => setGroupPriced(grp.key, e.target.checked)}
+                      className="h-4 w-4 shrink-0 accent-sr-600"
+                    />
+                    This option changes the price
+                  </label>
+
                   {grp.options.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-sr-line-strong px-4 py-5 text-center text-sm text-sr-muted">
-                      No options yet. Add one like “S”, “M” or “8×12 in” with its price.
+                      No options yet. Add one like “S”, “M” or “8×12 in”.
                     </p>
                   ) : (
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 pl-1 text-[11px] font-semibold text-sr-muted">
                         <span className="min-w-0 flex-1">{grp.name.trim() || "Option"}</span>
-                        <span className="w-24 text-right">{values.variantPriceAbsolute ? "Price ₹" : "± ₹"}</span>
+                        {grp.priced ? (
+                          <span className="w-24 text-right">{values.variantPriceAbsolute ? "Price ₹" : "± ₹"}</span>
+                        ) : null}
                         <span className="w-16 text-right">Stock</span>
                         <span className="w-6" />
                       </div>
@@ -655,13 +683,15 @@ export function ProductForm({
                             placeholder={`${grp.name.trim() || "Option"} (e.g. M)`}
                             onChange={(e) => setOption(grp.key, i, { value: e.target.value })}
                           />
-                          <input
-                            type="number"
-                            step="1"
-                            className={`${inputBase} w-24 shrink-0`}
-                            value={opt.priceDelta}
-                            onChange={(e) => setOption(grp.key, i, { priceDelta: e.target.value })}
-                          />
+                          {grp.priced ? (
+                            <input
+                              type="number"
+                              step="1"
+                              className={`${inputBase} w-24 shrink-0`}
+                              value={opt.priceDelta}
+                              onChange={(e) => setOption(grp.key, i, { priceDelta: e.target.value })}
+                            />
+                          ) : null}
                           <input
                             type="number"
                             min="0"
