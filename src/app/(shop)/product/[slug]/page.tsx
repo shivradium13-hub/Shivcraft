@@ -59,28 +59,33 @@ export async function generateMetadata(props: PageProps<"/product/[slug]">): Pro
 }
 
 export default async function ProductPage(props: PageProps<"/product/[slug]">) {
-  const { slug } = await props.params;
-  const product = await getProductBySlug(slug);
+  // Read params/search and the independent lookups together rather than waiting
+  // on a chain of round-trips: the product, storefront settings and the viewer
+  // don't depend on each other.
+  const [{ slug }, { load }] = await Promise.all([props.params, props.searchParams]);
+  const [product, storefront, viewer] = await Promise.all([
+    getProductBySlug(slug),
+    getStorefrontSettings(),
+    optionalUser(),
+  ]);
   if (!product) notFound();
 
-  const related = await getRelatedProducts(product.categoryId, product.id);
-  // Real coupons from the table, so nothing is advertised that would be refused.
-  const offers = await getLiveOffers(product.categoryId);
-
   /* Which product-page blocks the admin has switched on (Storefront settings). */
-  const feat = (await getStorefrontSettings()).product;
+  const feat = storefront.product;
 
-  /* Whether this visitor may review, decided on the server so the page never
-     renders a form that the API would refuse. Their own review is fetched
-     separately from the public list, because a held or taken-down review is
-     still theirs to see and edit. */
-  const viewer = await optionalUser();
-  const ownReview = viewer ? await getOwnReview(viewer.id, product.id) : null;
+  // Everything here needs `product` (and sometimes `viewer`); fetch concurrently.
+  const [related, offers, ownReview] = await Promise.all([
+    getRelatedProducts(product.categoryId, product.id),
+    // Real coupons from the table, so nothing is advertised that would be refused.
+    getLiveOffers(product.categoryId),
+    // Their own review is read apart from the public list, because a held or
+    // taken-down review is still theirs to see and edit.
+    viewer ? getOwnReview(viewer.id, product.id) : Promise.resolve(null),
+  ]);
 
-  /* A saved design opened from the account (?load=<id>). Fetched here, scoped
-     to this viewer and this product, so a design can only ever be loaded by
-     the account that owns it — the id in the URL is not enough on its own. */
-  const { load } = await props.searchParams;
+  /* A saved design opened from the account (?load=<id>). Fetched scoped to this
+     viewer and this product, so a design can only ever be loaded by the account
+     that owns it — the id in the URL is not enough on its own. */
   const loadId = typeof load === "string" ? load : null;
   let savedDesign: CustomerDesign | null = null;
   let savedDesignName: string | null = null;
