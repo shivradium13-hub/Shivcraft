@@ -20,7 +20,11 @@ export type HomeSectionId =
   | "promises"
   | "testimonials";
 
-export type HomeSection = { id: HomeSectionId; enabled: boolean };
+/** How a product section is laid out for the customer: a horizontal slider
+ *  (carousel the customer swipes) or a grid (all cards at once, no sliding). */
+export type HomeSectionLayout = "slider" | "grid";
+
+export type HomeSection = { id: HomeSectionId; enabled: boolean; layout?: HomeSectionLayout };
 
 export type ProductFeatureId =
   | "description"
@@ -109,6 +113,14 @@ export const PRODUCT_FEATURE_META: { id: ProductFeatureId; label: string; hint: 
   { id: "related", label: "You may also like", hint: "Related products rail." },
 ];
 
+/** Product sections whose layout the admin can switch between a slider and a
+ *  grid. The value is the layout each ships with, so the current look is kept
+ *  until the admin changes it. A section not listed here has a fixed layout. */
+export const SECTION_LAYOUT_DEFAULTS: Partial<Record<HomeSectionId, HomeSectionLayout>> = {
+  trending: "slider",
+  bestSellers: "grid",
+};
+
 const HOME_IDS = HOME_SECTION_META.map((s) => s.id);
 const PRODUCT_IDS = PRODUCT_FEATURE_META.map((f) => f.id);
 
@@ -122,7 +134,11 @@ export const DEFAULT_PROMISES: Promise_[] = [
 ];
 
 export const DEFAULT_STOREFRONT: StorefrontSettings = {
-  home: HOME_IDS.map((id) => ({ id, enabled: true })),
+  home: HOME_IDS.map((id) => ({
+    id,
+    enabled: true,
+    ...(SECTION_LAYOUT_DEFAULTS[id] ? { layout: SECTION_LAYOUT_DEFAULTS[id] } : {}),
+  })),
   product: Object.fromEntries(PRODUCT_IDS.map((id) => [id, true])) as Record<ProductFeatureId, boolean>,
   promises: DEFAULT_PROMISES,
   logoHeight: LOGO_HEIGHT_DEFAULT,
@@ -152,14 +168,21 @@ export function normaliseStorefront(raw: unknown): StorefrontSettings {
   const savedHome = Array.isArray(value.home) ? (value.home as Raw[]) : [];
   const seen = new Set<HomeSectionId>();
   const home: HomeSection[] = [];
+  // Only the layout-capable sections carry a layout, falling back to the one
+  // they ship with when nothing valid is stored.
+  const buildSection = (id: HomeSectionId, enabled: boolean, rawLayout?: unknown): HomeSection => {
+    const def = SECTION_LAYOUT_DEFAULTS[id];
+    if (!def) return { id, enabled };
+    return { id, enabled, layout: rawLayout === "slider" || rawLayout === "grid" ? rawLayout : def };
+  };
   for (const entry of savedHome) {
     const id = entry?.id as HomeSectionId;
     if (!HOME_IDS.includes(id) || seen.has(id)) continue;
     seen.add(id);
-    home.push({ id, enabled: entry?.enabled !== false });
+    home.push(buildSection(id, entry?.enabled !== false, entry?.layout));
   }
   for (const id of HOME_IDS) {
-    if (!seen.has(id)) home.push({ id, enabled: true });
+    if (!seen.has(id)) home.push(buildSection(id, true));
   }
 
   const savedProduct = (value.product ?? {}) as Raw;

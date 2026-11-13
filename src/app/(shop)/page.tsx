@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CategoryGrid } from "@/components/shop/CategoryGrid";
 import { ProductGrid, ProductRail } from "@/components/shop/ProductCard";
 import { EmptyState, ProductImage, SectionHeading, Stars } from "@/components/ui/primitives";
-import type { HomeSectionId } from "@/lib/storefront";
+import type { HomeSectionId, HomeSectionLayout } from "@/lib/storefront";
 import { getHomepage } from "@/server/catalog/home";
 import { getStorefrontSettings } from "@/server/settings/storefront";
 
@@ -50,7 +50,7 @@ export default async function HomePage() {
   /* Each homepage block, keyed by id. The admin decides the order and which are
      shown (in Storefront settings); a block still hides itself when it has no
      data, so an enabled-but-empty section never renders an empty shell. */
-  const renderers: Record<HomeSectionId, () => ReactNode> = {
+  const renderers: Record<HomeSectionId, (layout?: HomeSectionLayout) => ReactNode> = {
     categories: () =>
       categories.length > 0 ? (
         <section>
@@ -59,7 +59,7 @@ export default async function HomePage() {
         </section>
       ) : null,
 
-    trending: () =>
+    trending: (layout) =>
       trending.length > 0 ? (
         <section>
           <SectionHeading
@@ -71,7 +71,11 @@ export default async function HomePage() {
               </Link>
             }
           />
-          <ProductRail products={trending} />
+          {layout === "grid" ? (
+            <ProductGrid products={trending.slice(0, 10)} />
+          ) : (
+            <ProductRail products={trending} />
+          )}
         </section>
       ) : null,
 
@@ -103,7 +107,7 @@ export default async function HomePage() {
         </section>
       ) : null,
 
-    bestSellers: () =>
+    bestSellers: (layout) =>
       bestSellers.length > 0 ? (
         <section>
           <SectionHeading
@@ -115,7 +119,11 @@ export default async function HomePage() {
               </Link>
             }
           />
-          <ProductGrid products={bestSellers.slice(0, 10)} />
+          {layout === "slider" ? (
+            <ProductRail products={bestSellers} />
+          ) : (
+            <ProductGrid products={bestSellers.slice(0, 10)} />
+          )}
         </section>
       ) : null,
 
@@ -265,8 +273,8 @@ export default async function HomePage() {
       ) : null}
 
       {/* The rest of the homepage, in the admin-chosen order and visibility. */}
-      {storefront.home.map(({ id, enabled }) =>
-        enabled ? <Fragment key={id}>{renderers[id]()}</Fragment> : null,
+      {storefront.home.map(({ id, enabled, layout }) =>
+        enabled ? <Fragment key={id}>{renderers[id](layout)}</Fragment> : null,
       )}
 
       {trending.length === 0 && bestSellers.length === 0 ? (

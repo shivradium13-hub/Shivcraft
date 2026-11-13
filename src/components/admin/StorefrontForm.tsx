@@ -11,6 +11,8 @@ import {
   POPUP_DELAY_MAX,
   POPUP_REPEAT_MAX,
   PRODUCT_FEATURE_META,
+  SECTION_LAYOUT_DEFAULTS,
+  type HomeSectionLayout,
   type ProductFeatureId,
   type StorefrontSettings,
 } from "@/lib/storefront";
@@ -127,6 +129,11 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
 
   function toggleHome(index: number) {
     setHome((prev) => prev.map((s, i) => (i === index ? { ...s, enabled: !s.enabled } : s)));
+    dirty();
+  }
+
+  function setLayout(index: number, layout: HomeSectionLayout) {
+    setHome((prev) => prev.map((s, i) => (i === index ? { ...s, layout } : s)));
     dirty();
   }
 
@@ -408,6 +415,20 @@ export function StorefrontForm({ initial }: { initial: StorefrontSettings }) {
                   <span className="block text-sm font-medium text-sr-ink">{meta?.label ?? section.id}</span>
                   {meta?.hint ? <span className="block text-xs text-sr-muted">{meta.hint}</span> : null}
                 </span>
+                {SECTION_LAYOUT_DEFAULTS[section.id] ? (
+                  <label className="flex shrink-0 items-center gap-1.5 text-xs text-sr-body">
+                    <span className="hidden text-sr-muted sm:inline">Show as</span>
+                    <select
+                      value={section.layout ?? SECTION_LAYOUT_DEFAULTS[section.id]}
+                      onChange={(e) => setLayout(i, e.target.value as HomeSectionLayout)}
+                      aria-label={`How ${meta?.label ?? section.id} is shown to customers`}
+                      className="rounded-lg border border-field bg-field-bg px-2 py-1 text-xs text-sr-ink outline-none focus:border-sr-400"
+                    >
+                      <option value="slider">Slider</option>
+                      <option value="grid">Grid</option>
+                    </select>
+                  </label>
+                ) : null}
                 <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-semibold text-sr-body">
                   <input
                     type="checkbox"

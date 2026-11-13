@@ -12,7 +12,13 @@ export const dynamic = "force-dynamic";
    malformed or oversized payload from reaching that normaliser. */
 const schema = z.object({
   home: z
-    .array(z.object({ id: z.string().max(40), enabled: z.boolean() }))
+    .array(
+      z.object({
+        id: z.string().max(40),
+        enabled: z.boolean(),
+        layout: z.enum(["slider", "grid"]).optional(),
+      }),
+    )
     .max(40)
     .optional(),
   product: z.record(z.string().max(40), z.boolean()).optional(),
