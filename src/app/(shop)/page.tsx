@@ -8,7 +8,11 @@ import type { HomeSectionId } from "@/lib/storefront";
 import { getHomepage } from "@/server/catalog/home";
 import { getStorefrontSettings } from "@/server/settings/storefront";
 
-export const dynamic = "force-dynamic";
+// The homepage is global (no per-user or search data), so cache it and refresh
+// in the background every 2 minutes (ISR) instead of re-rendering from the DB on
+// every request. Visitors get an instant cached page; data stays fresh within
+// ~2 min, and the admin's changes appear on the next regeneration.
+export const revalidate = 120;
 
 /* A small glyph per promise card, matched to the admin-editable list by
    position. Text is admin-controlled; the decorative icon stays in code. */
