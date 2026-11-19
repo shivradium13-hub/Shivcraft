@@ -9,6 +9,7 @@ import { ProductLivePreview } from "@/components/shop/ProductLivePreview";
 import { ProductPriceDisplay } from "@/components/shop/ProductPriceDisplay";
 import { ProductPromoBanner } from "@/components/shop/ProductPromoBanner";
 import { ProductPurchase } from "@/components/shop/ProductPurchase";
+import { ShareButton } from "@/components/shop/ShareButton";
 import { ProductRail } from "@/components/shop/ProductCard";
 import { ReviewForm, type ReviewEligibility } from "@/components/shop/ReviewForm";
 import { SectionHeading, Stars } from "@/components/ui/primitives";
@@ -267,6 +268,9 @@ export default async function ProductPage(props: PageProps<"/product/[slug]">) {
                 Personalisable
               </span>
             ) : null}
+            <span className="ml-auto">
+              <ShareButton title={product.name} />
+            </span>
           </div>
 
           <ProductPriceDisplay
