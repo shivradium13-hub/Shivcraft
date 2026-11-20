@@ -70,7 +70,13 @@ export default async function InvoicePage(props: PageProps<"/invoice/[orderNumbe
   const paid = order.payment?.status === "PAID";
 
   return (
-    <main className="min-h-dvh bg-sr-canvas px-4 py-6 text-sr-ink print:bg-white print:p-0">
+    <main className="min-h-dvh bg-sr-canvas px-4 py-6 text-sr-ink print:min-h-0 print:bg-white print:p-0">
+      {/* Keep the printed invoice to one page: tidy page margins, and the
+          min-height above is dropped for print (print:min-h-0) so an almost-
+          empty second page is never created. */}
+      <style
+        dangerouslySetInnerHTML={{ __html: "@media print{@page{margin:12mm}}" }}
+      />
       <div className="mx-auto max-w-[820px]">
         {/* Toolbar — hidden when printing. */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
@@ -86,7 +92,7 @@ export default async function InvoicePage(props: PageProps<"/invoice/[orderNumbe
         {/* The invoice itself. */}
         <article className="rounded-card border border-sr-line bg-white p-6 shadow-card sm:p-9 print:rounded-none print:border-0 print:p-0 print:shadow-none">
           {/* header */}
-          <header className="flex flex-wrap items-start justify-between gap-4 border-b border-sr-line pb-5">
+          <header className="flex flex-wrap items-start justify-between gap-4 border-b border-sr-line pb-5 print:pb-3">
             <div>
               {/* The brand logo, same asset as the storefront. Prints on the invoice. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -143,7 +149,7 @@ export default async function InvoicePage(props: PageProps<"/invoice/[orderNumbe
           </header>
 
           {/* parties */}
-          <section className="grid gap-6 border-b border-sr-line py-5 sm:grid-cols-2">
+          <section className="grid gap-6 border-b border-sr-line py-5 sm:grid-cols-2 print:py-4">
             <div>
               <p className="text-[11px] font-semibold tracking-wide text-sr-muted uppercase">Bill to</p>
               <p className="mt-1.5 text-sm font-medium text-sr-ink">
@@ -250,7 +256,7 @@ export default async function InvoicePage(props: PageProps<"/invoice/[orderNumbe
           </div>
 
           {/* notes */}
-          <footer className="mt-6 border-t border-sr-line pt-4 text-xs text-sr-muted">
+          <footer className="mt-6 border-t border-sr-line pt-4 text-xs text-sr-muted print:mt-4 print:pt-3">
             {gst.mode === "inclusive" && gst.gstP > 0 ? (
               <p>
                 Prices are inclusive of GST. The tax shown above is the GST component contained in the
